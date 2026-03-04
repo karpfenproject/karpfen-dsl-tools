@@ -56,38 +56,38 @@ STATEMACHINE ATTACHED TO "Robot" {
     }
 
     TRANSITIONS { // The runtime will always execute the first valid transition in this list. Therefore, the ordering matters.
-        "ready" -> "observe" {
+        TRANSITION "ready" -> "observe" {
             CONDITION {
                 EVENT("public", "start")
             }
         }
-        "observe" -> "react to obstacle" NOT LOOPING {
+        TRANSITION "observe" -> "react to obstacle" NOT LOOPING {
             CONDITION {
                 EVAL { return $(d_closest_obstacle) < $(d_closest_wall) and $(d_closest_obstacle) < 0.25 }
             }
         }
-        "observe" -> "react to wall" NOT LOOPING {
+        TRANSITION "observe" -> "react to wall" NOT LOOPING {
             CONDITION {
                 EVAL { return $(d_closest_wall) < $(d_closest_obstacle) and $(d_closest_wall) < 0.25 }
             }
         }
-        "observe" -> "drive" { }
+        TRANSITION "observe" -> "drive" { }
 
-        "drive" -> "drive slow" NOT LOOPING {
+        TRANSITION "drive" -> "drive slow" NOT LOOPING {
             CONDITION {
                 EVAL { return $(distance_closest_obstacle) < 1.0 or $(distance_closest_wall) < 1.0 }
             }
         }
-        "drive" -> "drive fast" NOT LOOPING {
+        TRANSITION "drive" -> "drive fast" NOT LOOPING {
             CONDITION {
                 EVAL { return $(distance_closest_obstacle) >= 1.0 and $(distance_closest_wall) >= 1.0 }
             }
         }
-        "drive" -> "observe" { }
+        TRANSITION "drive" -> "observe" { }
     }
 
     MACROS {
-        "circular_bounding_box_distance" {
+        MACRO "circular_bounding_box_distance" {
             TAKES("p1", "TwoDObject")
             TAKES("p2", "TwoDObject")
             RETURNS("number")
@@ -100,7 +100,7 @@ STATEMACHINE ATTACHED TO "Robot" {
                 }
             }
         }
-        "point_to_point_distance" {
+        MACRO "point_to_point_distance" {
             TAKES("p1", "Vector")
             TAKES("p2", "Vector")
             RETURNS("number")
@@ -111,7 +111,7 @@ STATEMACHINE ATTACHED TO "Robot" {
                 }
             }
         }
-        "point_to_line_distance" {
+        MACRO "point_to_line_distance" {
             TAKES("point", "Vector")
             TAKES("line_point", "Vector")
             TAKES("line_dir", "Vector")
@@ -128,7 +128,7 @@ STATEMACHINE ATTACHED TO "Robot" {
                 }
             }
         }
-        "get_closest_obstacle" {
+        MACRO "get_closest_obstacle" {
             TAKES("robot_position", "Vector")
             TAKES("obstacles", list("Obstacle"))
             RETURNS(reference("Obstacle"))
@@ -145,7 +145,7 @@ STATEMACHINE ATTACHED TO "Robot" {
                 }
             }
         }
-        "get_closest_wall" {
+        MACRO "get_closest_wall" {
             TAKES("robot_position", "Vector")
             TAKES("walls", list("Wall"))
             RETURNS(reference("Wall"))
@@ -162,7 +162,7 @@ STATEMACHINE ATTACHED TO "Robot" {
                 }
             }
         }
-        "opposite_direction_with_variance" {
+        MACRO "opposite_direction_with_variance" {
             TAKES("point_robot", "Vector")
             TAKES("point_obstacle", "Vector")
             RETURNS("Vector")
@@ -184,7 +184,7 @@ STATEMACHINE ATTACHED TO "Robot" {
                 }
             }
         }
-        "opposite_direction_from_wall_with_variance" {
+        MACRO "opposite_direction_from_wall_with_variance" {
             TAKES("point_robot", "Vector")
             TAKES("wall_point", "Vector")
             TAKES("wall_dir", "Vector")
