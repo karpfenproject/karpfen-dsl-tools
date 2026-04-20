@@ -196,7 +196,7 @@ type "Room" "A room that contains a robot and obstacles" {
 }
 ```
 
-Note how `Room` is defined last - **the last type in a KMeta file is the root type.** All other types must be reachable from the root through `has` embeddings.
+Note how `Room` is defined last - the last type in a KMeta file is the root type. All other types must be reachable from the root through `has` embeddings.
 
 The `list()` wrapper marks one-to-many relationships. Forward references between types are allowed.
 
