@@ -2,18 +2,12 @@
 
 ## Overview
 
-KStates is a Domain-Specific Language (DSL) for defining hierarchical state machines in the *karpfen ecosystem*.
-
-This guide covers:
-- The KStates grammar and syntax
-- How to write state machine definitions
-- A complete example based on the cleaning robot state machine
-- Best practices and parser usage
+KStates is a Domain-Specific Language (DSL) for defining hierarchical state machines in the *karpfen ecosystem*. A `.kstates` file declares states (with `ENTRY`/`DO` action blocks), transitions with conditions, and optional macros for reusable logic.
 
 ## Grammar Specification
 
 The KStates grammar is defined with ANTLR v4.
-You find the full grammer at the end of this guide.
+You find the full grammar at the end of this guide.
 
 ## KStates Syntax
 
@@ -125,11 +119,11 @@ It contains:
 
 ### Hierarchical States
 
-States can be nested arbitrarily deep. This supports decomposition into higher-level modes and concrete sub-behaviors.
+States can be nested arbitrarily deep - outer states represent high-level modes, inner states handle specific sub-behaviors.
 
 ### Executable Snippets via `EVAL`
 
-`EVAL { ... }` blocks are treated as raw code payload by the parser. Their content is captured as a single code string and is not semantically analyzed by ANTLR.
+`EVAL { ... }` blocks are opaque to the parser. ANTLR captures the content as a raw code string without any semantic analysis.
 
 ### Macro Calls in Actions
 

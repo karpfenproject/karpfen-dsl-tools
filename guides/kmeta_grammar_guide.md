@@ -2,13 +2,7 @@
 
 ## Overview
 
-KMeta is a Domain-Specific Language (DSL) for defining data metamodels within the *karpfen ecosystem*. 
-
-This guide covers:
-- The KMeta grammar and syntax
-- How to write KMeta metamodel definitions
-- Examples and best practices
-- Alternative approaches using the functional API
+KMeta is a Domain-Specific Language (DSL) for defining data metamodels within the *karpfen ecosystem*. It lets you declare type hierarchies with properties, embedded relationships (`has`), and references (`knows`).
 
 ## Grammar Specification
 
@@ -168,7 +162,7 @@ type "Robot" "A cleaning robot" {
 
 ## Complete Example
 
-The following example defines a metamodel for a robot navigation system:
+Here is a full metamodel for the cleaning robot demo:
 
 ```
 type "Point" "A point in 2D space" {
@@ -202,53 +196,13 @@ type "Room" "A room that contains a robot and obstacles" {
 }
 ```
 
-**The last type defined in a kmeta metamodel is considered the ROOT type. All other types must be reached via embeddings from the root!**
+Note how `Room` is defined last - **the last type in a KMeta file is the root type.** All other types must be reachable from the root through `has` embeddings.
 
-### Description
-
-This metamodel defines:
-
-- **Point**: A simple type with two numeric properties (x, y coordinates)
-- **TwoDObject**: A type representing 2D objects with size and position information
-- **Obstacle**: A type for objects that block movement in the room
-- **Robot**: The main entity representing an autonomous robot with movement capabilities and awareness of obstacles
-- **Room**: A container type that structures the spatial environment
-
-## Key Concepts
-
-### Embedded vs. Referenced Relationships
-
-- **has()**: Used for embedded relationships. Child objects are part of the parent's data structure
-- **knows()**: Used for referenced relationships. Indicates awareness or links without embedding
-
-### Collections
-
-The `list()` wrapper indicates that a relationship contains multiple instances:
-
-```
-has("obstacles", list("Obstacle"))  // Multiple obstacles
-prop("log", list("string"))         // Multiple string entries
-```
-
-### Type References
-
-Types can reference other types defined in the same metamodel file. Forward references are supported.
-
-## Best Practices
-
-1. **Meaningful Names**: Use clear and descriptive type names and property names
-2. **Documentation**: Always provide meaningful descriptions for types
-3. **Type Hierarchy**: Organize types logically from simple to complex
-4. **Relationship Type**: Distinguish between embedded (has) and referenced (knows) relationships
-5. **Collections**: Use list() for one-to-many relationships
+The `list()` wrapper marks one-to-many relationships. Forward references between types are allowed.
 
 ## Alternative: Functional API
 
-While the KMeta DSL provides a declarative approach, you can also build metamodels programmatically using the functional API. This is useful for dynamic metamodel generation or complex conditional logic.
-
-### Using MetamodelBuilder
-
-The `MetamodelBuilder` class provides a fluent API for constructing metamodels:
+If you need to build metamodels programmatically (e.g. generating them at runtime), use the `MetamodelBuilder` instead of writing `.kmeta` text files:
 
 ```kotlin
 import dsl.functional.MetamodelBuilder
@@ -305,37 +259,16 @@ m.setRoot("Room")
 val metamodel = m.build()
 ```
 
-### MetamodelBuilder API Overview
+### MetamodelBuilder API
 
-The `MetamodelBuilder` class provides the following key methods:
+**Properties:** `makeNumber(key)`, `makeString(key)`, `makeBoolean(key)`, `makeStringList(key)`
 
-#### Property Creation
+**Relationships:** `makeClassProp(key, classT, relT)` for single, `makeClassPropList(key, classT, relT)` for lists. `relT` is either `m.EMBEDDED` (`has`) or `m.LINK` (`knows`).
 
-- `makeNumber(key: String)`: Creates a numeric property
-- `makeString(key: String)`: Creates a string property
-- `makeBoolean(key: String)`: Creates a boolean property
-- `makeStringList(key: String)`: Creates a list of strings
-
-#### Relationship Creation
-
-- `makeClassProp(key: String, classT: String, relT: String)`: Creates a single class relationship
-- `makeClassPropList(key: String, classT: String, relT: String)`: Creates a list of class relationships
-
-#### Relationship Types
-
-- `m.EMBEDDED`: For embedded relationships (equivalent to "has" in DSL)
-- `m.LINK`: For referenced relationships (equivalent to "knows" in DSL)
-
-#### Class and Metamodel Management
-
-- `makeClass(name: String, comment: String, props: List, rels: List)`: Creates a new type
-- `setRoot(name: String)`: Designates the root type for the metamodel
-- `build()`: Constructs and returns the final metamodel
+**Class & build:** `makeClass(name, comment, props, rels)` defines a type, `setRoot(name)` picks the root, `build()` produces the metamodel.
 
 
 ## Parsing KMeta Files
 
-To parse a KMeta metamodel file, use the `KmetaDSLCOnverter` class, 
-which utilizes the ANTLR parser to read and convert KMeta files into in-memory representations.
-You find this class in the `kotlin/dsl/textual` package.
+To parse a `.kmeta` file, use `KmetaDSLConverter` from the `kotlin/dsl/textual` package.
 

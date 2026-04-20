@@ -2,13 +2,7 @@
 
 ## Overview
 
-KModel is a Domain-Specific Language (DSL) for defining data model instances within the *karpfen ecosystem*. While KMeta defines the structure and schema of types, KModel creates concrete instances of those types with actual data values.
-
-This guide covers:
-- The KModel grammar and syntax
-- How to write KModel instance definitions
-- Examples and best practices
-- Alternative approaches using the functional API
+KModel is a Domain-Specific Language (DSL) for defining data model instances within the *karpfen ecosystem*. Where KMeta defines the type schema, KModel instantiates it with concrete objects and values.
 
 ## Grammar Specification
 
@@ -79,7 +73,7 @@ COMMENT  : '//' ~[\r\n]* -> skip ;
 A KModel instance file starts with a single root object definition using the `make object` keyword:
 
 ```
-make object "<key>:<ClassName>" {
+make object "<key>":"<ClassName>" {
     [prop_statement]*
     [has_statement]*
     [knows_statement]*
@@ -135,8 +129,6 @@ has("<relationName>") -> make object "<key>":"<ClassName>" {
 }
 ```
 
-This creates a nested object hierarchy. Child objects can themselves contain nested objects.
-
 Example:
 ```
 has("position") -> make object "pointA":"Point" {
@@ -153,8 +145,6 @@ The `knows` statement creates references to other objects by their key:
 knows("<relationName>") -> "<objectKey>"
 ```
 
-This allows linking to objects defined elsewhere without duplicating their data.
-
 Example:
 ```
 knows("obstacles") -> "chair"
@@ -163,7 +153,7 @@ knows("obstacles") -> "table"
 
 ## Complete Example
 
-The following example defines a model instance for a robot navigation system:
+Here is a full model for the cleaning robot demo:
 
 ```
 make object "APB 2101":"Room" {
@@ -216,21 +206,7 @@ make object "APB 2101":"Room" {
 }
 ```
 
-### Description
-
-This model instance creates a concrete room environment with:
-
-- **Root Object**: A Room instance named "APB 2101"
-- **Corner Points**: Four Point objects marking the boundaries of the room
-- **Obstacles**: Two obstacles (chair and table) with bounding boxes and positions
-- **Robot**: A robot (turtle) with speed and bounding box properties
-- **References**: The robot knows about the chair and table obstacles
-
-The structure demonstrates:
-- Nested object creation with `has`
-- Property assignment with `prop`
-- Object references using `knows`
-- Object naming conventions for identification
+The root object `"APB 2101"` owns four corner points and two obstacles via `has`, and the robot references those obstacles via `knows`. Note how the same relationship name (`"obstacles"`) appears twice to build a collection.
 
 ## Key Concepts
 
@@ -278,21 +254,9 @@ has("obstacles") -> make object "chair":"Obstacle" { ... }
 has("obstacles") -> make object "table":"Obstacle" { ... }
 ```
 
-## Best Practices
-
-1. **Consistent Naming**: Use clear and descriptive object keys that reflect their purpose
-2. **Flatten When Possible**: Avoid excessive nesting; use references (`knows`) to reduce depth
-3. **Data Validation**: Ensure property values match their expected types
-4. **Reuse Objects**: Use `knows` statements to reference commonly used objects
-5. **Documentation**: Add comments to complex object structures
-
 ## Alternative: Functional API
 
-While the KModel DSL provides a declarative approach, you can also build model instances programmatically using the functional API. This is useful for dynamic model generation or integration with application logic.
-
-### Using ModelBuilder
-
-The `ModelBuilder` class provides a fluent API for constructing model instances:
+If you need to build models programmatically (e.g. generating them at runtime), use the `ModelBuilder` instead of writing `.kmodel` text files:
 
 ```kotlin
 import dsl.functional.ModelBuilder
@@ -352,56 +316,20 @@ fun setupRobotRoomModel(metamodel: Metamodel): Model {
 }
 ```
 
-### ModelBuilder API Overview
+### ModelBuilder API
 
-The `ModelBuilder` class provides the following key methods:
+- `makeObject(className)` / `makeObject(className, key)` - create objects (anonymous or named)
+- `assignProps(mapOf("x" to 5.0, ...))` - set property values (numbers, strings, booleans)
+- `assignRels(mapOf("robot" to obj))` - set single relationships or lists of objects
+- `build()` - produce the final model
 
-#### Object Creation
-
-- `makeObject(className: String)`: Creates an anonymous object of the given class
-- `makeObject(className: String, key: String)`: Creates a named object with a unique key
-
-#### Property Assignment
-
-- `assignProps(properties: Map<String, Any>)`: Assigns property values to an object
-
-Supported property types:
-- Numeric values: `1.0`, `42`, etc.
-- String values: `"text"`
-- Boolean values: `true`, `false`
-
-#### Relationship Assignment
-
-- `assignRels(relationships: Map<String, DataObject>)`: Assigns single embedded objects
-- `assignRels(relationships: Map<String, List<DataObject>>)`: Assigns lists of objects
-
-#### Model Finalization
-
-- `build()`: Constructs and returns the final model instance
-
-### Method Chaining with apply()
-
-The functional API uses Kotlin's `apply()` function to chain method calls:
-
-```kotlin
-val point = m.makeObject("Point", "p1").apply {
-    assignProps(mapOf("x" to 5.0, "y" to 10.0))
-}
-```
-
-This is equivalent to:
-```kotlin
-val point = m.makeObject("Point", "p1")
-point.assignProps(mapOf("x" to 5.0, "y" to 10.0))
-```
+Kotlin's `apply()` is used to chain calls on each object.
 
 ## Parsing KModel Files
 
-To parse a KModel instance file, use the `KmodelDSLCOnverter` class.
-You find this class in the `kotlin/dsl/textual` package. It utilizes ANTLR v4.
-
+To parse a `.kmodel` file, use `KmodelDSLConverter` from the `kotlin/dsl/textual` package.
 
 ## Relationship to KMeta
 
-KModel instances must conform to the structure defined by a KMeta metamodel. The object types, property names, and relationship names referenced in a KModel file must exist in the corresponding metamodel. This ensures data consistency and type safety.
+Every KModel file must match the types, properties, and relationships declared in its corresponding KMeta metamodel - the parser will reject unknown names.
 
