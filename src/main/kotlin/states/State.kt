@@ -38,5 +38,5 @@ data class State(
     val isInitial: Boolean = false
 ) {
     override fun toString(): String =
-        "State(name=$name, isInitial=$isInitial, innerStates=${innerStates.size}, entryActions=${onEntry.actions.size}, doActions=${onDo.actions.size})"
+        "State(name=$name, isInitial=$isInitial, innerStates=${innerStates.size}, entryActions=${onEntry.items.size}, doActions=${onDo.items.size})"
 }

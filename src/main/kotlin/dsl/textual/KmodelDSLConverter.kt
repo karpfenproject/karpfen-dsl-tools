@@ -85,6 +85,24 @@ object KmodelDSLConverter {
     }
 
     /**
+     * Parses a single kmodel object (one `make object` block) and returns its root [DataObject].
+     *
+     * This is the kmodel counterpart of [JsonToModelConverter.toDataObject]: it is meant for small,
+     * self-contained snippets such as an event payload written in the kmodel syntax. The snippet should
+     * not rely on `knows` references into the surrounding model, because those ids cannot be resolved
+     * from inside an isolated payload.
+     *
+     * @param content The kmodel snippet as a string.
+     * @param meta The metamodel defining the structure for validation.
+     * @return The root data object of the snippet.
+     */
+    fun parseSingleObject(content: String, meta: Metamodel): DataObject {
+        val model = parseKmodelString(content, meta)
+        return model.objects.firstOrNull()
+            ?: throw IllegalArgumentException("kmodel payload did not contain an object")
+    }
+
+    /**
      * Parses a KModel file and converts it to a Model instance.
      *
      * @param filePath The path to the KModel file to parse.

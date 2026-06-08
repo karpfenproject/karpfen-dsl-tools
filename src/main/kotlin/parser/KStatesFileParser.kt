@@ -82,8 +82,23 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
     }
 
     private fun parseActionBlock(ctx: KstatesParser.Action_blockContext): ParsedActionBlock {
-        val actions = ctx.action_rule().map { parseActionRule(it) }
-        return ParsedActionBlock(actions)
+        val items = ctx.action_item().map { parseActionItem(it) }
+        return ParsedActionBlock(items)
+    }
+
+    private fun parseActionItem(ctx: KstatesParser.Action_itemContext): ParsedActionItem {
+        val ruleCtx = ctx.action_rule()
+        return if (ruleCtx != null) {
+            ParsedActionRuleItem(parseActionRule(ruleCtx))
+        } else {
+            parseInScopeBlock(ctx.in_scope_block())
+        }
+    }
+
+    private fun parseInScopeBlock(ctx: KstatesParser.In_scope_blockContext): ParsedInScopeBlock {
+        val paths = ctx.STRING().map { unquote(it.text) }
+        val body = parseActionBlock(ctx.action_block())
+        return ParsedInScopeBlock(paths, body)
     }
 
     private fun parseActionRule(ctx: KstatesParser.Action_ruleContext): ParsedActionRule {
@@ -121,25 +136,31 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         return ParsedTransition(fromState, toState, allowLoops, condition)
     }
 
-    private fun parseCondition(ctx: KstatesParser.Condition_blockContext?): ParsedCondition? {
+    /**
+     * Parses a CONDITION block into its ordered list of clauses. An empty list means there was no
+     * CONDITION block at all (an unconditional transition).
+     */
+    private fun parseCondition(ctx: KstatesParser.Condition_blockContext?): List<ParsedCondition> {
         if (ctx == null) {
-            return null
+            return emptyList()
         }
+        return ctx.condition_clause().map { parseConditionClause(it) }
+    }
 
-        val transitionCondition = ctx.transition_condition()
-        if (transitionCondition.eval_statement() != null) {
-            val code = extractInnerBlockText(transitionCondition.eval_statement().eval_code_block())
+    private fun parseConditionClause(ctx: KstatesParser.Condition_clauseContext): ParsedCondition {
+        if (ctx.eval_statement() != null) {
+            val code = extractInnerBlockText(ctx.eval_statement().eval_code_block())
             return ParsedEvalCondition(code)
         }
-        if (transitionCondition.event_condition() != null) {
-            val eventCtx = transitionCondition.event_condition()
+        if (ctx.event_condition() != null) {
+            val eventCtx = ctx.event_condition()
             return ParsedEventCondition(
                 unquote(eventCtx.STRING(0).text),
                 unquote(eventCtx.STRING(1).text)
             )
         }
 
-        val valueCtx = transitionCondition.value_condition()
+        val valueCtx = ctx.value_condition()
         return ParsedValueCondition(unquote(valueCtx.STRING().text))
     }
 
@@ -209,7 +230,16 @@ data class ParsedState(
     val innerStates: List<ParsedState>
 )
 
-data class ParsedActionBlock(val actions: List<ParsedActionRule>)
+data class ParsedActionBlock(val items: List<ParsedActionItem>)
+
+sealed class ParsedActionItem
+
+data class ParsedActionRuleItem(val rule: ParsedActionRule) : ParsedActionItem()
+
+data class ParsedInScopeBlock(
+    val paths: List<String>,
+    val body: ParsedActionBlock
+) : ParsedActionItem()
 
 data class ParsedActionRule(
     val operationType: ParsedActionOperationType,
@@ -235,7 +265,7 @@ data class ParsedTransition(
     val fromState: String,
     val toState: String,
     val allowLoops: Boolean,
-    val condition: ParsedCondition?
+    val condition: List<ParsedCondition>
 )
 
 sealed class ParsedCondition

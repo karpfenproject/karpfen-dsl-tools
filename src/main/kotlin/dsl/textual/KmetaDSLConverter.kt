@@ -35,10 +35,17 @@ object KmetaDSLConverter {
     /**
      * Parses a KMeta string and converts it to a Metamodel.
      *
+     * [baseTypes] are class types that are already known from another metamodel and may be referenced
+     * by the types in this file but are not redefined here. This is what lets an EVENTS.kmeta describe
+     * event payloads that embed or link to domain types (e.g. an event carrying a `Vector`) without
+     * duplicating those definitions. The base types are also included in the resulting metamodel so
+     * that nested references resolve when the payload is later turned into objects.
+     *
      * @param content The KMeta content as a string.
+     * @param baseTypes Already-resolved class types that may be referenced but are not defined here.
      * @return The parsed metamodel.
      */
-    fun parseKmetaString(content: String): Metamodel {
+    fun parseKmetaString(content: String, baseTypes: List<ClassType> = emptyList()): Metamodel {
         val d = KmetaFileParser().parseString(content.trimIndent())
         val types = d.types
         val classTypes = mutableListOf<ClassType>()
@@ -135,11 +142,13 @@ object KmetaDSLConverter {
             classTypes.add(classType)
         }
 
-        //now that we know all class types, we can resolve the references in the ClassTypeProperties
+        //now that we know all class types, we can resolve the references in the ClassTypeProperties.
+        //References may point at a type defined in this file or at one of the supplied base types.
+        val resolvableTypes = classTypes + baseTypes
         for (classType in classTypes){
             for (classTypeProp in classType.objectProperties){
                 val reference = classTypeProp.reference
-                val targetClassType = classTypes.find { it.name == reference.classTypeName }
+                val targetClassType = resolvableTypes.find { it.name == reference.classTypeName }
                 if (targetClassType != null){
                     reference.classType = targetClassType
                 }else {
@@ -148,9 +157,16 @@ object KmetaDSLConverter {
             }
         }
 
+        if (classTypes.isEmpty()) {
+            throw IllegalArgumentException("KMeta content does not define any types")
+        }
+
         //FIXME for now, we assume the last type defined is the root type of the metamodel,
-        // but we should have a better way to define this in the DSL
-        return Metamodel(classTypes, classTypes.last())
+        // but we should have a better way to define this in the DSL.
+        //The base types are carried along so that getTypeByName resolves both the locally defined
+        //types and any referenced base types (used when parsing payloads that embed domain types).
+        val allTypes = (classTypes + baseTypes).toMutableList()
+        return Metamodel(allTypes, classTypes.last())
     }
 
     /**

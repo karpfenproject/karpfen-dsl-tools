@@ -64,6 +64,19 @@ Right side can be:
 - a macro call: `MACRO("name", "arg1", "arg2")`
 - an eval statement: `EVAL { ... }`
 
+An action block may also contain `IF IN SCOPE(...)` blocks. These run their body only when every path they list currently resolves to a value, which is handy when a state can be reached with or without a scoped event:
+
+```
+DO {
+    IF IN SCOPE("event->factor") {
+        SET("speed", EVAL { return 0.3 * $(event->factor) })
+    }
+    APPEND("log", "driving")
+}
+```
+
+A path that begins with `event` reads from the event currently in scope; any other path is checked against the context object. List several paths separated by commas to require all of them, and nest blocks freely.
+
 ### Transitions
 
 Transitions are declared in `TRANSITIONS`:
@@ -78,10 +91,23 @@ TRANSITION "observe" -> "react to obstacle" NOT LOOPING {
 
 - `NOT LOOPING` is optional.
 - A transition may include a `CONDITION` block.
-- Condition variants:
+- A condition is a list of one or more clauses; all of them must hold (evaluated top to bottom, short-circuit). Clause variants:
   - `EVAL { ... }`
   - `EVENT("domain", "value")`
   - `VALUE("variableKey")`
+
+When a condition has an `EVENT` clause it must be the first clause. It brings the matched event into scope, so the clauses after it (and the actions of the state being entered) can read its payload with `$(event->...)`:
+
+```
+TRANSITION "drive" -> "boost" {
+    CONDITION {
+        EVENT("public", "setSpeed")
+        EVAL { return $(event->factor) > 1.0 }
+    }
+}
+```
+
+When several events of the same name are waiting, they are tried oldest-first and the first one whose guards all pass is the one that fires.
 
 ### Macros
 
@@ -200,7 +226,16 @@ do_block
     ;
 
 action_block
-    : LBRACE action_rule* RBRACE
+    : LBRACE action_item* RBRACE
+    ;
+
+action_item
+    : action_rule
+    | in_scope_block
+    ;
+
+in_scope_block
+    : IF IN SCOPE LPAREN STRING (COMMA STRING)* RPAREN action_block
     ;
 
 action_rule
@@ -240,12 +275,12 @@ not_looping
     ;
 
 condition_block
-    : CONDITION LBRACE transition_condition RBRACE
+    : CONDITION LBRACE condition_clause+ RBRACE
     ;
 
-transition_condition
-    : eval_statement
-    | event_condition
+condition_clause
+    : event_condition
+    | eval_statement
     | value_condition
     ;
 

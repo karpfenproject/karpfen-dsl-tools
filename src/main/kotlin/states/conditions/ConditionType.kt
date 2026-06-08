@@ -21,9 +21,11 @@ package states.conditions
  * - EVENT: Condition based on event occurrence.
  * - EVAL: Condition based on code evaluation.
  * - VALUE: Condition based on a variable value.
+ * - COMPOSITE: An ordered sequence of clauses that must all hold (see [CompositeCondition]).
  */
 enum class ConditionType {
     EVENT,
     EVAL,
-    VALUE
+    VALUE,
+    COMPOSITE
 }

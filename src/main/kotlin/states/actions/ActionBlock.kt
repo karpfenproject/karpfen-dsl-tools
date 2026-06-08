@@ -16,11 +16,21 @@
 package states.actions
 
 /**
- * Represents a sequence of action rules to be executed.
+ * Represents a sequence of action items to be executed in order.
  *
- * @property actions List of action rules in this block.
+ * An item is either a plain [ActionRule] or a conditional [InScopeBlock] that only runs when the
+ * access paths it names are available.
+ *
+ * @property items The ordered list of action items in this block.
  */
-data class ActionBlock(val actions: MutableList<ActionRule>) {
+data class ActionBlock(val items: MutableList<ActionItem>) {
+
+    /** True when the block has no items at all. */
+    fun isEmpty(): Boolean = items.isEmpty()
+
+    /** True when the block has at least one item. */
+    fun isNotEmpty(): Boolean = items.isNotEmpty()
+
     override fun toString(): String =
-        "ActionBlock(actions=${actions.size})"
+        "ActionBlock(items=${items.size})"
 }

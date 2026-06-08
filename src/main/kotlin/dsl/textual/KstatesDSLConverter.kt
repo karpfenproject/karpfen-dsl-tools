@@ -78,19 +78,30 @@ object KstatesDSLConverter {
     }
 
     private fun convertActionBlock(block: parser.ParsedActionBlock?): ActionBlock {
-        val actions = block?.actions?.map { action ->
-            ActionRule(
-                operationType = when (action.operationType) {
-                    ParsedActionOperationType.SET -> ActionOperationType.SET
-                    ParsedActionOperationType.APPEND -> ActionOperationType.APPEND
-                    ParsedActionOperationType.EVENT -> ActionOperationType.EVENT
-                },
-                leftSide = action.leftSide,
-                rightSide = convertActionRightSide(action.rightSide)
-            )
-        } ?: emptyList()
+        val items = block?.items?.map { convertActionItem(it) } ?: emptyList()
+        return ActionBlock(items.toMutableList())
+    }
 
-        return ActionBlock(actions.toMutableList())
+    private fun convertActionItem(item: parser.ParsedActionItem): ActionItem {
+        return when (item) {
+            is parser.ParsedActionRuleItem -> convertActionRule(item.rule)
+            is parser.ParsedInScopeBlock -> InScopeBlock(
+                paths = item.paths,
+                body = convertActionBlock(item.body)
+            )
+        }
+    }
+
+    private fun convertActionRule(action: parser.ParsedActionRule): ActionRule {
+        return ActionRule(
+            operationType = when (action.operationType) {
+                ParsedActionOperationType.SET -> ActionOperationType.SET
+                ParsedActionOperationType.APPEND -> ActionOperationType.APPEND
+                ParsedActionOperationType.EVENT -> ActionOperationType.EVENT
+            },
+            leftSide = action.leftSide,
+            rightSide = convertActionRightSide(action.rightSide)
+        )
     }
 
     private fun convertActionRightSide(rightSide: parser.ParsedActionRightSide): ActionRightSide {
@@ -110,12 +121,26 @@ object KstatesDSLConverter {
         )
     }
 
-    private fun convertCondition(condition: ParsedCondition?): Condition {
+    /**
+     * Converts the ordered clauses of a CONDITION block into a single [Condition].
+     *
+     * No clauses means an unconditional transition (always true). A single clause keeps its leaf type,
+     * so existing single-condition state machines parse exactly as before. Several clauses become a
+     * [CompositeCondition] that is evaluated in order with all clauses required to hold.
+     */
+    private fun convertCondition(clauses: List<ParsedCondition>): Condition {
+        return when {
+            clauses.isEmpty() -> ValueCondition("true")
+            clauses.size == 1 -> convertLeafCondition(clauses.first())
+            else -> CompositeCondition(clauses.map { convertLeafCondition(it) })
+        }
+    }
+
+    private fun convertLeafCondition(condition: ParsedCondition): Condition {
         return when (condition) {
             is ParsedEvalCondition -> EvalCondition(condition.code)
             is ParsedEventCondition -> EventCondition(condition.eventDomain, condition.eventValue)
             is ParsedValueCondition -> ValueCondition(condition.variableKey)
-            null -> ValueCondition("true")
         }
     }
 
