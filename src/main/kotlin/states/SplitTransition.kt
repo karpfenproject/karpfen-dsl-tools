@@ -18,21 +18,23 @@ package states
 import states.conditions.Condition
 
 /**
- * Represents a transition between two states in a state machine.
+ * A 1-to-N transition that fans a single state out into several parallel states.
  *
- * Transitions are triggered when their associated condition evaluates to true.
+ * When it fires, the execution context leaves [fromState] and enters one parallel branch per entry in
+ * [toStates] (so [toStates] must hold at least two targets). A split may only fire while the context is
+ * not already parallel.
  *
- * @property fromState The name of the source state.
- * @property toState The name of the target state.
- * @property allowLoops True if this transition is allowed to loop back to the same state.
- * @property condition The condition that must be satisfied for this transition to occur.
+ * @property fromState The source state.
+ * @property toStates The target states; one parallel branch is created for each.
+ * @property allowLoops False if this transition must not fire twice in a row.
+ * @property condition The condition that must hold for this transition to fire.
  */
-data class Transition(
+data class SplitTransition(
     val fromState: String,
-    val toState: String,
+    val toStates: List<String>,
     override val allowLoops: Boolean,
     override val condition: Condition,
 ) : TransitionLike {
     override fun toString(): String =
-        "Transition(fromState=$fromState, toState=$toState, allowLoops=$allowLoops, condition=${condition.conditionType})"
+        "SplitTransition(fromState=$fromState, toStates=$toStates, allowLoops=$allowLoops, condition=${condition.conditionType})"
 }

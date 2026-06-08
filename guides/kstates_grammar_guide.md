@@ -109,6 +109,20 @@ TRANSITION "drive" -> "boost" {
 
 When several events of the same name are waiting, they are tried oldest-first and the first one whose guards all pass is the one that fires.
 
+### Parallel transitions (SPLIT and JOIN)
+
+Alongside the normal `TRANSITION`, two more transition forms drive parallel states:
+
+```
+SPLIT "observe" -> "scanLeft", "scanRight"   { CONDITION { EVENT("public", "go") } }
+JOIN  "scanLeft", "scanRight" -> "report"    { }
+```
+
+- `SPLIT "from" -> "t1", "t2", ...` fans one state out into several parallel branches (at least two targets).
+- `JOIN "s1", "s2", ... -> "to"` collapses a set of parallel branches back into a single state (at least two sources).
+
+All three forms share the same optional `NOT LOOPING` and `CONDITION` syntax, and live in the same `TRANSITIONS` block so their definition order is preserved. The runtime decides which apply: splits only while the machine is simple, joins (with priority) only while it is parallel. See the runtime's execution-semantics guide for the full behaviour.
+
 ### Macros
 
 Macros are declared in `MACROS`:
@@ -267,7 +281,21 @@ transitions_block
     ;
 
 transition_definition
+    : normal_transition
+    | split_transition
+    | join_transition
+    ;
+
+normal_transition
     : TRANSITION STRING ARROW STRING not_looping? LBRACE condition_block? RBRACE
+    ;
+
+split_transition
+    : SPLIT STRING ARROW STRING (COMMA STRING)+ not_looping? LBRACE condition_block? RBRACE
+    ;
+
+join_transition
+    : JOIN STRING (COMMA STRING)+ ARROW STRING not_looping? LBRACE condition_block? RBRACE
     ;
 
 not_looping

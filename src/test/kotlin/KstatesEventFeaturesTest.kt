@@ -57,7 +57,7 @@ class KstatesEventFeaturesTest {
     @Test
     fun `multi-clause condition becomes a composite with the event clause first`() {
         val machine = KstatesDSLConverter.parseKstatesString(machineText)
-        val transition = machine.transitions.first { it.fromState == "idle" }
+        val transition = machine.transitions.filterIsInstance<states.Transition>().first { it.fromState == "idle" }
         val condition = transition.condition
         assertEquals(ConditionType.COMPOSITE, condition.conditionType)
         val composite = condition as CompositeCondition

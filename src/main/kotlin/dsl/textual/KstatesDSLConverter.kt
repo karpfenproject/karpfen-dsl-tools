@@ -112,13 +112,27 @@ object KstatesDSLConverter {
         }
     }
 
-    private fun convertTransition(transition: ParsedTransition): Transition {
-        return Transition(
-            fromState = transition.fromState,
-            toState = transition.toState,
-            allowLoops = transition.allowLoops,
-            condition = convertCondition(transition.condition)
-        )
+    private fun convertTransition(transition: ParsedTransitionLike): TransitionLike {
+        return when (transition) {
+            is ParsedTransition -> Transition(
+                fromState = transition.fromState,
+                toState = transition.toState,
+                allowLoops = transition.allowLoops,
+                condition = convertCondition(transition.condition)
+            )
+            is ParsedSplitTransition -> SplitTransition(
+                fromState = transition.fromState,
+                toStates = transition.toStates,
+                allowLoops = transition.allowLoops,
+                condition = convertCondition(transition.condition)
+            )
+            is ParsedJoinTransition -> JoinTransition(
+                fromStates = transition.fromStates,
+                toState = transition.toState,
+                allowLoops = transition.allowLoops,
+                condition = convertCondition(transition.condition)
+            )
+        }
     }
 
     /**

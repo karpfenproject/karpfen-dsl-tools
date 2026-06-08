@@ -66,7 +66,21 @@ transitions_block
     ;
 
 transition_definition
+    : normal_transition
+    | split_transition
+    | join_transition
+    ;
+
+normal_transition
     : TRANSITION STRING ARROW STRING not_looping? LBRACE condition_block? RBRACE
+    ;
+
+split_transition
+    : SPLIT STRING ARROW STRING (COMMA STRING)+ not_looping? LBRACE condition_block? RBRACE
+    ;
+
+join_transition
+    : JOIN STRING (COMMA STRING)+ ARROW STRING not_looping? LBRACE condition_block? RBRACE
     ;
 
 not_looping
@@ -153,6 +167,8 @@ MACRO        : 'MACRO' ;
 EVAL         : 'EVAL' ;
 TRANSITIONS  : 'TRANSITIONS' ;
 TRANSITION   : 'TRANSITION' ;
+SPLIT        : 'SPLIT' ;
+JOIN         : 'JOIN' ;
 NOT          : 'NOT' ;
 LOOPING      : 'LOOPING' ;
 CONDITION    : 'CONDITION' ;

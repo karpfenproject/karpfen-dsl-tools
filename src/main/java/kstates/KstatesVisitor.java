@@ -107,6 +107,24 @@ public interface KstatesVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitTransition_definition(KstatesParser.Transition_definitionContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link KstatesParser#normal_transition}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitNormal_transition(KstatesParser.Normal_transitionContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link KstatesParser#split_transition}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitSplit_transition(KstatesParser.Split_transitionContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link KstatesParser#join_transition}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitJoin_transition(KstatesParser.Join_transitionContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link KstatesParser#not_looping}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

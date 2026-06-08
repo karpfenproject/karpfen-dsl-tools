@@ -26,9 +26,24 @@ package states
 data class StateMachine(
     val attachedToClass: String,
     val states: MutableList<State>,
-    val transitions: MutableList<Transition>,
+    val transitions: MutableList<TransitionLike>,
     val macros: MutableList<Macro>
     ) {
+
+    /**
+     * The normal and split transitions that leave [stateName], in definition order. These are the
+     * transitions a branch sitting in [stateName] may take; joins are handled separately at the
+     * context level via [joinTransitions].
+     */
+    fun outgoingFrom(stateName: String): List<TransitionLike> =
+        transitions.filter {
+            (it is Transition && it.fromState == stateName) ||
+            (it is SplitTransition && it.fromState == stateName)
+        }
+
+    /** All join transitions, in definition order. */
+    fun joinTransitions(): List<JoinTransition> = transitions.filterIsInstance<JoinTransition>()
+
     override fun toString(): String =
         "StateMachine(attachedToClass=$attachedToClass, states=${states.size}, transitions=${transitions.size}, macros=${macros.size})"
 }

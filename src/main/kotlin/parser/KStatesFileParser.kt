@@ -127,13 +127,39 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         return ParsedActionRule(operation, leftSide, rightSide)
     }
 
-    private fun parseTransition(ctx: KstatesParser.Transition_definitionContext): ParsedTransition {
+    private fun parseTransition(ctx: KstatesParser.Transition_definitionContext): ParsedTransitionLike {
+        ctx.normal_transition()?.let { return parseNormalTransition(it) }
+        ctx.split_transition()?.let { return parseSplitTransition(it) }
+        return parseJoinTransition(ctx.join_transition())
+    }
+
+    private fun parseNormalTransition(ctx: KstatesParser.Normal_transitionContext): ParsedTransition {
         val fromState = unquote(ctx.STRING(0).text)
         val toState = unquote(ctx.STRING(1).text)
         val allowLoops = ctx.not_looping() == null
         val condition = parseCondition(ctx.condition_block())
 
         return ParsedTransition(fromState, toState, allowLoops, condition)
+    }
+
+    private fun parseSplitTransition(ctx: KstatesParser.Split_transitionContext): ParsedSplitTransition {
+        val strings = ctx.STRING().map { unquote(it.text) }
+        val fromState = strings.first()
+        val toStates = strings.drop(1)
+        val allowLoops = ctx.not_looping() == null
+        val condition = parseCondition(ctx.condition_block())
+
+        return ParsedSplitTransition(fromState, toStates, allowLoops, condition)
+    }
+
+    private fun parseJoinTransition(ctx: KstatesParser.Join_transitionContext): ParsedJoinTransition {
+        val strings = ctx.STRING().map { unquote(it.text) }
+        val toState = strings.last()
+        val fromStates = strings.dropLast(1)
+        val allowLoops = ctx.not_looping() == null
+        val condition = parseCondition(ctx.condition_block())
+
+        return ParsedJoinTransition(fromStates, toState, allowLoops, condition)
     }
 
     /**
@@ -218,7 +244,7 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
 data class KstatesFile(
     val attachedToClass: String,
     val states: List<ParsedState>,
-    val transitions: List<ParsedTransition>,
+    val transitions: List<ParsedTransitionLike>,
     val macros: List<ParsedMacro>
 )
 
@@ -261,12 +287,28 @@ data class ParsedEvalActionRightSide(val code: String) : ParsedActionRightSide()
 
 data class ParsedValueActionRightSide(val value: String) : ParsedActionRightSide()
 
+sealed interface ParsedTransitionLike
+
 data class ParsedTransition(
     val fromState: String,
     val toState: String,
     val allowLoops: Boolean,
     val condition: List<ParsedCondition>
-)
+) : ParsedTransitionLike
+
+data class ParsedSplitTransition(
+    val fromState: String,
+    val toStates: List<String>,
+    val allowLoops: Boolean,
+    val condition: List<ParsedCondition>
+) : ParsedTransitionLike
+
+data class ParsedJoinTransition(
+    val fromStates: List<String>,
+    val toState: String,
+    val allowLoops: Boolean,
+    val condition: List<ParsedCondition>
+) : ParsedTransitionLike
 
 sealed class ParsedCondition
 
