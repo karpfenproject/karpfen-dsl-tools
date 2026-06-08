@@ -53,6 +53,18 @@ public interface KstatesVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitAction_block(KstatesParser.Action_blockContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link KstatesParser#action_item}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitAction_item(KstatesParser.Action_itemContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link KstatesParser#in_scope_block}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitIn_scope_block(KstatesParser.In_scope_blockContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link KstatesParser#action_rule}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -107,11 +119,11 @@ public interface KstatesVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitCondition_block(KstatesParser.Condition_blockContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link KstatesParser#transition_condition}.
+	 * Visit a parse tree produced by {@link KstatesParser#condition_clause}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitTransition_condition(KstatesParser.Transition_conditionContext ctx);
+	T visitCondition_clause(KstatesParser.Condition_clauseContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link KstatesParser#event_condition}.
 	 * @param ctx the parse tree

@@ -25,7 +25,16 @@ do_block
     ;
 
 action_block
-    : LBRACE action_rule* RBRACE
+    : LBRACE action_item* RBRACE
+    ;
+
+action_item
+    : action_rule
+    | in_scope_block
+    ;
+
+in_scope_block
+    : IF IN SCOPE LPAREN STRING (COMMA STRING)* RPAREN action_block
     ;
 
 action_rule
@@ -65,12 +74,12 @@ not_looping
     ;
 
 condition_block
-    : CONDITION LBRACE transition_condition RBRACE
+    : CONDITION LBRACE condition_clause+ RBRACE
     ;
 
-transition_condition
-    : eval_statement
-    | event_condition
+condition_clause
+    : event_condition
+    | eval_statement
     | value_condition
     ;
 
@@ -153,6 +162,9 @@ TAKES        : 'TAKES' ;
 RETURNS      : 'RETURNS' ;
 DEFINITION   : 'DEFINITION' ;
 REFERENCE    : 'reference' ;
+IF           : 'IF' ;
+IN           : 'IN' ;
+SCOPE        : 'SCOPE' ;
 
 ARROW        : '->' ;
 LBRACE       : '{' ;

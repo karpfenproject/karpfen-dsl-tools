@@ -16,17 +16,10 @@
 package states.actions
 
 /**
- * Represents a single action rule that modifies state or sends events.
+ * One entry inside an [ActionBlock].
  *
- * @property operationType The type of operation (SET, APPEND, or EVENT).
- * @property leftSide The target property or event domain name.
- * @property rightSide The value, macro call, or code expression to assign or evaluate.
+ * An action block is no longer a flat list of rules: it can also contain conditional sub-blocks
+ * ([InScopeBlock]) that only run when the access paths they name are available. Both a single
+ * [ActionRule] and an [InScopeBlock] are therefore action items.
  */
-data class ActionRule(
-    val operationType: ActionOperationType,
-    val leftSide: String,
-    val rightSide: ActionRightSide
-) : ActionItem {
-    override fun toString(): String =
-        "ActionRule(operationType=$operationType, leftSide=$leftSide, rightSide=${rightSide.actionValueType})"
-}
+sealed interface ActionItem

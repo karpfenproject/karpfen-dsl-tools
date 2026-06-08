@@ -16,6 +16,8 @@ repositories {
 dependencies {
     antlr 'org.antlr:antlr4:4.13.1'
     implementation 'org.antlr:antlr4-runtime:4.13.1'
+    // JSON (used by JsonToModelConverter to turn JSON event payloads into the runtime object model)
+    implementation 'org.json:json:20240303'
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
     implementation fileTree(dir: 'lib', include: ['*.jar'])
 
