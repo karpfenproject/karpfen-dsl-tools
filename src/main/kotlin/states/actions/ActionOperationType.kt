@@ -18,12 +18,26 @@ package states.actions
 /**
  * Enumeration of possible action rule operation types.
  *
- * - SET: Assign a value to a property.
- * - APPEND: Add a value to a collection.
+ * Simple-property operations (operate on primitive scalars / lists only):
+ * - SET: Overwrite a single scalar property.
+ * - APPEND: Append one element to a simple list property.
+ * - SETLIST: Overwrite a whole simple list property.
+ * - DROPLIST: Clear a simple list property (unary).
+ *
+ * Object/relation operations (operate on `has`/`knows` relations):
+ * - SETOBJ: Replace the target of an atomic relation (ternary: source, relation, target).
+ * - APPENDOBJ: Add an object to a list relation (ternary: source, relation, target).
+ * - DROPOBJ: Remove an object and all relations pointing to it from the model (unary).
+ *
  * - EVENT: Send an event to the event domain.
  */
 enum class ActionOperationType {
     SET,
     APPEND,
+    SETLIST,
+    DROPLIST,
+    SETOBJ,
+    APPENDOBJ,
+    DROPOBJ,
     EVENT
 }

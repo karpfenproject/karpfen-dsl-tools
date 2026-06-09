@@ -87,12 +87,9 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
     }
 
     private fun parseActionItem(ctx: KstatesParser.Action_itemContext): ParsedActionItem {
-        val ruleCtx = ctx.action_rule()
-        return if (ruleCtx != null) {
-            ParsedActionRuleItem(parseActionRule(ruleCtx))
-        } else {
-            parseInScopeBlock(ctx.in_scope_block())
-        }
+        ctx.action_rule()?.let { return ParsedActionRuleItem(parseActionRule(it)) }
+        ctx.with_block()?.let { return parseWithBlock(it) }
+        return parseInScopeBlock(ctx.in_scope_block())
     }
 
     private fun parseInScopeBlock(ctx: KstatesParser.In_scope_blockContext): ParsedInScopeBlock {
@@ -101,30 +98,68 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         return ParsedInScopeBlock(paths, body)
     }
 
+    private fun parseWithBlock(ctx: KstatesParser.With_blockContext): ParsedWithBlock {
+        val strings = ctx.macro_call().STRING().map { unquote(it.text) }
+        val macroName = strings.firstOrNull() ?: ""
+        val args = if (strings.size > 1) strings.drop(1) else emptyList()
+        val name = unquote(ctx.STRING().text)
+        val body = parseActionBlock(ctx.action_block())
+        return ParsedWithBlock(macroName, args, name, body)
+    }
+
     private fun parseActionRule(ctx: KstatesParser.Action_ruleContext): ParsedActionRule {
+        val op = ctx.action_operation()
         val operation = when {
-            ctx.action_operation().SET() != null -> ParsedActionOperationType.SET
-            ctx.action_operation().APPEND() != null -> ParsedActionOperationType.APPEND
-            else -> ParsedActionOperationType.EVENT
+            op.SET() != null       -> ParsedActionOperationType.SET
+            op.APPEND() != null    -> ParsedActionOperationType.APPEND
+            op.SETLIST() != null   -> ParsedActionOperationType.SETLIST
+            op.DROPLIST() != null  -> ParsedActionOperationType.DROPLIST
+            op.SETOBJ() != null    -> ParsedActionOperationType.SETOBJ
+            op.APPENDOBJ() != null -> ParsedActionOperationType.APPENDOBJ
+            op.DROPOBJ() != null   -> ParsedActionOperationType.DROPOBJ
+            else                   -> ParsedActionOperationType.EVENT
         }
 
-        val leftSide = unquote(ctx.STRING().text)
-        val rightSideCtx = ctx.action_right_side()
-        val rightSide = when {
-            rightSideCtx.STRING() != null -> ParsedValueActionRightSide(unquote(rightSideCtx.STRING().text))
-            rightSideCtx.macro_call() != null -> {
-                val strings = rightSideCtx.macro_call().STRING().map { unquote(it.text) }
+        val strings = ctx.STRING().map { unquote(it.text) }
+        val rightSide = ctx.action_right_side()?.let { parseActionRightSide(it) }
+
+        // Distinguish the arity actually written: OP("a") / OP("a", rhs) / OP("a", "b", rhs)
+        val actualArity = when {
+            rightSide == null -> Arity.UNARY
+            strings.size == 1 -> Arity.BINARY
+            else              -> Arity.TERNARY
+        }
+        val expectedArity = expectedArity(operation)
+        require(actualArity == expectedArity) {
+            "Operation $operation expects ${expectedArity.usage}, but was called as ${actualArity.usage}."
+        }
+
+        return when (actualArity) {
+            Arity.UNARY   -> ParsedActionRule(operation, strings[0], null, null)
+            Arity.BINARY  -> ParsedActionRule(operation, strings[0], null, rightSide)
+            Arity.TERNARY -> ParsedActionRule(operation, strings[0], strings[1], rightSide)
+        }
+    }
+
+    private fun parseActionRightSide(ctx: KstatesParser.Action_right_sideContext): ParsedActionRightSide {
+        return when {
+            ctx.STRING() != null -> ParsedValueActionRightSide(unquote(ctx.STRING().text))
+            ctx.macro_call() != null -> {
+                val strings = ctx.macro_call().STRING().map { unquote(it.text) }
                 val macroName = strings.firstOrNull() ?: ""
                 val args = if (strings.size > 1) strings.drop(1) else emptyList()
                 ParsedMacroActionRightSide(macroName, args)
             }
-            else -> {
-                val code = extractInnerBlockText(rightSideCtx.eval_statement().eval_code_block())
-                ParsedEvalActionRightSide(code)
-            }
+            else -> ParsedEvalActionRightSide(extractInnerBlockText(ctx.eval_statement().eval_code_block()))
         }
+    }
 
-        return ParsedActionRule(operation, leftSide, rightSide)
+    private fun expectedArity(op: ParsedActionOperationType): Arity = when (op) {
+        ParsedActionOperationType.DROPLIST,
+        ParsedActionOperationType.DROPOBJ -> Arity.UNARY
+        ParsedActionOperationType.SETOBJ,
+        ParsedActionOperationType.APPENDOBJ -> Arity.TERNARY
+        else -> Arity.BINARY
     }
 
     private fun parseTransition(ctx: KstatesParser.Transition_definitionContext): ParsedTransitionLike {
@@ -267,16 +302,46 @@ data class ParsedInScopeBlock(
     val body: ParsedActionBlock
 ) : ParsedActionItem()
 
+/**
+ * A `WITH macro_call AS "name" { ... }` binding block: the macro is evaluated once and its result is
+ * bound to [name] for the duration of [body], readable as `$(name->...)` inside nested actions.
+ */
+data class ParsedWithBlock(
+    val macroName: String,
+    val args: List<String>,
+    val name: String,
+    val body: ParsedActionBlock
+) : ParsedActionItem()
+
+/**
+ * A single action rule. The meaning of the operands depends on the operation's arity:
+ * - unary   (DROPLIST, DROPOBJ):   [leftSide] = target path; [secondSide]/[rightSide] null.
+ * - binary  (SET, APPEND, SETLIST, EVENT): [leftSide] = target path; [rightSide] = value.
+ * - ternary (SETOBJ, APPENDOBJ):   [leftSide] = source path, [secondSide] = relation, [rightSide] = target.
+ */
 data class ParsedActionRule(
     val operationType: ParsedActionOperationType,
     val leftSide: String,
-    val rightSide: ParsedActionRightSide
+    val secondSide: String? = null,
+    val rightSide: ParsedActionRightSide? = null
 )
 
 enum class ParsedActionOperationType {
     SET,
     APPEND,
+    SETLIST,
+    DROPLIST,
+    SETOBJ,
+    APPENDOBJ,
+    DROPOBJ,
     EVENT
+}
+
+/** Number of operands an action operation is written with. */
+enum class Arity(val usage: String) {
+    UNARY("OP(\"path\")"),
+    BINARY("OP(\"path\", value)"),
+    TERNARY("OP(\"source\", \"relation\", target)")
 }
 
 sealed class ParsedActionRightSide

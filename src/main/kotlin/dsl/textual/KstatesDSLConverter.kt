@@ -89,6 +89,11 @@ object KstatesDSLConverter {
                 paths = item.paths,
                 body = convertActionBlock(item.body)
             )
+            is parser.ParsedWithBlock -> WithBlock(
+                macro = MacroActionRightSide(item.macroName, item.args),
+                name = item.name,
+                body = convertActionBlock(item.body)
+            )
         }
     }
 
@@ -97,10 +102,16 @@ object KstatesDSLConverter {
             operationType = when (action.operationType) {
                 ParsedActionOperationType.SET -> ActionOperationType.SET
                 ParsedActionOperationType.APPEND -> ActionOperationType.APPEND
+                ParsedActionOperationType.SETLIST -> ActionOperationType.SETLIST
+                ParsedActionOperationType.DROPLIST -> ActionOperationType.DROPLIST
+                ParsedActionOperationType.SETOBJ -> ActionOperationType.SETOBJ
+                ParsedActionOperationType.APPENDOBJ -> ActionOperationType.APPENDOBJ
+                ParsedActionOperationType.DROPOBJ -> ActionOperationType.DROPOBJ
                 ParsedActionOperationType.EVENT -> ActionOperationType.EVENT
             },
             leftSide = action.leftSide,
-            rightSide = convertActionRightSide(action.rightSide)
+            secondSide = action.secondSide,
+            rightSide = action.rightSide?.let { convertActionRightSide(it) }
         )
     }
 

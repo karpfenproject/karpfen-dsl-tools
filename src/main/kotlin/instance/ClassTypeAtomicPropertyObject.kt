@@ -54,4 +54,9 @@ class ClassTypeAtomicPropertyObject(
         this.value.objectId = value.id
     }
 
+    /** Clears the reference, leaving the relation empty (no target object). */
+    fun clear() {
+        this.value = ObjectReference("")
+    }
+
 }

@@ -16,17 +16,25 @@
 package states.actions
 
 /**
- * Represents a single action rule that modifies state or sends events.
+ * Represents a single action rule that modifies the model or sends events.
  *
- * @property operationType The type of operation (SET, APPEND, or EVENT).
- * @property leftSide The target property or event domain name.
- * @property rightSide The value, macro call, or code expression to assign or evaluate.
+ * The operands depend on the operation's arity:
+ * - unary   (DROPLIST, DROPOBJ):   [leftSide] = target path; [secondSide] and [rightSide] are null.
+ * - binary  (SET, APPEND, SETLIST, EVENT): [leftSide] = target path / event domain; [rightSide] = value.
+ * - ternary (SETOBJ, APPENDOBJ):   [leftSide] = source path, [secondSide] = relation key, [rightSide] = target.
+ *
+ * @property operationType The type of operation.
+ * @property leftSide The target property path, source path, or event domain name.
+ * @property secondSide The relation key (ternary operations only); null otherwise.
+ * @property rightSide The value, macro call, or code expression; null for unary operations.
  */
 data class ActionRule(
     val operationType: ActionOperationType,
     val leftSide: String,
-    val rightSide: ActionRightSide
+    val rightSide: ActionRightSide? = null,
+    val secondSide: String? = null
 ) : ActionItem {
     override fun toString(): String =
-        "ActionRule(operationType=$operationType, leftSide=$leftSide, rightSide=${rightSide.actionValueType})"
+        "ActionRule(operationType=$operationType, leftSide=$leftSide, secondSide=$secondSide, " +
+            "rightSide=${rightSide?.actionValueType})"
 }

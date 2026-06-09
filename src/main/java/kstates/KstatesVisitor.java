@@ -65,6 +65,12 @@ public interface KstatesVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitIn_scope_block(KstatesParser.In_scope_blockContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link KstatesParser#with_block}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitWith_block(KstatesParser.With_blockContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link KstatesParser#action_rule}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

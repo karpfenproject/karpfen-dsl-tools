@@ -31,19 +31,35 @@ action_block
 action_item
     : action_rule
     | in_scope_block
+    | with_block
     ;
 
 in_scope_block
     : IF IN SCOPE LPAREN STRING (COMMA STRING)* RPAREN action_block
     ;
 
+with_block
+    : WITH macro_call AS STRING action_block
+    ;
+
+// Three arities, distinguished by the hand-written parser:
+//   unary   OP("a")              -> DROPLIST, DROPOBJ
+//   binary  OP("a", rhs)         -> SET, APPEND, SETLIST, EVENT
+//   ternary OP("a", "b", rhs)    -> SETOBJ, APPENDOBJ   (source, relation, target)
 action_rule
-    : action_operation LPAREN STRING COMMA action_right_side RPAREN
+    : action_operation LPAREN STRING RPAREN
+    | action_operation LPAREN STRING COMMA action_right_side RPAREN
+    | action_operation LPAREN STRING COMMA STRING COMMA action_right_side RPAREN
     ;
 
 action_operation
     : SET
     | APPEND
+    | SETLIST
+    | DROPLIST
+    | SETOBJ
+    | APPENDOBJ
+    | DROPOBJ
     | EVENT
     ;
 
@@ -160,9 +176,16 @@ STATE        : 'STATE' ;
 INITIAL      : 'INITIAL' ;
 ENTRY        : 'ENTRY' ;
 DO           : 'DO' ;
-SET          : 'SET' ;
-APPEND       : 'APPEND' ;
+SET          : 'SET' | 'set' ;
+SETLIST      : 'SETLIST' | 'setlist' ;
+DROPLIST     : 'DROPLIST' | 'droplist' ;
+APPEND       : 'APPEND' | 'append' ;
+SETOBJ       : 'SETOBJ' | 'setobj' ;
+APPENDOBJ    : 'APPENDOBJ' | 'appendobj' ;
+DROPOBJ      : 'DROPOBJ' | 'dropobj' ;
 EVENT        : 'EVENT' ;
+WITH         : 'WITH' | 'with' ;
+AS           : 'AS' | 'as' ;
 MACRO        : 'MACRO' ;
 EVAL         : 'EVAL' ;
 TRANSITIONS  : 'TRANSITIONS' ;

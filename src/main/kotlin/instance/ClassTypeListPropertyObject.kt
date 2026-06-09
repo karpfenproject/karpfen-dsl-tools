@@ -51,4 +51,22 @@ class ClassTypeListPropertyObject(
             this.values.add(ObjectReference(value.id, value))
         }
     }
+
+    /** Appends a single object reference to the list, validating its type against the metamodel. */
+    fun appendValue(value: DataObject) {
+        if(value.ofType.name != getClassType()) {
+            throw IllegalArgumentException("Expected a DataObject of type ${getClassType()}")
+        }
+        this.values.add(ObjectReference(value.id, value))
+    }
+
+    /** Removes every reference whose target object has the given id. */
+    fun removeById(id: String) {
+        values.removeIf { it.objectId == id || it.obj?.id == id }
+    }
+
+    /** Removes all references, leaving an empty list. */
+    fun clear() {
+        values.clear()
+    }
 }

@@ -55,6 +55,11 @@ class SimpleListPropertyObject(
         values.removeIf { it == value }
     }
 
+    /** Removes all values, leaving an empty list. */
+    fun clear() {
+        values.clear()
+    }
+
     fun getValues(): List<Any> {
         return values
     }
