@@ -1,3 +1,5 @@
+import org.apache.tools.ant.filters.FixCrLfFilter
+
 plugins {
     id 'org.jetbrains.kotlin.jvm' version '2.3.0'
     id 'antlr'
@@ -42,6 +44,7 @@ tasks.register('copyAntlrSources', Copy) {
     dependsOn generateGrammarSource
     from "${buildDir}/generated-src/antlr/main"
     into "${projectDir}/src/main/java"
+    filter(FixCrLfFilter, eol: FixCrLfFilter.CrLf.newInstance("crlf"), fixlast: false)
 }
 
 // Task to fix package statements in kmodel classes
