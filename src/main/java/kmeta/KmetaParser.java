@@ -18,7 +18,7 @@ public class KmetaParser extends Parser {
 		new PredictionContextCache();
 	public static final int
 		TYPE=1, PROP=2, HAS=3, KNOWS=4, LIST=5, LBRACE=6, RBRACE=7, LPAREN=8, 
-		RPAREN=9, COMMA=10, STRING=11, WS=12;
+		RPAREN=9, COMMA=10, STRING=11, WS=12, COMMENT=13;
 	public static final int
 		RULE_kmeta_file = 0, RULE_type_definition = 1, RULE_rule_list = 2, RULE_rule = 3, 
 		RULE_prop_rule = 4, RULE_has_rule = 5, RULE_knows_rule = 6, RULE_rule_value = 7;
@@ -40,7 +40,7 @@ public class KmetaParser extends Parser {
 	private static String[] makeSymbolicNames() {
 		return new String[] {
 			null, "TYPE", "PROP", "HAS", "KNOWS", "LIST", "LBRACE", "RBRACE", "LPAREN", 
-			"RPAREN", "COMMA", "STRING", "WS"
+			"RPAREN", "COMMA", "STRING", "WS", "COMMENT"
 		};
 	}
 	private static final String[] _SYMBOLIC_NAMES = makeSymbolicNames();
@@ -547,7 +547,7 @@ public class KmetaParser extends Parser {
 	}
 
 	public static final String _serializedATN =
-		"\u0004\u0001\fH\u0002\u0000\u0007\u0000\u0002\u0001\u0007\u0001\u0002"+
+		"\u0004\u0001\rH\u0002\u0000\u0007\u0000\u0002\u0001\u0007\u0001\u0002"+
 		"\u0002\u0007\u0002\u0002\u0003\u0007\u0003\u0002\u0004\u0007\u0004\u0002"+
 		"\u0005\u0007\u0005\u0002\u0006\u0007\u0006\u0002\u0007\u0007\u0007\u0001"+
 		"\u0000\u0005\u0000\u0012\b\u0000\n\u0000\f\u0000\u0015\t\u0000\u0001\u0000"+

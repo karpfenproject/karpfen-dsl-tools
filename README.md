@@ -24,4 +24,4 @@ Licensed under the Apache License, Version 2.0. See `LICENSE` for details.
 
 ---
 
-*Parts of this poject have been developed with the help of generative AI*.
+*Parts of this project have been developed with the help of generative AI*.
