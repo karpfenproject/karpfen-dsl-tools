@@ -65,6 +65,7 @@ COMMA    : ',' ;
 STRING   : '"' ( '\\' . | ~["\r\n] )* '"' ;
 
 WS       : [ \t\r\n]+ -> skip ;
+COMMENT  : '//' ~[\r\n]* -> skip ;
 ```
 
 ## KMeta Syntax
@@ -78,6 +79,19 @@ type "<TypeName>" "<Description>" {
     [prop_statement]*
     [has_statement]*
     [knows_statement]*
+}
+```
+
+### Comments
+
+Single-line comments start with `//` and run to the end of the line. They are ignored by the parser and
+may appear anywhere whitespace is allowed, including at the end of a line:
+
+```
+// Domain types for the cleaning-robot example
+type "Vector" "A vector in 2D space" { // inline comment
+    prop("x", "number") // the x coordinate
+    prop("y", "number")
 }
 ```
 

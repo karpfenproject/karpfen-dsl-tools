@@ -80,6 +80,17 @@ make object "<key>":"<ClassName>" {
 }
 ```
 
+### Comments
+
+Single-line comments start with `//` and run to the end of the line. They are ignored by the parser and
+may appear anywhere whitespace is allowed, including at the end of a line:
+
+```
+make object "turtle":"Robot" {
+    prop("d_closest_wall") -> "100.0" // updated by the state machine at runtime
+}
+```
+
 ### Object Creation
 
 Each object is created with the `make object` keyword followed by an object signature:

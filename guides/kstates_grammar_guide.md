@@ -23,6 +23,18 @@ STATEMACHINE ATTACHED TO "<ClassName>" {
 }
 ```
 
+### Comments
+
+Single-line comments start with `//` and run to the end of the line. They are ignored by the parser and
+may appear anywhere whitespace is allowed (see the `//` comments in the example above).
+
+> **Caveat — `//` inside `EVAL` blocks:** the comment rule applies everywhere, *including inside
+> `EVAL { … }` Python code*. Because Python uses `//` for integer division, a snippet such as
+> `EVAL { return a // b }` is misread — everything from `//` to the end of the line (including the
+> closing brace on a single-line block) is treated as a comment and dropped. Inside `EVAL`/`MACRO`
+> bodies, avoid `//`: use `int(a / b)` or `math.floor(a / b)` instead, and put any genuine Python
+> comment on its own line.
+
 ### State Definitions
 
 States are declared in the `STATES` block. A state can be marked as `INITIAL`.
