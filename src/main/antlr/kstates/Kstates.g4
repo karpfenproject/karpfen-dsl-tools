@@ -13,7 +13,46 @@ states_block
     ;
 
 state_definition
-    : INITIAL? STATE STRING LBRACE entry_block? do_block? state_definition* RBRACE
+    : INITIAL? history_definition? STATE STRING LBRACE state_breakpoint_block? tick_limit_block? entry_block? do_block? state_definition* RBRACE
+    ;
+
+history_definition
+    : shallow_history_definition
+    | deep_history_definition
+    ;
+
+shallow_history_definition
+    : SHALLOW HISTORY
+    ;
+
+deep_history_definition
+    : DEEP HISTORY
+    ;
+
+state_breakpoint_block
+    : BREAKPOINT LBRACE state_breakpoint_definition? RBRACE
+    ;
+
+state_breakpoint_definition
+    : ENTRY EXIT?
+    | EXIT ENTRY?
+    ;
+
+tick_limit_block
+    : TICK LIMIT LBRACE tick_limit_definition? RBRACE
+    ;
+
+tick_limit_definition
+    : delay_definition timeout_definition?
+    | timeout_definition delay_definition?
+    ;
+
+delay_definition
+    : DELAY COLON NUMBER TICK
+    ;
+
+timeout_definition
+    : TIMEOUT COLON AFTER NUMBER TICK TRANSITION TO STRING
     ;
 
 entry_block
@@ -88,19 +127,28 @@ transition_definition
     ;
 
 normal_transition
-    : TRANSITION STRING ARROW STRING not_looping? LBRACE condition_block? RBRACE
+    : TRANSITION STRING ARROW STRING not_looping? LBRACE transition_breakpoint_block? condition_block? RBRACE
     ;
 
 split_transition
-    : SPLIT STRING ARROW STRING (COMMA STRING)+ not_looping? LBRACE condition_block? RBRACE
+    : SPLIT STRING ARROW STRING (COMMA STRING)+ not_looping? LBRACE transition_breakpoint_block? condition_block? RBRACE
     ;
 
 join_transition
-    : JOIN STRING (COMMA STRING)+ ARROW STRING not_looping? LBRACE condition_block? RBRACE
+    : JOIN STRING (COMMA STRING)+ ARROW STRING not_looping? LBRACE transition_breakpoint_block? condition_block? RBRACE
     ;
 
 not_looping
     : NOT LOOPING
+    ;
+
+transition_breakpoint_block
+    : BREAKPOINT LBRACE transition_breakpoint_definition? RBRACE
+    ;
+
+transition_breakpoint_definition
+    : START END?
+    | END START?
     ;
 
 condition_block
@@ -168,49 +216,62 @@ code_content
     | ~(LBRACE | RBRACE)
     ;
 
-STATEMACHINE : 'STATEMACHINE' ;
-ATTACHED     : 'ATTACHED' ;
-TO           : 'TO' ;
-STATES       : 'STATES' ;
-STATE        : 'STATE' ;
-INITIAL      : 'INITIAL' ;
-ENTRY        : 'ENTRY' ;
-DO           : 'DO' ;
-SET          : 'SET' | 'set' ;
-SETLIST      : 'SETLIST' | 'setlist' ;
-DROPLIST     : 'DROPLIST' | 'droplist' ;
-APPEND       : 'APPEND' | 'append' ;
-SETOBJ       : 'SETOBJ' | 'setobj' ;
-APPENDOBJ    : 'APPENDOBJ' | 'appendobj' ;
-DROPOBJ      : 'DROPOBJ' | 'dropobj' ;
-EVENT        : 'EVENT' ;
-WITH         : 'WITH' | 'with' ;
-AS           : 'AS' | 'as' ;
-MACRO        : 'MACRO' ;
-EVAL         : 'EVAL' ;
-TRANSITIONS  : 'TRANSITIONS' ;
-TRANSITION   : 'TRANSITION' ;
-SPLIT        : 'SPLIT' ;
-JOIN         : 'JOIN' ;
-NOT          : 'NOT' ;
-LOOPING      : 'LOOPING' ;
-CONDITION    : 'CONDITION' ;
-VALUE        : 'VALUE' ;
-MACROS       : 'MACROS' ;
-TAKES        : 'TAKES' ;
-RETURNS      : 'RETURNS' ;
-DEFINITION   : 'DEFINITION' ;
-REFERENCE    : 'reference' ;
-IF           : 'IF' ;
-IN           : 'IN' ;
-SCOPE        : 'SCOPE' ;
+STATEMACHINE    : 'STATEMACHINE' ;
+ATTACHED        : 'ATTACHED' ;
+TO              : 'TO' ;
+STATES          : 'STATES' ;
+STATE           : 'STATE' ;
+INITIAL         : 'INITIAL' ;
+SHALLOW         : 'SHALLOW' ;
+DEEP            : 'DEEP' ;
+HISTORY         : 'HISTORY' ;
+BREAKPOINT      : 'BREAKPOINT' ;
+TICK            : 'TICK' | 'TICKS' ;
+LIMIT           : 'LIMIT' ;
+DELAY           : 'DELAY' ;
+TIMEOUT         : 'TIMEOUT' ;
+AFTER           : 'AFTER' ;
+ENTRY           : 'ENTRY' ;
+EXIT            : 'EXIT' ;
+DO              : 'DO' ;
+SET             : 'SET' | 'set' ;
+SETLIST         : 'SETLIST' | 'setlist' ;
+DROPLIST        : 'DROPLIST' | 'droplist' ;
+APPEND          : 'APPEND' | 'append' ;
+SETOBJ          : 'SETOBJ' | 'setobj' ;
+APPENDOBJ       : 'APPENDOBJ' | 'appendobj' ;
+DROPOBJ         : 'DROPOBJ' | 'dropobj' ;
+EVENT           : 'EVENT' ;
+WITH            : 'WITH' | 'with' ;
+AS              : 'AS' | 'as' ;
+MACRO           : 'MACRO' ;
+EVAL            : 'EVAL' ;
+TRANSITIONS     : 'TRANSITIONS' ;
+TRANSITION      : 'TRANSITION' ;
+SPLIT           : 'SPLIT' ;
+JOIN            : 'JOIN' ;
+NOT             : 'NOT' ;
+LOOPING         : 'LOOPING' ;
+START           : 'START' ;
+END             : 'END' ;
+CONDITION       : 'CONDITION' ;
+VALUE           : 'VALUE' ;
+MACROS          : 'MACROS' ;
+TAKES           : 'TAKES' ;
+RETURNS         : 'RETURNS' ;
+DEFINITION      : 'DEFINITION' ;
+REFERENCE       : 'reference' ;
+IF              : 'IF' ;
+IN              : 'IN' ;
+SCOPE           : 'SCOPE' ;
 
-ARROW        : '->' ;
-LBRACE       : '{' ;
-RBRACE       : '}' ;
-LPAREN       : '(' ;
-RPAREN       : ')' ;
-COMMA        : ',' ;
+ARROW           : '->' ;
+LBRACE          : '{' ;
+RBRACE          : '}' ;
+LPAREN          : '(' ;
+RPAREN          : ')' ;
+COMMA           : ',' ;
+COLON           : ':' ;
 
 STRING       : '"' ( '\\' . | ~["\\\r\n] )* '"' ;
 SSTRING      : '\'' ( '\\' . | ~['\\\r\n] )* '\'' ;

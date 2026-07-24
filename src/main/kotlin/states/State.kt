@@ -28,6 +28,11 @@ import states.actions.ActionBlock
  * @property innerStates Child states nested within this state.
  * @property outerState Reference to the parent state, if this state is nested.
  * @property isInitial True if this is the initial state of the machine or parent state.
+ * @property entryBreakpoint True if a breakpoint is attached to this state's entry point.
+ * @property exitBreakpoint True if a breakpoint is attached to this state's exit point.
+ * @property history Specifies what kind of history is attached to this state.
+ * @property delay The minimum tick amount a state has to stay entered.
+ * @property timeout The maximum tick amount a state can stay entered.
  */
 data class State(
     val name: String,
@@ -35,8 +40,20 @@ data class State(
     val onDo: ActionBlock,
     val innerStates: MutableList<State>,
     val outerState: State? = null,
-    val isInitial: Boolean = false
+    val isInitial: Boolean = false,
+    val entryBreakpoint: Boolean = false,
+    val exitBreakpoint: Boolean = false,
+    val history: History = History.NONE,
+    val delay: Long? = null,
+    val timeout: Long? = null,
+    val timeoutTo: String? = null,
 ) {
     override fun toString(): String =
-        "State(name=$name, isInitial=$isInitial, innerStates=${innerStates.size}, entryActions=${onEntry.items.size}, doActions=${onDo.items.size})"
+        "State(name=$name, isInitial=$isInitial, entryBreakpoint=$entryBreakpoint, exitBreakpoint=$exitBreakpoint, historyState=${history}, delay=${delay}, timeout=${timeout}, timeoutTo=${timeoutTo} innerStates=${innerStates.size}, entryActions=${onEntry.items.size}, doActions=${onDo.items.size})"
+}
+
+enum class History {
+    NONE, //No history attached
+    SHALLOW, //Shallow history attached (only considers top level of substates)
+    DEEP //Deep history attached (considers every state down to the deepest substate)
 }

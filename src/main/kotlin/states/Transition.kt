@@ -25,14 +25,18 @@ import states.conditions.Condition
  * @property fromState The name of the source state.
  * @property toState The name of the target state.
  * @property allowLoops True if this transition is allowed to loop back to the same state.
+ * @property startBreakpoint True if a breakpoint is attached to this transition's start.
+ * @property endBreakpoint True if a breakpoint is attached to this transition's end.
  * @property condition The condition that must be satisfied for this transition to occur.
  */
 data class Transition(
     val fromState: String,
     val toState: String,
     override val allowLoops: Boolean,
+    override val startBreakpoint: Boolean = false,
+    override val endBreakpoint: Boolean = false,
     override val condition: Condition,
 ) : TransitionLike {
     override fun toString(): String =
-        "Transition(fromState=$fromState, toState=$toState, allowLoops=$allowLoops, condition=${condition.conditionType})"
+        "Transition(fromState=$fromState, toState=$toState, allowLoops=$allowLoops, startBreakpoint=$startBreakpoint, endBreakpoint=$endBreakpoint, condition=${condition.conditionType})"
 }

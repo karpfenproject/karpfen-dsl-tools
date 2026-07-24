@@ -35,6 +35,60 @@ public interface KstatesVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitState_definition(KstatesParser.State_definitionContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link KstatesParser#history_definition}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitHistory_definition(KstatesParser.History_definitionContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link KstatesParser#shallow_history_definition}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitShallow_history_definition(KstatesParser.Shallow_history_definitionContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link KstatesParser#deep_history_definition}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitDeep_history_definition(KstatesParser.Deep_history_definitionContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link KstatesParser#state_breakpoint_block}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitState_breakpoint_block(KstatesParser.State_breakpoint_blockContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link KstatesParser#state_breakpoint_definition}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitState_breakpoint_definition(KstatesParser.State_breakpoint_definitionContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link KstatesParser#tick_limit_block}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitTick_limit_block(KstatesParser.Tick_limit_blockContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link KstatesParser#tick_limit_definition}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitTick_limit_definition(KstatesParser.Tick_limit_definitionContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link KstatesParser#delay_definition}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitDelay_definition(KstatesParser.Delay_definitionContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link KstatesParser#timeout_definition}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitTimeout_definition(KstatesParser.Timeout_definitionContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link KstatesParser#entry_block}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -136,6 +190,18 @@ public interface KstatesVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitNot_looping(KstatesParser.Not_loopingContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link KstatesParser#transition_breakpoint_block}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitTransition_breakpoint_block(KstatesParser.Transition_breakpoint_blockContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link KstatesParser#transition_breakpoint_definition}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitTransition_breakpoint_definition(KstatesParser.Transition_breakpoint_definitionContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link KstatesParser#condition_block}.
 	 * @param ctx the parse tree

@@ -30,5 +30,7 @@ import states.conditions.Condition
  */
 sealed interface TransitionLike {
     val allowLoops: Boolean
+    val startBreakpoint: Boolean
+    val endBreakpoint: Boolean
     val condition: Condition
 }

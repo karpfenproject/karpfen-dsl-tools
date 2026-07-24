@@ -27,14 +27,18 @@ import states.conditions.Condition
  * @property fromStates The set of source states; each must be active in a distinct branch for the join to fire.
  * @property toState The single target state entered after the join.
  * @property allowLoops False if this transition must not fire twice in a row.
+ * @property startBreakpoint True if a breakpoint is attached to this transition's start.
+ * @property endBreakpoint True if a breakpoint is attached to this transition's end.
  * @property condition The condition that must hold for this transition to fire.
  */
 data class JoinTransition(
     val fromStates: List<String>,
     val toState: String,
     override val allowLoops: Boolean,
+    override val startBreakpoint: Boolean = false,
+    override val endBreakpoint: Boolean = false,
     override val condition: Condition,
 ) : TransitionLike {
     override fun toString(): String =
-        "JoinTransition(fromStates=$fromStates, toState=$toState, allowLoops=$allowLoops, condition=${condition.conditionType})"
+        "JoinTransition(fromStates=$fromStates, toState=$toState, allowLoops=$allowLoops, startBreakpoint=$startBreakpoint, endBreakpoint=$endBreakpoint, condition=${condition.conditionType})"
 }
