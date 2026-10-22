@@ -6,7 +6,9 @@ KStates is a Domain-Specific Language (DSL) for defining hierarchical state mach
 
 ## Grammar Specification
 
-The KStates grammar is defined with ANTLR v4.
+The KStates grammar is defined with ANTLR v4 in `src/main/antlr/io/karpfen/dsl/grammar/kstates/Kstates.g4`.
+The build generates `KstatesLexer`, `KstatesParser` and the visitor from it into the package
+`io.karpfen.dsl.grammar.kstates`, which its `@header` declares.
 You find the full grammar at the end of this guide.
 
 ## KStates Syntax
@@ -207,25 +209,29 @@ This differs from plain values such as `RETURNS("number")`.
 
 ## Parsing KStates Files
 
-Use the textual converter in `src/main/kotlin/dsl/textual/KstatesDSLConverter.kt`:
+Use the textual converter `KstatesDSLConverter` from the package `io.karpfen.dsl.dsl.textual`:
 
 ```kotlin
-import dsl.textual.KstatesDSLConverter
+import io.karpfen.dsl.dsl.textual.KstatesDSLConverter
 
 val sm = KstatesDSLConverter.parseKstatesFile("example/statemachine_full_example/cleaning_robot.kstates")
-println(sm.attachedToClass)
-println(sm.states.size)
+val attachedTo = sm.attachedToClass
+val topLevelStates = sm.states.size
 ```
 
-Low-level parse access is available via `src/main/kotlin/parser/KStatesFileParser.kt`.
+Low-level parse access is available via `KStatesFileParser` in the package `io.karpfen.dsl.parser`; the converted state machine consists of the classes of the package `io.karpfen.dsl.states` and its sub-packages for actions, conditions and macros.
 
-The integration test `src/test/kotlin/KstatesParserIntegrationTest.kt` shows a full parse flow against the example file.
+The integration test `KstatesParserIntegrationTest` shows a full parse flow against the example file.
 
 
 ## Full ANTLR KStates Grammar (`Kstates.g4`)
 
 ```antlr
 grammar Kstates;
+
+@header {
+package io.karpfen.dsl.grammar.kstates;
+}
 
 kstates_file
     : statemachine EOF
@@ -258,19 +264,35 @@ action_block
 action_item
     : action_rule
     | in_scope_block
+    | with_block
     ;
 
 in_scope_block
     : IF IN SCOPE LPAREN STRING (COMMA STRING)* RPAREN action_block
     ;
 
+with_block
+    : WITH macro_call AS STRING action_block
+    ;
+
+// Three arities, distinguished by the hand-written parser:
+//   unary   OP("a")              -> DROPLIST, DROPOBJ
+//   binary  OP("a", rhs)         -> SET, APPEND, SETLIST, EVENT
+//   ternary OP("a", "b", rhs)    -> SETOBJ, APPENDOBJ   (source, relation, target)
 action_rule
-    : action_operation LPAREN STRING COMMA action_right_side RPAREN
+    : action_operation LPAREN STRING RPAREN
+    | action_operation LPAREN STRING COMMA action_right_side RPAREN
+    | action_operation LPAREN STRING COMMA STRING COMMA action_right_side RPAREN
     ;
 
 action_operation
     : SET
     | APPEND
+    | SETLIST
+    | DROPLIST
+    | SETOBJ
+    | APPENDOBJ
+    | DROPOBJ
     | EVENT
     ;
 
@@ -378,4 +400,57 @@ code_content
     : LBRACE eval_code_block RBRACE
     | ~(LBRACE | RBRACE)
     ;
+
+STATEMACHINE : 'STATEMACHINE' ;
+ATTACHED     : 'ATTACHED' ;
+TO           : 'TO' ;
+STATES       : 'STATES' ;
+STATE        : 'STATE' ;
+INITIAL      : 'INITIAL' ;
+ENTRY        : 'ENTRY' ;
+DO           : 'DO' ;
+SET          : 'SET' | 'set' ;
+SETLIST      : 'SETLIST' | 'setlist' ;
+DROPLIST     : 'DROPLIST' | 'droplist' ;
+APPEND       : 'APPEND' | 'append' ;
+SETOBJ       : 'SETOBJ' | 'setobj' ;
+APPENDOBJ    : 'APPENDOBJ' | 'appendobj' ;
+DROPOBJ      : 'DROPOBJ' | 'dropobj' ;
+EVENT        : 'EVENT' ;
+WITH         : 'WITH' | 'with' ;
+AS           : 'AS' | 'as' ;
+MACRO        : 'MACRO' ;
+EVAL         : 'EVAL' ;
+TRANSITIONS  : 'TRANSITIONS' ;
+TRANSITION   : 'TRANSITION' ;
+SPLIT        : 'SPLIT' ;
+JOIN         : 'JOIN' ;
+NOT          : 'NOT' ;
+LOOPING      : 'LOOPING' ;
+CONDITION    : 'CONDITION' ;
+VALUE        : 'VALUE' ;
+MACROS       : 'MACROS' ;
+TAKES        : 'TAKES' ;
+RETURNS      : 'RETURNS' ;
+DEFINITION   : 'DEFINITION' ;
+REFERENCE    : 'reference' ;
+IF           : 'IF' ;
+IN           : 'IN' ;
+SCOPE        : 'SCOPE' ;
+
+ARROW        : '->' ;
+LBRACE       : '{' ;
+RBRACE       : '}' ;
+LPAREN       : '(' ;
+RPAREN       : ')' ;
+COMMA        : ',' ;
+
+STRING       : '"' ( '\\' . | ~["\\\r\n] )* '"' ;
+SSTRING      : '\'' ( '\\' . | ~['\\\r\n] )* '\'' ;
+IDENT        : [a-zA-Z_][a-zA-Z0-9_]* ;
+NUMBER       : [0-9]+ ('.' [0-9]+)? ;
+
+WS           : [ \t\r\n]+ -> channel(HIDDEN) ;
+LINE_COMMENT : '//' ~[\r\n]* -> channel(HIDDEN) ;
+SYMBOL       : . ;
 ```
