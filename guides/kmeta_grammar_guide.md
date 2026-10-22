@@ -6,12 +6,16 @@ KMeta is a Domain-Specific Language (DSL) for defining data metamodels within th
 
 ## Grammar Specification
 
-The KMeta grammar is defined using ANTLR v4 and follows this structure:
+The KMeta grammar is defined using ANTLR v4 in `src/main/antlr/io/karpfen/dsl/grammar/kmeta/Kmeta.g4`. The build generates `KmetaLexer`, `KmetaParser` and the visitor from it into the package `io.karpfen.dsl.grammar.kmeta`, which its `@header` declares. The grammar follows this structure:
 
 ### ANTLR Grammar (Kmeta.g4)
 
 ```antlr
 grammar Kmeta;
+
+@header {
+package io.karpfen.dsl.grammar.kmeta;
+}
 
 // Parser Rules
 kmeta_file
@@ -219,7 +223,7 @@ The `list()` wrapper marks one-to-many relationships. Forward references between
 If you need to build metamodels programmatically (e.g. generating them at runtime), use the `MetamodelBuilder` instead of writing `.kmeta` text files:
 
 ```kotlin
-import dsl.functional.MetamodelBuilder
+import io.karpfen.dsl.dsl.functional.MetamodelBuilder
 
 val m = MetamodelBuilder()
 
@@ -275,7 +279,7 @@ val metamodel = m.build()
 
 ### MetamodelBuilder API
 
-**Properties:** `makeNumber(key)`, `makeString(key)`, `makeBoolean(key)`, `makeStringList(key)`
+**Properties:** `makeNumber(key)`, `makeString(key)`, `makeBool(key)` and the list variants `makeNumberList(key)`, `makeStringList(key)`, `makeBoolList(key)`
 
 **Relationships:** `makeClassProp(key, classT, relT)` for single, `makeClassPropList(key, classT, relT)` for lists. `relT` is either `m.EMBEDDED` (`has`) or `m.LINK` (`knows`).
 
@@ -284,5 +288,5 @@ val metamodel = m.build()
 
 ## Parsing KMeta Files
 
-To parse a `.kmeta` file, use `KmetaDSLConverter` from the `kotlin/dsl/textual` package.
+To parse a `.kmeta` file, use `KmetaDSLConverter` from the package `io.karpfen.dsl.dsl.textual`. It parses with `KmetaFileParser` (package `io.karpfen.dsl.parser`) and builds the metamodel classes of the package `io.karpfen.dsl.meta`. The test `KmetaStringParserTest` shows the whole flow on the example file `example/metamodel_dsl_example.kmeta`.
 

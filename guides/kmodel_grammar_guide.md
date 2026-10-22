@@ -6,12 +6,16 @@ KModel is a Domain-Specific Language (DSL) for defining data model instances wit
 
 ## Grammar Specification
 
-The KModel grammar is defined using ANTLR v4 and follows this structure:
+The KModel grammar is defined using ANTLR v4 in `src/main/antlr/io/karpfen/dsl/grammar/kmodel/Kmodel.g4`. The build generates `KmodelLexer`, `KmodelParser` and the visitor from it into the package `io.karpfen.dsl.grammar.kmodel`, which its `@header` declares. The grammar follows this structure:
 
 ### ANTLR Grammar (Kmodel.g4)
 
 ```antlr
 grammar Kmodel;
+
+@header {
+package io.karpfen.dsl.grammar.kmodel;
+}
 
 // Parser Rules
 kmodel_file
@@ -270,9 +274,9 @@ has("obstacles") -> make object "table":"Obstacle" { ... }
 If you need to build models programmatically (e.g. generating them at runtime), use the `ModelBuilder` instead of writing `.kmodel` text files:
 
 ```kotlin
-import dsl.functional.ModelBuilder
-import instance.Model
-import meta.Metamodel
+import io.karpfen.dsl.dsl.functional.ModelBuilder
+import io.karpfen.dsl.instance.Model
+import io.karpfen.dsl.meta.Metamodel
 
 fun setupRobotRoomModel(metamodel: Metamodel): Model {
     val m = ModelBuilder(metamodel)
@@ -338,7 +342,7 @@ Kotlin's `apply()` is used to chain calls on each object.
 
 ## Parsing KModel Files
 
-To parse a `.kmodel` file, use `KmodelDSLConverter` from the `kotlin/dsl/textual` package.
+To parse a `.kmodel` file, use `KmodelDSLConverter` from the package `io.karpfen.dsl.dsl.textual`. It parses with `KmodelFileParser` (package `io.karpfen.dsl.parser`), checks the objects against the metamodel and builds the model classes of the package `io.karpfen.dsl.instance`. The test `KmodelParserIntegrationTest` shows the whole flow on the example files.
 
 ## Relationship to KMeta
 
