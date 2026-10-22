@@ -1,100 +1,98 @@
 plugins {
     id 'org.jetbrains.kotlin.jvm' version '2.3.0'
+    id 'java-library'
     id 'antlr'
+    id 'maven-publish'
 }
 
 group = 'io.karpfen'
-version = '1.0-SNAPSHOT'
+version = '2.0.0-SNAPSHOT'
+
+def antlrVersion = '4.13.1'
+def slf4jVersion = '2.0.20'
+def projectUrl = 'https://github.com/karpfenproject/karpfen-dsl-tools'
+def gitHubRepository = providers.environmentVariable('GITHUB_REPOSITORY')
+        .orElse('karpfenproject/karpfen-dsl-tools')
 
 repositories {
     mavenCentral()
-    flatDir {
-        dirs 'lib'
-    }
 }
 
 dependencies {
-    antlr 'org.antlr:antlr4:4.13.1'
-    implementation 'org.antlr:antlr4-runtime:4.13.1'
-    // JSON (used by JsonToModelConverter to turn JSON event payloads into the runtime object model)
-    implementation 'org.json:json:20240303'
+    antlr "org.antlr:antlr4:$antlrVersion"
+    api "org.antlr:antlr4-runtime:$antlrVersion"
+    api 'org.json:json:20240303'
+    implementation "org.slf4j:slf4j-api:$slf4jVersion"
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
-    implementation fileTree(dir: 'lib', include: ['*.jar'])
+    testRuntimeOnly "org.slf4j:slf4j-simple:$slf4jVersion"
+}
 
+configurations.named('api') {
+    def withoutAntlrTool = extendsFrom.findAll { it != configurations.antlr }
+    setExtendsFrom(withoutAntlrTool)
 }
 
 kotlin {
     jvmToolchain(21)
 }
 
-test {
-    useJUnitPlatform()
+java {
+    withSourcesJar()
 }
 
-// ANTLR configuration
-generateGrammarSource {
-    maxHeapSize = "64m"
-    arguments += ['-visitor', '-no-listener', '-package', 'kmeta']
+tasks.named('generateGrammarSource') {
+    maxHeapSize = '64m'
+    arguments += ['-visitor', '-no-listener']
 }
 
-// Task to copy generated ANTLR files to src/main/java
-tasks.register('copyAntlrSources', Copy) {
-    dependsOn generateGrammarSource
-    from "${buildDir}/generated-src/antlr/main"
-    into "${projectDir}/src/main/java"
+sourceSets.configureEach { sourceSet ->
+    def generatedGrammarSources = tasks.named(sourceSet.getTaskName('generate', 'GrammarSource')).map { it.outputDirectory }
+    sourceSet.java.srcDirs = ["src/${sourceSet.name}/java", generatedGrammarSources]
 }
 
-// Task to fix package statements in kmodel classes
-tasks.register('fixKmodelPackages') {
-    dependsOn copyAntlrSources
-    doLast {
-        def kmodelDir = file("${projectDir}/src/main/java/kmodel")
-        if (kmodelDir.exists()) {
-            kmodelDir.eachFile { file ->
-                if (file.isFile() && file.name.endsWith('.java')) {
-                    def content = file.text
-                    if (content.contains('package kmeta;')) {
-                        content = content.replace('package kmeta;', 'package kmodel;')
-                        file.text = content
-                        println "Fixed package in ${file.name}"
+tasks.named('test', Test) {
+    useJUnitPlatform {
+        excludeTags 'budget'
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifactId = 'karpfen-dsl-tools'
+            from components.java
+            pom {
+                name = 'karpfen DSL tools'
+                description = 'ANTLR grammars, parsers, semantic models and converters for the karpfen modeling languages KMeta, KModel and KStates.'
+                url = projectUrl
+                licenses {
+                    license {
+                        name = 'The Apache License, Version 2.0'
+                        url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+                        distribution = 'repo'
                     }
+                }
+                developers {
+                    developer {
+                        name = 'Karl Kegel'
+                    }
+                }
+                scm {
+                    url = projectUrl
+                    connection = "scm:git:${projectUrl}.git"
+                    developerConnection = 'scm:git:ssh://git@github.com/karpfenproject/karpfen-dsl-tools.git'
                 }
             }
         }
     }
-}
-
-// Task to fix package statements in kstates classes
-tasks.register('fixKstatesPackages') {
-    dependsOn copyAntlrSources
-    doLast {
-        def kstatesDir = file("${projectDir}/src/main/java/kstates")
-        if (kstatesDir.exists()) {
-            kstatesDir.eachFile { file ->
-                if (file.isFile() && file.name.endsWith('.java')) {
-                    def content = file.text
-                    if (content.contains('package kmeta;')) {
-                        content = content.replace('package kmeta;', 'package kstates;')
-                        file.text = content
-                        println "Fixed package in ${file.name}"
-                    }
-                }
+    repositories {
+        maven {
+            name = 'GitHubPackages'
+            url = uri("https://maven.pkg.github.com/${gitHubRepository.get()}")
+            credentials {
+                username = providers.environmentVariable('GITHUB_ACTOR').orNull
+                password = providers.environmentVariable('GITHUB_TOKEN').orNull
             }
         }
     }
 }
-
-// Configure source sets to only use src/main/java and ignore build/generated-src
-sourceSets {
-    main {
-        java {
-            srcDirs = ['src/main/java']
-        }
-    }
-}
-
-// Ensure ANTLR runs and files are copied before compilation
-compileKotlin.dependsOn fixKmodelPackages, fixKstatesPackages
-compileJava.dependsOn fixKmodelPackages, fixKstatesPackages
-
-compileTestKotlin.dependsOn generateTestGrammarSource

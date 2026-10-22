@@ -32,9 +32,4 @@ replay_pid*
 
 bin/
 
-# ANTLR generated files
-!src/main/java/kmeta/*.java
-!src/main/java/kmodel/*.java
-!src/main/java/kstates/*.java
-
 !gradle/wrapper/gradle-wrapper.jar
