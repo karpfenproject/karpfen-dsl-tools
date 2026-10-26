@@ -44,6 +44,7 @@ internal class TransitionWriter(
         writer.block(headerOf(transition) + looping) { conditions.write(transition.condition, writer) }
     }
 
+    /** Returns the header of [transition] up to its loop marker: the keyword of its kind and its states. */
     private fun headerOf(transition: TransitionLike): String = when (transition) {
         is Transition -> "TRANSITION ${syntax.quote(transition.fromState)} -> ${syntax.quote(transition.toState)}"
         is SplitTransition -> {

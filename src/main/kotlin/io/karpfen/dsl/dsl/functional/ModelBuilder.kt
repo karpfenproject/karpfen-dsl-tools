@@ -63,6 +63,10 @@ class ModelBuilder(val meta: Metamodel) {
         return newObject
     }
 
+    /**
+     * Returns the properties of a new object of [classType] with their default values: an empty list, `false`, the
+     * empty string or [Double.MIN_VALUE].
+     */
     private fun initializePropList(classType: ClassType): List<SimplePropertyObject> {
         val propList = mutableListOf<SimplePropertyObject>()
         for (propType in classType.simpleProperties) {
@@ -80,6 +84,10 @@ class ModelBuilder(val meta: Metamodel) {
         return propList
     }
 
+    /**
+     * Returns the relations of a new object of [classType]: an empty list, or a reference to a new default object of
+     * the target type, which has no id.
+     */
     private fun initializeRelList(classType: ClassType): List<ClassTypePropertyObject> {
         val relList = mutableListOf<ClassTypePropertyObject>()
         for (relType in classType.objectProperties) {

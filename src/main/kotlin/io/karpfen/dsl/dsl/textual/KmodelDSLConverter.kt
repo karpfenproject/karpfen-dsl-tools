@@ -44,6 +44,7 @@ import java.io.File
  */
 object KmodelDSLConverter {
 
+    /** Receives the objects converted, at debug level. */
     private val logger = LoggerFactory.getLogger(KmodelDSLConverter::class.java)
 
     /**
@@ -280,6 +281,7 @@ object KmodelDSLConverter {
         }
     }
 
+    /** Returns the exception for [ref] of [property] of [owner], which names no object. */
     private fun unresolvedReference(
         ref: ObjectReference,
         property: ClassTypePropertyObject,

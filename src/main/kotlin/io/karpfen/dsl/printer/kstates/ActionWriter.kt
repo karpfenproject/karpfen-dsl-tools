@@ -47,10 +47,12 @@ internal class ActionWriter(private val syntax: KstatesSyntax) {
         }
     }
 
+    /** Writes the items of [block] in order. */
     private fun writeItems(block: ActionBlock, writer: CodeWriter) {
         block.items.forEach { writeItem(it, writer) }
     }
 
+    /** Writes an action rule on a line of its own, or an `IF IN SCOPE` or `WITH` block. */
     private fun writeItem(item: ActionItem, writer: CodeWriter) {
         when (item) {
             is ActionRule -> writer.line(ruleText(item, writer))
@@ -69,6 +71,7 @@ internal class ActionWriter(private val syntax: KstatesSyntax) {
         writer.block("IF IN SCOPE(${syntax.quoteAll(block.paths)})") { writeItems(block.body, writer) }
     }
 
+    /** Writes `WITH MACRO("name", ...) AS "name" { ... }`. */
     private fun writeWithBlock(block: WithBlock, writer: CodeWriter) {
         val macroCall = syntax.macroCall(block.macro.macroName, block.macro.args)
         writer.block("WITH $macroCall AS ${syntax.quote(block.name)}") { writeItems(block.body, writer) }

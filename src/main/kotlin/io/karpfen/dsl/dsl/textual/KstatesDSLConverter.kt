@@ -91,11 +91,13 @@ object KstatesDSLConverter {
         return state
     }
 
+    /** Converts the items of an action block; a missing block becomes an empty one. */
     private fun convertActionBlock(block: ParsedActionBlock?): ActionBlock {
         val items = block?.items?.map { convertActionItem(it) } ?: emptyList()
         return ActionBlock(items.toMutableList())
     }
 
+    /** Converts an action rule, an `IF IN SCOPE` block or a `WITH` block. */
     private fun convertActionItem(item: ParsedActionItem): ActionItem {
         return when (item) {
             is ParsedActionRuleItem -> convertActionRule(item.rule)
@@ -111,6 +113,7 @@ object KstatesDSLConverter {
         }
     }
 
+    /** Converts an action rule with its operands. */
     private fun convertActionRule(action: ParsedActionRule): ActionRule {
         return ActionRule(
             operationType = action.operationType.operation,
@@ -120,6 +123,7 @@ object KstatesDSLConverter {
         )
     }
 
+    /** Converts the right side of a rule: a macro call, the code of an `EVAL` block or a literal value. */
     private fun convertActionRightSide(rightSide: ParsedActionRightSide): ActionRightSide {
         return when (rightSide) {
             is ParsedMacroActionRightSide -> MacroActionRightSide(rightSide.macroName, rightSide.args)
@@ -128,6 +132,7 @@ object KstatesDSLConverter {
         }
     }
 
+    /** Converts a transition of any of the three kinds with its condition. */
     private fun convertTransition(transition: ParsedTransitionLike): TransitionLike {
         return when (transition) {
             is ParsedTransition -> Transition(
@@ -157,6 +162,7 @@ object KstatesDSLConverter {
     private fun convertCondition(clauses: List<ParsedCondition>): Condition =
         ConditionClauses.conditionOf(clauses.map { convertLeafCondition(it) })
 
+    /** Converts one clause of a `CONDITION` block. */
     private fun convertLeafCondition(condition: ParsedCondition): Condition {
         return when (condition) {
             is ParsedEvalCondition -> EvalCondition(condition.code)
@@ -165,6 +171,7 @@ object KstatesDSLConverter {
         }
     }
 
+    /** Converts a macro with its directives and the code of its definition. */
     private fun convertMacro(macro: ParsedMacro): Macro {
         return Macro(
             name = macro.name,

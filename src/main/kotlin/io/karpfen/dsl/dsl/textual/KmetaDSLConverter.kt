@@ -40,6 +40,7 @@ import java.io.File
  */
 object KmetaDSLConverter {
 
+    /** Receives the types and properties converted, at debug level. */
     private val logger = LoggerFactory.getLogger(KmetaDSLConverter::class.java)
 
     /**
@@ -104,6 +105,11 @@ object KmetaDSLConverter {
         return ClassType(definition.name, definition.description, simpleProperties, embedded + linked)
     }
 
+    /**
+     * Converts a `prop` rule into a property of one of the primitive types.
+     *
+     * @throws IllegalArgumentException If the rule names another type.
+     */
     private fun toSimpleProperty(rule: Rule): SimpleProperty {
         val typeName = typeNameOf(rule.value)
         logger.debug("  prop {}: {}", rule.key, rule.value)
@@ -112,6 +118,7 @@ object KmetaDSLConverter {
         return SimpleProperty(rule.key, propertyType, rule.value is ListValue)
     }
 
+    /** Converts a `has` or `knows` rule into a relation of [associationType] whose target type is not resolved yet. */
     private fun toClassTypeProperty(rule: Rule, associationType: AssociationType): ClassTypeProperty {
         val property = ClassTypeProperty(
             rule.key,
@@ -123,6 +130,7 @@ object KmetaDSLConverter {
         return property
     }
 
+    /** Returns the type name of a rule, written as `"T"` or as `list("T")`. */
     private fun typeNameOf(value: RuleValue): String = when (value) {
         is StringValue -> value.value
         is ListValue -> value.value

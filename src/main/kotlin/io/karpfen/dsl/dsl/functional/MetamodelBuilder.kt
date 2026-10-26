@@ -30,7 +30,10 @@ import io.karpfen.dsl.meta.SimplePropertyType
  */
 class MetamodelBuilder {
 
+    /** The class types defined so far, by name. */
     private val classTypes = mutableMapOf<String, ClassType>()
+
+    /** The name of the root class type, once it is set. */
     private var rootClass: String? = null
 
     /** The association type of embedded relations, `has` in KMeta. */
