@@ -97,7 +97,9 @@ The lexers and parsers are not checked in: the build generates them from the gra
 configuration-cache compatible and can also be included as a subproject or as an included build of another Gradle
 build, as karpfen-runtime and the karpfen IDE do; there `check` runs the tests only and needs neither git nor the
 history of this repository. The workflow in `.github/workflows/build.yml` builds and tests every push and pull request
-on JDK 21, configures publishing without publishing, and builds the library as a subproject of another build. The doc
+on JDK 21 and configures publishing without publishing. It also builds, tests and runs the library as a subproject of
+a build shaped like that of karpfen-runtime, whose root project applies the Kotlin plugin in version 2.3.0 and whose
+sibling project applies it without a version, so that a change that would break karpfen-runtime fails there. The doc
 blocks in `build.gradle` and in the scripts it applies from `gradle/` explain how the build is put together.
 
 Two more checks of what this repository delivers are part of `check`, and therefore of `build`, in its own build only.

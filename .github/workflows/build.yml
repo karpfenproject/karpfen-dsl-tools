@@ -38,14 +38,72 @@ jobs:
           ORG_GRADLE_PROJECT_GitHubPackagesUsername: dry-run
           ORG_GRADLE_PROJECT_GitHubPackagesPassword: dry-run
 
-      - name: Build as a subproject of another build, as karpfen-runtime does, which neither runs nor needs the compatibility tests
+      - name: Build, test and run as a subproject of a build shaped like karpfen-runtime, which neither runs nor needs the compatibility tests
         run: |
           consumer="$RUNNER_TEMP/consumer"
-          mkdir -p "$consumer"
-          printf "include 'karpfen-dsl-tools'\nproject(':karpfen-dsl-tools').projectDir = file('%s')\n" "$GITHUB_WORKSPACE" > "$consumer/settings.gradle"
+          mkdir -p "$consumer/src/main/kotlin/consumer" "$consumer/execution-engine/src/main/kotlin/engine"
+          cat > "$consumer/settings.gradle" <<EOF
+          rootProject.name = 'consumer'
+          include 'karpfen-dsl-tools', 'execution-engine'
+          project(':karpfen-dsl-tools').projectDir = file('$GITHUB_WORKSPACE')
+          EOF
+          cat > "$consumer/build.gradle" <<'EOF'
+          plugins {
+              id 'org.jetbrains.kotlin.jvm' version '2.3.0'
+              id 'application'
+          }
+          repositories {
+              mavenCentral()
+          }
+          dependencies {
+              implementation project(':karpfen-dsl-tools')
+              implementation project(':execution-engine')
+          }
+          kotlin {
+              jvmToolchain(21)
+          }
+          application {
+              mainClass = 'consumer.MainKt'
+          }
+          EOF
+          cat > "$consumer/execution-engine/build.gradle" <<'EOF'
+          plugins {
+              id 'org.jetbrains.kotlin.jvm'
+          }
+          repositories {
+              mavenCentral()
+          }
+          dependencies {
+              implementation project(':karpfen-dsl-tools')
+          }
+          kotlin {
+              jvmToolchain(21)
+          }
+          EOF
+          cat > "$consumer/execution-engine/src/main/kotlin/engine/Engine.kt" <<'EOF'
+          package engine
+
+          import io.karpfen.dsl.dsl.textual.KstatesDSLConverter
+
+          fun initialStateOf(text: String): String = KstatesDSLConverter.parseKstatesString(text).states.single { it.isInitial }.name
+          EOF
+          cat > "$consumer/src/main/kotlin/consumer/Main.kt" <<'EOF'
+          package consumer
+
+          import io.karpfen.dsl.dsl.textual.KmetaDSLConverter
+
+          fun main() {
+              val metamodel = KmetaDSLConverter.parseKmetaString("type \"Robot\" \"a robot\" { }")
+              val machine = "STATEMACHINE ATTACHED TO \"Robot\" { STATES { INITIAL STATE \"idle\" { } } TRANSITIONS { } }"
+              println("${metamodel.rootClass.name} starts in ${engine.initialStateOf(machine)}")
+          }
+          EOF
           ./gradlew -p "$consumer" build --dry-run --console=plain | tee "$consumer/tasks.txt"
           grep -q ':karpfen-dsl-tools:test ' "$consumer/tasks.txt"
           ! grep -q -e compatibilityTest -e archiveReferenceSources "$consumer/tasks.txt"
+          ./gradlew -p "$consumer" build installDist run --console=plain | tee "$consumer/build.txt"
+          grep -q 'Robot starts in idle' "$consumer/build.txt"
+          ! ls "$consumer/build/install/consumer/lib" | grep -q -x 'antlr4-[0-9.]*\.jar'
 
       - name: Upload test reports
         if: failure()
