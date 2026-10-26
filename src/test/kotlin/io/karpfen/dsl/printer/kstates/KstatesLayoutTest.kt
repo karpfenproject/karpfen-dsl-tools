@@ -38,8 +38,8 @@ class KstatesLayoutTest {
     private val printer = KstatesPrinter()
 
     /**
-     * Every construct is written canonically: uppercase keywords, one statement per line, `EVAL` code verbatim,
-     * no block for an unconditional transition, and no comments.
+     * Every construct is written canonically: uppercase keywords, one statement per line, `EVAL` code with its
+     * tokens and comments, no block for an unconditional transition, and no comments outside the code.
      */
     @Test
     fun `the canonical layout`() {

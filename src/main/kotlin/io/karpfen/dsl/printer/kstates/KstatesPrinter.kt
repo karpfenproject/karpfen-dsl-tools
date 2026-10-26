@@ -30,10 +30,13 @@ import io.karpfen.dsl.states.TransitionLike
  * `TRANSITIONS` and `MACROS` sections by a blank line. States, transitions, macros and actions follow the
  * order of the state machine; the `MACROS` section is left out when there are no macros, and so are empty
  * `ENTRY` and `DO` blocks and the `CONDITION` block of an unconditional transition. The code of an `EVAL` block
- * keeps its text: code on one line stays on the line of the block, other code goes onto lines of its own between
- * the braces, indented one level deeper than the block with the indentation of its lines kept relative to each
- * other. Comments outside `EVAL` blocks are not part of a state machine and are not written, so reading a KStates
- * text and writing it again drops them. A single state, transition or macro is written as a fragment, see
+ * keeps its tokens and comments but is re-indented: code on one line stays on the line of the block, other code goes
+ * onto lines of its own between the braces, its first line one level deeper than the block and the lines after it
+ * with their indentation relative to each other. Their indentation relative to the first line is not kept, since
+ * the code holds its first line without the indentation it had. A line that continues a string literal after an
+ * escaped line break stays exactly as it is; Python's triple-quoted strings are no KStates literals, so their lines
+ * are re-indented like the others. Comments outside `EVAL` blocks are not part of a state machine and are not
+ * written, so reading a KStates text and writing it again drops them. A single state, transition or macro is written as a fragment, see
  * [DocumentPrinter].
  *
  * The printer holds no state; one instance serves any number of calls, also concurrent ones on state

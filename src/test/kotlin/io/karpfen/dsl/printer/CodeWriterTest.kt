@@ -61,36 +61,50 @@ class CodeWriterTest {
     }
 
     /**
-     * A verbatim block puts its body one level deeper and closes at the current level; the lines after the first
+     * A code block puts its body one level deeper and closes at the current level; the lines after the first
      * keep their indentation relative to each other, and blank lines stay empty.
      */
     @Test
-    fun `verbatim blocks keep the relative indentation of their body`() {
+    fun `code blocks keep the relative indentation of their body`() {
         val text = CodeWriter.document { writer ->
-            writer.block("outer") { writer.line("call(" + writer.verbatimBlock("CODE", "first\n  second\n\n    third") + ")") }
+            writer.block("outer") { writer.line("call(" + writer.codeBlock("CODE", "first\n  second\n\n    third") + ")") }
         }
         assertEquals("outer {\n    call(CODE {\n        first\n        second\n\n          third\n    })\n}\n", text)
     }
 
     /**
-     * The body of a verbatim block is laid out the same at every depth, wherever its lines stood before, and laying
+     * The body of a code block is laid out the same at every depth, wherever its lines stood before, and laying
      * out the result once more changes nothing.
      */
     @Test
-    fun `verbatim blocks lay out their body independently of its former depth`() {
-        val shallow = verbatimBlockAt(1, "if a:\nb = 1\nendif")
-        val deep = verbatimBlockAt(1, "if a:\n                b = 1\n                endif")
-        val again = verbatimBlockAt(1, shallow.substringAfter("CODE {\n").substringBefore("\n    }").trim())
+    fun `code blocks lay out their body independently of its former depth`() {
+        val shallow = codeBlockAt(1, "if a:\nb = 1\nendif")
+        val deep = codeBlockAt(1, "if a:\n                b = 1\n                endif")
+        val again = codeBlockAt(1, shallow.substringAfter("CODE {\n").substringBefore("\n    }").trim())
 
         assertEquals("CODE {\n        if a:\n        b = 1\n        endif\n    }", shallow)
         assertEquals(shallow, deep)
         assertEquals(shallow, again)
-        assertEquals("CODE {\n            if a:\n            b = 1\n            endif\n        }", verbatimBlockAt(2, "if a:\nb = 1\nendif"))
+        assertEquals("CODE {\n            if a:\n            b = 1\n            endif\n        }", codeBlockAt(2, "if a:\nb = 1\nendif"))
     }
 
-    private fun verbatimBlockAt(level: Int, body: String): String {
+    /**
+     * Lines to keep unchanged are written as they are and do not count for the indentation the other lines share,
+     * and laying out the result once more changes nothing.
+     */
+    @Test
+    fun `code blocks write the lines to keep unchanged as they are`() {
+        val body = "x = \"a\\\nb\"\n                return x"
+        val block = codeBlockAt(1, body, unchangedLines = setOf(1))
+        val again = codeBlockAt(1, block.substringAfter("CODE {\n").substringBefore("\n    }").trim(), setOf(1))
+
+        assertEquals("CODE {\n        x = \"a\\\nb\"\n        return x\n    }", block)
+        assertEquals(block, again)
+    }
+
+    private fun codeBlockAt(level: Int, body: String, unchangedLines: Set<Int> = emptySet()): String {
         var block = ""
-        CodeWriter.fragment(level) { writer -> block = writer.verbatimBlock("CODE", body) }
+        CodeWriter.fragment(level) { writer -> block = writer.codeBlock("CODE", body, unchangedLines) }
         return block
     }
 }

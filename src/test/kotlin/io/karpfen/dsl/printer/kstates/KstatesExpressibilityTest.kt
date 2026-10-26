@@ -122,6 +122,27 @@ class KstatesExpressibilityTest {
     }
 
     /**
+     * A line that continues a string literal after an escaped line break stays as it is, so the value of the literal
+     * reads back unchanged, whether the line stands deeper or shallower than the code around it.
+     */
+    @Test
+    fun `lines that continue a string literal are written as they are`() {
+        val codes = listOf(
+            "x = \"a\\\nb\"\nreturn x",
+            "x = 'a\\\n      b'\nreturn x",
+            "x = \"a\\\nb\"\n                    return x",
+            "if a :\n    y = \"one\\\n  two\"\n    return y"
+        )
+        codes.forEach { code ->
+            val rule = readBack(stateDoing(evalRule(code))).onDo.items.single() as ActionRule
+            val reread = (rule.rightSide as EvalActionRightSide).code
+
+            assertEquals(CodeShape.of(code), CodeShape.of(reread), reread)
+            assertEquals(continuedLinesOf(code), continuedLinesOf(reread), reread)
+        }
+    }
+
+    /**
      * A typed call names its function with an identifier, which no keyword of KStates is, and only a `RETURNS`
      * directive takes `reference(...)`; any other call is rejected.
      */
@@ -181,6 +202,14 @@ class KstatesExpressibilityTest {
     }
 
     private fun evalRule(code: String): ActionRule = ActionRule(SET, "x", EvalActionRightSide(code))
+
+    /**
+     * Returns the lines of [code] that continue a string literal, each with the line before it.
+     */
+    private fun continuedLinesOf(code: String): List<String> {
+        val lines = code.lines()
+        return StringContinuations().linesIn(code).sorted().map { lines[it - 1].trimStart() + "\n" + lines[it] }
+    }
 
     private fun macro(takes: List<TakesDirective>, returns: String): Macro =
         Macro("m", takes, ReturnsDirective(returns), Definition(CodeBlock("return 1")))

@@ -62,7 +62,7 @@ object KstatesDSLConverter {
 
     /**
      * Converts a [StateMachine] back into KStates text in the canonical layout, with the code of its `EVAL`
-     * blocks verbatim and without the comments outside them; see [KstatesPrinter].
+     * blocks re-indented and without the comments outside them; see [KstatesPrinter].
      *
      * @param stateMachine The state machine to convert.
      * @return The KStates text, ending with a line break.

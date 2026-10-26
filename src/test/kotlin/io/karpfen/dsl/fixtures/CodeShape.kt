@@ -15,10 +15,13 @@
  */
 package io.karpfen.dsl.fixtures
 
+import io.karpfen.dsl.parser.EvalCodeSyntax
+import io.karpfen.dsl.printer.kstates.StringContinuations
+
 /**
  * The shape of `EVAL` code, which a round trip through the KStates printer and a parser keeps: the code without the
- * whitespace at its edges, with the indentation all its lines after the first share removed and with blank lines
- * emptied.
+ * whitespace at its edges, with the indentation that its lines after the first share removed and with blank lines
+ * emptied. A line that continues a string literal stays as it is and shares no indentation with the others.
  *
  * The printer lays out the lines after the first one level deeper than their block, keeping their indentation
  * relative to each other, and the parser reads them with the indentation they then have; the runtime indents the
@@ -30,10 +33,17 @@ object CodeShape {
      * Returns the shape of [code].
      */
     fun of(code: String): String {
-        val lines = code.trim().lines()
-        val following = lines.drop(1)
-        val shared = following.filter { it.isNotBlank() }.minOfOrNull { indentationWidthOf(it) } ?: 0
-        return (listOf(lines.first()) + following.map { if (it.isBlank()) "" else it.drop(shared) }).joinToString("\n")
+        val lines = EvalCodeSyntax.codeOf(code).lines()
+        val continuations = StringContinuations().linesIn(EvalCodeSyntax.codeOf(code))
+        val rebased = lines.indices.drop(1).filter { it !in continuations }
+        val shared = rebased.map { lines[it] }.filter { it.isNotBlank() }.minOfOrNull { indentationWidthOf(it) } ?: 0
+        return lines.mapIndexed { index, line ->
+            when {
+                index == 0 || index in continuations -> line
+                line.isBlank() -> ""
+                else -> line.drop(shared)
+            }
+        }.joinToString("\n")
     }
 
     private fun indentationWidthOf(line: String): Int = line.takeWhile { it.isWhitespace() }.length

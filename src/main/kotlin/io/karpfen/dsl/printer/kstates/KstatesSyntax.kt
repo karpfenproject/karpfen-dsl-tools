@@ -28,10 +28,12 @@ import org.antlr.v4.runtime.CharStreams
  *
  * @param literals The string literal syntax of KStates.
  * @param evalCode Decides which code an `EVAL` block can hold.
+ * @param continuations Finds the lines of code that continue a string literal.
  */
 internal class KstatesSyntax(
     private val literals: StringLiteralSyntax = StringLiteralSyntax.KSTATES,
-    private val evalCode: EvalCodeCheck = EvalCodeCheck()
+    private val evalCode: EvalCodeCheck = EvalCodeCheck(),
+    private val continuations: StringContinuations = StringContinuations()
 ) {
 
     /**
@@ -59,9 +61,10 @@ internal class KstatesSyntax(
      * Returns the block `EVAL { code }` with [code], to embed into the line [writer] writes next.
      *
      * Code on a single line stays on the line of the block. Code with several lines goes onto lines of its own
-     * between the braces, laid out by [CodeWriter.verbatimBlock], which keeps the indentation of its lines relative
-     * to each other. Whitespace at the edges of [code] is not part of the code, see [EvalCodeSyntax], so it is not
-     * written.
+     * between the braces, re-indented by [CodeWriter.codeBlock]: the lines after the first keep their indentation
+     * relative to each other, and a line that continues a string literal, see [StringContinuations], stays exactly as
+     * it is, so the value of the literal does not change. Whitespace at the edges of [code] is not part of the code,
+     * see [EvalCodeSyntax], so it is not written.
      *
      * @throws IllegalArgumentException If KStates cannot hold [code], see [EvalCodeCheck].
      */
@@ -70,7 +73,8 @@ internal class KstatesSyntax(
         evalCode.requireExpressible(trimmed)
         return when {
             trimmed.isEmpty() -> "EVAL { }"
-            trimmed.any { it == '\n' || it == '\r' } -> writer.verbatimBlock("EVAL", trimmed)
+            trimmed.any { it == '\n' || it == '\r' } ->
+                writer.codeBlock("EVAL", trimmed, continuations.linesIn(trimmed))
             else -> "EVAL { $trimmed }"
         }
     }

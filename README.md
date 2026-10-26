@@ -74,8 +74,9 @@ every prefix of an example without throwing, with proper ranges and in agreement
 The printers turn a metamodel, a model or a state machine back into text: a whole document, or a fragment for a single
 element such as a type, a rule, an object, a state, a transition or a macro, laid out to replace that element's text
 in an existing document. The `convertTo...String` functions of the converters delegate to them. All output uses one
-canonical layout, keeps the text of `EVAL` code with the indentation of its lines relative to each other, and drops
-comments; the KDoc of the printers describes the layout, and the printers reject what their language cannot read back,
+canonical layout, re-indents `EVAL` code while it keeps its tokens, its comments and the indentation of the lines
+after the first relative to each other, and drops the comments outside `EVAL` code; the KDoc of the printers
+describes the layout, and the printers reject what their language cannot read back,
 such as a value no string literal carries or `EVAL` code whose braces do not balance. The printer tests parse every
 example, print it and parse the text again.
 

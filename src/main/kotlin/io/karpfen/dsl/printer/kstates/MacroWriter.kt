@@ -20,7 +20,7 @@ import io.karpfen.dsl.states.Macro
 
 /**
  * Writes macro definitions: the `TAKES` directives in order, the `RETURNS` directive and the `DEFINITION`
- * block with its `EVAL` code verbatim.
+ * block with its `EVAL` code, laid out as [KstatesPrinter] describes.
  *
  * @param syntax The shared pieces of KStates syntax.
  */

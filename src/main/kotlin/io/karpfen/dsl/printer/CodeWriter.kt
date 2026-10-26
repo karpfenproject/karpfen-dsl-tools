@@ -39,7 +39,7 @@ internal class CodeWriter private constructor(private val startLevel: Int) {
      * Adds [text] as a line at the current indentation level.
      *
      * Line breaks inside [text] are kept as they are, so the lines after the first one keep their own
-     * indentation, such as the lines of a [verbatimBlock] or a string literal with an escaped line break.
+     * indentation, such as the lines of a [codeBlock] or a string literal with an escaped line break.
      */
     fun line(text: String) {
         lines.add(indentation + text)
@@ -86,18 +86,29 @@ internal class CodeWriter private constructor(private val startLevel: Int) {
      * Returns `opening {`, then [body] on lines of its own one level deeper, then `}` at the current level, as
      * text to embed into the line that is written next.
      *
-     * The first line of [body] stands at the deeper level. The lines after it keep their indentation relative to
-     * each other: the indentation they all share is replaced by the deeper level, and blank lines stay empty. Code
-     * such as Python thus keeps its shape at whatever depth the block stands, wherever it was written before, and
-     * writing the text that results once more changes nothing.
+     * The body is re-indented, not copied: its first line stands at the deeper level, and the lines after it keep
+     * their indentation relative to each other, as the indentation they all share is replaced by the deeper level.
+     * Their indentation relative to the first line is not kept, since the first line comes without its own. Blank
+     * lines stay empty, and the lines of [unchangedLines] are written exactly as they are and share no indentation
+     * with the others, such as lines whose leading whitespace belongs to a string literal. Line breaks are written as
+     * [LINE_BREAK]. Code such as Python thus keeps its shape at whatever depth the block stands, wherever its lines
+     * stood before, and writing the text that results once more changes nothing.
+     *
+     * @param unchangedLines The indices of the lines of [body], as [String.lines] splits them, to write unchanged.
      */
-    fun verbatimBlock(opening: String, body: String): String {
+    fun codeBlock(opening: String, body: String, unchangedLines: Set<Int> = emptySet()): String {
         val contentIndentation = indentationOf(level + 1)
         val bodyLines = body.lines()
-        val followingLines = bodyLines.drop(1)
-        val sharedIndentation = followingLines.filter { it.isNotBlank() }.minOfOrNull { indentationWidthOf(it) } ?: 0
-        val rebasedLines = followingLines.map { if (it.isBlank()) "" else contentIndentation + it.drop(sharedIndentation) }
-        val content = (listOf(bodyLines.first()) + rebasedLines).joinToString(LINE_BREAK)
+        val rebasedIndices = bodyLines.indices.drop(1).filter { it !in unchangedLines }
+        val sharedIndentation = rebasedIndices.map { bodyLines[it] }.filter { it.isNotBlank() }
+            .minOfOrNull { indentationWidthOf(it) } ?: 0
+        val content = bodyLines.mapIndexed { index, line ->
+            when {
+                index == 0 || index in unchangedLines -> line
+                line.isBlank() -> ""
+                else -> contentIndentation + line.drop(sharedIndentation)
+            }
+        }.joinToString(LINE_BREAK)
         return "$opening {$LINE_BREAK$contentIndentation$content$LINE_BREAK$indentation}"
     }
 
