@@ -38,9 +38,10 @@ internal class ObjectTree {
      * Returns the object a KModel document of [model] starts from.
      *
      * A KModel document holds exactly one root object. That is the only object of [Model.objects] that no
-     * other one of them embeds; models made with a builder also hold the default objects the builder
-     * replaced, so among several such objects it is the only one whose class type is the root class type of
-     * the metamodel.
+     * other one of them embeds. Models made with a builder also hold the default objects the builder made for the
+     * single-valued relations of every object, which have no id and stay in the model when they are replaced. Among
+     * several objects that no other one embeds, the root is therefore the only one whose class type is the root class
+     * type of the metamodel, and among several of those the only one with an id.
      *
      * @throws IllegalArgumentException If the model has no such object or several.
      */
@@ -49,24 +50,27 @@ internal class ObjectTree {
         val topLevel = model.objects.filter { it !in embedded }
         topLevel.singleOrNull()?.let { return it }
         val rootClassName = model.metamodel?.rootClass?.name
-        return topLevel.singleOrNull { it.ofType.name == rootClassName }
+        val ofRootType = topLevel.filter { it.ofType.name == rootClassName }
+        return ofRootType.singleOrNull()
+            ?: ofRootType.singleOrNull { it.id.isNotEmpty() }
             ?: throw IllegalArgumentException(
                 "A KModel document holds exactly one root object, but the model has ${topLevel.size} objects " +
-                    "that no other object embeds, and not exactly one of them has the root class type $rootClassName."
+                    "that no other object embeds, and not exactly one of them has the root class type " +
+                    "$rootClassName and an id."
             )
     }
 
     /**
-     * Returns [root] and every object it embeds, directly or through others: the objects a KModel document that
-     * starts from [root] writes.
+     * Returns [root] and every object it embeds, directly or through others: the objects that a KModel document, for
+     * [isDocument], or a fragment that starts from [root] writes.
      *
      * @throws IllegalArgumentException If an object embeds itself, or an object is embedded more than once, under
      * two relations or twice in one list, which the text would turn into several objects.
      */
-    fun objectsWrittenFrom(root: DataObject): Set<DataObject> {
+    fun objectsWrittenFrom(root: DataObject, isDocument: Boolean): WrittenObjects {
         val written = LinkedHashSet<DataObject>()
         collectWritten(root, HashSet(), written)
-        return written
+        return WrittenObjects(written, isDocument)
     }
 
     /**
@@ -82,30 +86,59 @@ internal class ObjectTree {
         referencesOf(relation).mapNotNull { it.obj }
 
     /**
-     * Returns the identifiers of the objects the linking [relation] refers to in a document that writes [written],
-     * skipping empty references.
+     * Returns the identifiers of the objects the linking [relation] refers to in the text that writes [written],
+     * skipping empty references, see [WrittenObjects].
      *
      * An object without an id cannot be referred to. A link to such an object among [written] is rejected; a link to
-     * one outside the document is taken as empty, since it is the default object that a
+     * one outside the text is taken as empty, since it is the default object that a
      * [io.karpfen.dsl.dsl.functional.ModelBuilder] puts into a link nobody set.
      *
-     * @throws IllegalArgumentException If [relation] links to an object of [written] that has no id.
+     * @throws IllegalArgumentException If [relation] links to an object of [written] that has no id or whose id a later
+     * object of [written] has too, or, in a whole document, to an object with an id that the document does not write.
      */
-    fun linkedIdsOf(relation: ClassTypePropertyObject, written: Set<DataObject>): List<String> =
+    fun linkedIdsOf(relation: ClassTypePropertyObject, written: WrittenObjects): List<String> =
         referencesOf(relation).mapNotNull { reference ->
             val target = reference.obj
             when {
                 target == null -> reference.objectId.takeIf { it.isNotEmpty() }
-                target.id.isNotEmpty() -> target.id
-                else -> {
-                    require(target !in written) {
-                        "The relation '${relation.key}' links to an object of class type ${target.ofType.name} that " +
-                            "has no id, but KModel refers to a linked object by its id."
-                    }
-                    null
-                }
+                target in written -> idOfWritten(relation, target, written)
+                target.id.isEmpty() -> null
+                else -> idOfUnwritten(relation, target, written)
             }
         }
+
+    /**
+     * Returns the id of [target], an object of [written] that [relation] links to.
+     *
+     * @throws IllegalArgumentException If [target] has no id, or a later object of [written] has its id, so that the
+     * link would read back as a link to that object.
+     */
+    private fun idOfWritten(relation: ClassTypePropertyObject, target: DataObject, written: WrittenObjects): String {
+        require(target.id.isNotEmpty()) {
+            "The relation '${relation.key}' links to an object of class type ${target.ofType.name} that has no id, " +
+                "but KModel refers to a linked object by its id."
+        }
+        require(written.isReferableById(target)) {
+            "The relation '${relation.key}' links to an object '${target.id}' of class type ${target.ofType.name}, " +
+                "but a later object has the same id, and KModel refers to the last object of an id."
+        }
+        return target.id
+    }
+
+    /**
+     * Returns the id of [target], an object with an id that [relation] links to and the text of [written] does not
+     * write, which only a fragment may refer to.
+     *
+     * @throws IllegalArgumentException If [written] is a whole document: no object of it embeds [target], so the
+     * link would refer to no object.
+     */
+    private fun idOfUnwritten(relation: ClassTypePropertyObject, target: DataObject, written: WrittenObjects): String {
+        require(!written.isDocument) {
+            "The relation '${relation.key}' links to the object '${target.id}' of class type ${target.ofType.name}, " +
+                "which no object of the document embeds, so the document does not hold it."
+        }
+        return target.id
+    }
 
     /**
      * Adds [obj] and the objects it embeds to [written], checking that none of them embeds itself or is already
@@ -124,6 +157,9 @@ internal class ObjectTree {
         enclosing.remove(obj)
     }
 
+    /**
+     * Returns true if this relation embeds its objects.
+     */
     private fun ClassTypePropertyObject.isEmbedding(): Boolean =
         getPropertyType().associationType == AssociationType.EMBEDDED
 
