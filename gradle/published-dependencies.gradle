@@ -1,0 +1,109 @@
+/**
+ * Copyright 2026 Karl Kegel
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+import groovy.json.JsonSlurper
+import groovy.xml.XmlSlurper
+
+/**
+ * Checks the dependencies that the POM and the Gradle module metadata of a publication declare to its consumers: no
+ * build tool may be among them, and every API dependency must be one for consumers too, in the compile scope of the
+ * POM and in the API variant of the module metadata.
+ */
+abstract class CheckPublishedDependencies extends DefaultTask {
+
+    /** The name of the variant of the module metadata that consumers compile against. */
+    private static final String API_VARIANT = 'apiElements'
+
+    /** The POM of the publication. */
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getPom()
+
+    /** The Gradle module metadata of the publication. */
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getModuleMetadata()
+
+    /** The API dependencies, as `group:name`. */
+    @Input
+    abstract SetProperty<String> getApiModules()
+
+    /** The tools that only the build uses, as `group:name`. */
+    @Input
+    abstract SetProperty<String> getToolModules()
+
+    /**
+     * Fails with every dependency that the publication declares wrongly.
+     */
+    @TaskAction
+    void checkDependencies() {
+        def pomScopes = pomScopesOf(pom.get().asFile)
+        def variants = variantModulesOf(moduleMetadata.get().asFile)
+        def problems = toolModules.get().findAll { module ->
+            pomScopes.containsKey(module) || variants.values().any { module in it }
+        }.collect { "the build tool ${it} is published as a dependency" }
+        apiModules.get().each { module ->
+            if (pomScopes[module] != 'compile') {
+                problems << "the POM declares the API dependency ${module} with the scope ${pomScopes[module]}, not compile"
+            }
+            if (!(module in variants[API_VARIANT])) {
+                problems << "the variant ${API_VARIANT} of the module metadata lacks the API dependency ${module}"
+            }
+        }
+        if (problems) {
+            throw new GradleException("The publication declares its dependencies wrongly:\n" + problems.join('\n'))
+        }
+    }
+
+    /**
+     * Returns the scope of each dependency of the POM [file], by `group:name`.
+     */
+    private static Map<String, String> pomScopesOf(File file) {
+        def project = new XmlSlurper(false, false).parse(file)
+        return project.dependencies.dependency.collectEntries { dependency ->
+            ["${dependency.groupId.text()}:${dependency.artifactId.text()}".toString(), dependency.scope.text()]
+        }
+    }
+
+    /**
+     * Returns the dependencies of each variant of the module metadata [file], as `group:name` by variant name.
+     */
+    private static Map<String, List<String>> variantModulesOf(File file) {
+        def metadata = new JsonSlurper().parse(file)
+        return metadata.variants.collectEntries { variant ->
+            [variant.name, (variant.dependencies ?: []).collect { "${it.group}:${it.module}".toString() }]
+        }
+    }
+}
+
+/**
+ * Checks that the publication declares the API dependencies to its consumers and not the ANTLR tool, which only
+ * generates the parsers during the build.
+ */
+tasks.register('checkPublishedDependencies', CheckPublishedDependencies) {
+    description = 'Checks that the publication declares the API dependencies and not the ANTLR tool.'
+    group = 'verification'
+    pom = layout.file(tasks.named('generatePomFileForMavenJavaPublication').map { it.destination })
+    moduleMetadata = tasks.named('generateMetadataFileForMavenJavaPublication').flatMap { it.outputFile }
+    apiModules = provider { modulesOf(configurations.api) }
+    toolModules = provider { modulesOf(configurations.antlr) }
+}
+
+/**
+ * Returns the dependencies declared in [configuration], as `group:name`.
+ */
+static Set<String> modulesOf(Configuration configuration) {
+    return configuration.dependencies.collect { "${it.group}:${it.name}".toString() }.toSet()
+}

@@ -42,7 +42,7 @@ also read the karpfen runtime examples copied to `src/test/resources/examples` (
 all of them through `ExampleCatalog`. It lives with the other fixtures the tests share, such as `TextLayout` and
 `Mutator`, in the test package `io.karpfen.dsl.fixtures`. The comparison with version 1.0 has a source set of its own,
 `src/compatibilityTest`.
-Every Kotlin source, both Gradle scripts and the grammars start with the Apache 2.0 license header, which `LicenseHeaderTest` requires.
+Every Kotlin source, every Gradle script and the grammars start with the Apache 2.0 license header, which `LicenseHeaderTest` requires.
 
 ## Logging
 
@@ -92,14 +92,18 @@ The build needs JDK 21 and uses the Gradle wrapper:
 
 The lexers and parsers are not checked in: the build generates them from the grammars into `build/generated-src/antlr`,
 and the package of each grammar comes from the `@header` in its `.g4` file.
-The build is configuration-cache compatible and can also be included as a subproject or as a composite build of another Gradle build.
-The workflow in `.github/workflows/build.yml` builds and tests every push and pull request on JDK 21.
-The doc blocks in `build.gradle` explain how the build is put together.
+The build is configuration-cache compatible and can also be included as a subproject or as an included build of
+another Gradle build, as karpfen-runtime and the karpfen IDE do; there `check` runs the tests only and needs neither
+git nor the history of this repository. The workflow in `.github/workflows/build.yml` builds and tests every push and
+pull request on JDK 21. The doc blocks in `build.gradle` and in the scripts it applies from `gradle/` explain how the build is put
+together.
 
-The task `compatibilityTest`, part of `check` and therefore of `build`, holds the converters to the behaviour of
-version 1.0: it converts the examples and thousands of variants of them with the converters of version 1.0 and with the
-current ones, and requires the same models and the same exceptions. The build compiles version 1.0 from the history of
-this repository, so a shallow clone has to fetch the full history first (`git fetch --unshallow`).
+Two more checks of what this repository delivers are part of `check`, and therefore of `build`, in its own build only.
+The task `compatibilityTest` holds the converters to the behaviour of version 1.0: it converts the examples and
+thousands of variants of them with the converters of version 1.0 and with the current ones, and requires the same
+models and the same exceptions. The build compiles version 1.0 from the history of this repository, so a shallow clone
+has to fetch the full history first (`git fetch --unshallow`). The task `checkPublishedDependencies` checks that the
+POM and the module metadata of the publication declare the API dependencies to consumers and not the ANTLR tool.
 
 ## Using the library
 
