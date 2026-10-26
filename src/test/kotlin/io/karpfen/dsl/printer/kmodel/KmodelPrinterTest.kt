@@ -97,7 +97,7 @@ class KmodelPrinterTest {
             val objectsById = KmodelDSLConverter.collectAllObjects(parsed.objects).groupBy { it.id }
             objectBlocksOf(syntaxTreeOf(example).make_object_block()).forEach { block ->
                 val obj = objectsById.getValue(block.object_signature().STRING(0).text.trim('"', '\'')).single()
-                val range = ElementRange.of(block)
+                val range = ElementRange.of(block, example.text)
                 val spliced = range.replaceIn(example.text, printer.printObject(obj, range.indentLevelIn(example.text)))
                 assertEquals(parsed.structure(), example.parse(spliced).structure(), spliced)
             }

@@ -71,7 +71,7 @@ class KmetaPrinterTest {
         dynamicTest(example.toString()) {
             val parsed = example.parse()
             syntaxTreeOf(example).type_definition().forEachIndexed { index, definition ->
-                val range = ElementRange.of(definition)
+                val range = ElementRange.of(definition, example.text)
                 val spliced = range.replaceIn(example.text, printer.printType(parsed.types[index], range.indentLevelIn(example.text)))
                 assertEquals(parsed.structure(), example.parse(spliced).structure(), spliced)
             }
@@ -90,7 +90,7 @@ class KmetaPrinterTest {
                 definition.rule_list()?.rule_().orEmpty().forEach { rule ->
                     val printed = rule.prop_rule()?.let { printer.printRule(type.getSimpleProperty(keyOf(it.STRING().text))) }
                         ?: printer.printRule(type.getObjectProperty(keyOf((rule.has_rule()?.STRING() ?: rule.knows_rule().STRING()).text)))
-                    val spliced = ElementRange.of(rule).replaceIn(example.text, printed)
+                    val spliced = ElementRange.of(rule, example.text).replaceIn(example.text, printed)
                     assertEquals(parsed.structure(), example.parse(spliced).structure(), spliced)
                 }
             }

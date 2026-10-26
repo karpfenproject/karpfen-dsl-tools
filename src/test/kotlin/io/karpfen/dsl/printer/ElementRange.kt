@@ -48,9 +48,17 @@ data class ElementRange(val start: Int, val stopInclusive: Int) {
     companion object {
 
         /**
-         * Returns the range the parse tree [element] covers.
+         * Returns the range the parse tree [element] of [text] covers.
+         *
+         * ANTLR counts the code points of a stream that `CharStreams.fromString` made, while the range counts the
+         * chars of [text], which differ behind a character outside the Basic Multilingual Plane.
          */
-        fun of(element: ParserRuleContext): ElementRange =
-            ElementRange(element.start.startIndex, element.stop.stopIndex)
+        fun of(element: ParserRuleContext, text: String): ElementRange =
+            ElementRange(charOffsetOf(element.start.startIndex, text), charOffsetOf(element.stop.stopIndex + 1, text) - 1)
+
+        /**
+         * Returns the char offset in [text] of the code point at [codePointIndex].
+         */
+        private fun charOffsetOf(codePointIndex: Int, text: String): Int = text.offsetByCodePoints(0, codePointIndex)
     }
 }

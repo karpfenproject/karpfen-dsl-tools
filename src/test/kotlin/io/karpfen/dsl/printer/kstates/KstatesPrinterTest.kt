@@ -136,7 +136,7 @@ class KstatesPrinterTest {
      * level of the element, and checks that the result parses to the state machine of the example.
      */
     private fun assertSplicedKeepsMachine(example: StateMachineExample, element: ParserRuleContext, print: (Int) -> String) {
-        val range = ElementRange.of(element)
+        val range = ElementRange.of(element, example.text)
         val spliced = range.replaceIn(example.text, print(range.indentLevelIn(example.text)))
         assertEquals(example.parse().structure(), example.parse(spliced).structure(), spliced)
     }
