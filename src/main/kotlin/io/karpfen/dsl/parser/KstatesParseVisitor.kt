@@ -84,7 +84,7 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
      * `OP("a", "b", rhs)`, is the one its operation expects.
      */
     private fun parseActionRule(ctx: KstatesParser.Action_ruleContext): ParsedActionRule {
-        val operation = operationOf(ctx.action_operation())
+        val operation = operationOf(ctx)
         val strings = ctx.STRING().map { unquote(it.text) }
         val rightSide = ctx.action_right_side()?.let { parseActionRightSide(it) }
 
@@ -105,15 +105,24 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         }
     }
 
-    private fun operationOf(op: KstatesParser.Action_operationContext): ParsedActionOperationType = when {
-        op.SET() != null -> ParsedActionOperationType.SET
-        op.APPEND() != null -> ParsedActionOperationType.APPEND
-        op.SETLIST() != null -> ParsedActionOperationType.SETLIST
-        op.DROPLIST() != null -> ParsedActionOperationType.DROPLIST
-        op.SETOBJ() != null -> ParsedActionOperationType.SETOBJ
-        op.APPENDOBJ() != null -> ParsedActionOperationType.APPENDOBJ
-        op.DROPOBJ() != null -> ParsedActionOperationType.DROPOBJ
-        else -> ParsedActionOperationType.EVENT
+    /**
+     * Reads the operation of [rule].
+     *
+     * The operation context stays in the local `op`: a rule the parser had to recover from may lack it, and
+     * the resulting [NullPointerException] then names `op`, exactly as in version 1.0.
+     */
+    private fun operationOf(rule: KstatesParser.Action_ruleContext): ParsedActionOperationType {
+        val op = rule.action_operation()
+        return when {
+            op.SET() != null -> ParsedActionOperationType.SET
+            op.APPEND() != null -> ParsedActionOperationType.APPEND
+            op.SETLIST() != null -> ParsedActionOperationType.SETLIST
+            op.DROPLIST() != null -> ParsedActionOperationType.DROPLIST
+            op.SETOBJ() != null -> ParsedActionOperationType.SETOBJ
+            op.APPENDOBJ() != null -> ParsedActionOperationType.APPENDOBJ
+            op.DROPOBJ() != null -> ParsedActionOperationType.DROPOBJ
+            else -> ParsedActionOperationType.EVENT
+        }
     }
 
     private fun parseActionRightSide(ctx: KstatesParser.Action_right_sideContext): ParsedActionRightSide {

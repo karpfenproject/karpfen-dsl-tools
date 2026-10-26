@@ -13,9 +13,18 @@ def slf4jVersion = '2.0.20'
 def projectUrl = 'https://github.com/karpfenproject/karpfen-dsl-tools'
 def gitHubRepository = providers.environmentVariable('GITHUB_REPOSITORY')
         .orElse('karpfenproject/karpfen-dsl-tools')
+def legacyArtifact = 'io.karpfen:karpfen-dsl-tools:1.0-SNAPSHOT'
+def legacyJar = new File(
+        providers.systemProperty('user.home').get(),
+        '.m2/repository/io/karpfen/karpfen-dsl-tools/1.0-SNAPSHOT/karpfen-dsl-tools-1.0-SNAPSHOT.jar')
 
 repositories {
     mavenCentral()
+    mavenLocal {
+        content {
+            includeVersion 'io.karpfen', 'karpfen-dsl-tools', '1.0-SNAPSHOT'
+        }
+    }
 }
 
 dependencies {
@@ -50,9 +59,45 @@ sourceSets.configureEach { sourceSet ->
     sourceSet.java.srcDirs = ["src/${sourceSet.name}/java", generatedGrammarSources]
 }
 
+sourceSets {
+    compatibilityTest {
+        compileClasspath += sourceSets.main.output + sourceSets.test.output
+        runtimeClasspath += sourceSets.main.output + sourceSets.test.output
+    }
+}
+
+configurations {
+    compatibilityTestImplementation.extendsFrom testImplementation
+    compatibilityTestRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
+def legacyClasses = configurations.detachedConfiguration(dependencies.create(legacyArtifact))
+
+dependencies {
+    compatibilityTestImplementation files(legacyClasses)
+}
+
 tasks.named('test', Test) {
     useJUnitPlatform {
         excludeTags 'budget'
+    }
+}
+
+def compatibilityTest = tasks.register('compatibilityTest', Test) {
+    description = "Compares the converters with those of version 1.0, ${legacyArtifact} from the local Maven repository."
+    group = 'verification'
+    testClassesDirs = sourceSets.compatibilityTest.output.classesDirs
+    classpath = sourceSets.compatibilityTest.runtimeClasspath
+    shouldRunAfter tasks.named('test')
+    jvmArgs '-XX:-OmitStackTraceInFastThrow'
+    useJUnitPlatform {
+        excludeTags 'budget'
+    }
+}
+
+tasks.named('check') {
+    if (legacyJar.exists()) {
+        dependsOn compatibilityTest
     }
 }
 

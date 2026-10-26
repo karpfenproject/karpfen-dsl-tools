@@ -28,6 +28,7 @@ import io.karpfen.dsl.parser.Rule
 import io.karpfen.dsl.parser.RuleValue
 import io.karpfen.dsl.parser.StringValue
 import io.karpfen.dsl.parser.TypeDefinition
+import io.karpfen.dsl.printer.kmeta.KmetaPrinter
 import org.slf4j.LoggerFactory
 import java.io.File
 
@@ -83,15 +84,14 @@ object KmetaDSLConverter {
     }
 
     /**
-     * Converts a [Metamodel] back into KMeta text; not implemented yet.
+     * Converts a [Metamodel] back into KMeta text in the canonical layout, with all its class types, the root
+     * class type last, and without comments; see [KmetaPrinter], which can also leave out base types.
      *
      * @param metamodel The metamodel to convert.
-     * @return The KMeta text.
-     * @throws NotImplementedError Always, this operation is not implemented yet.
+     * @return The KMeta text, ending with a line break.
+     * @throws IllegalArgumentException If a name or a description cannot be written as a KMeta string literal.
      */
-    fun convertToKmetaString(metamodel: Metamodel): String {
-        throw NotImplementedError()
-    }
+    fun convertToKmetaString(metamodel: Metamodel): String = KmetaPrinter().print(metamodel)
 
     /**
      * Converts one type definition into a [ClassType] whose relations are not resolved yet.

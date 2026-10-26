@@ -16,6 +16,7 @@
 package io.karpfen.dsl.dsl.textual
 
 import io.karpfen.dsl.parser.*
+import io.karpfen.dsl.printer.kstates.KstatesPrinter
 import io.karpfen.dsl.states.*
 import io.karpfen.dsl.states.actions.*
 import io.karpfen.dsl.states.conditions.*
@@ -60,6 +61,17 @@ object KstatesDSLConverter {
         val content = File(filePath).readText()
         return parseKstatesString(content)
     }
+
+    /**
+     * Converts a [StateMachine] back into KStates text in the canonical layout, with the code of its `EVAL`
+     * blocks verbatim and without the comments outside them; see [KstatesPrinter].
+     *
+     * @param stateMachine The state machine to convert.
+     * @return The KStates text, ending with a line break.
+     * @throws IllegalArgumentException If a name, path or value cannot be written as a KStates string literal,
+     * or the state machine holds something KStates cannot express.
+     */
+    fun convertToKstatesString(stateMachine: StateMachine): String = KstatesPrinter().print(stateMachine)
 
     /**
      * Converts a parsed state and, recursively, its nested states, linking each to its [outerState].

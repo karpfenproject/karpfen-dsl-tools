@@ -33,6 +33,7 @@ import io.karpfen.dsl.parser.KmodelFileParser
 import io.karpfen.dsl.parser.KnowsRelation
 import io.karpfen.dsl.parser.ModelObject
 import io.karpfen.dsl.parser.ObjectProperty
+import io.karpfen.dsl.printer.kmodel.KmodelPrinter
 import org.slf4j.LoggerFactory
 import java.io.File
 
@@ -155,15 +156,14 @@ object KmodelDSLConverter {
     }
 
     /**
-     * Converts a Model instance back to KModel DSL string format; not implemented yet.
+     * Converts a [Model] back into KModel text in the canonical layout, starting from its root object and
+     * without comments; see [KmodelPrinter].
      *
      * @param model The model to convert.
-     * @return The KModel text.
-     * @throws NotImplementedError Always, this operation is not implemented yet.
+     * @return The KModel text, ending with a line break.
+     * @throws IllegalArgumentException If the model has no unique root object or a value cannot be written.
      */
-    fun convertToKmodelString(model: Model): String {
-        throw NotImplementedError("Conversion from Model to Kmodel DSL string is not implemented yet.")
-    }
+    fun convertToKmodelString(model: Model): String = KmodelPrinter().print(model)
 
     /**
      * Converts the `prop` statements of one object; several statements with the same key form a list.

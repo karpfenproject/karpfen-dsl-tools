@@ -27,13 +27,19 @@ All code lives below the package `io.karpfen.dsl`; the KDoc on the declarations 
 | `io.karpfen.dsl.grammar.kmeta`, `.kmodel`, `.kstates` | Lexers, parsers and visitors that the build generates from the grammars in `src/main/antlr` |
 | `io.karpfen.dsl.parser` | File parsers that turn text into a syntax-level form (`KmetaFile`, `KmodelFile`, `KstatesFile`), and `LoggingSyntaxErrorListener` |
 | `io.karpfen.dsl.dsl.textual` | The converters `KmetaDSLConverter`, `KmodelDSLConverter`, `KstatesDSLConverter` and `JsonToModelConverter`, the usual entry points |
+| `io.karpfen.dsl.reader`, `.kmeta`, `.kmodel`, `.kstates` | The readers `KmetaReader`, `KmodelReader` and `KstatesReader`, which read text without throwing, behind the interface `TextReader`, and their `ParseResult` |
+| `io.karpfen.dsl.diagnostics` | `Diagnostic`, the problem a reader reports, with its `Severity` and its stable `DiagnosticCode` |
+| `io.karpfen.dsl.source` | `SourcePosition` and `SourceRange`, `SourceText`, which turns offsets into lines and columns, and `SourceMap`, which locates model elements in their text |
+| `io.karpfen.dsl.printer`, `.kmeta`, `.kmodel`, `.kstates` | The printers `KmetaPrinter`, `KmodelPrinter` and `KstatesPrinter`, which write metamodels, models and state machines back as text |
 | `io.karpfen.dsl.dsl.functional` | `MetamodelBuilder` and `ModelBuilder` for building metamodels and models in code |
 | `io.karpfen.dsl.meta` | The metamodel: `Metamodel`, class types and their properties |
 | `io.karpfen.dsl.instance` | The model: `Model`, `DataObject` and its property and relation values |
 | `io.karpfen.dsl.states` | The state machine: `StateMachine`, states, transitions, and the sub-packages for actions, conditions and macros |
 | `io.karpfen.dsl.examples` | Two small programs that show the syntax-level parsers |
 
-The tests mirror these packages; the example documents they read are in `example/`.
+The tests mirror these packages; the example documents they read are in `example/`, and the printer and reader tests
+also read the karpfen runtime examples copied to `src/test/resources/examples` (their origin is in the `NOTICE.md` there),
+all of them through `ExampleCatalog`. The comparison with version 1.0 has a source set of its own, `src/compatibilityTest`.
 
 ## Logging
 
@@ -41,6 +47,29 @@ The library logs through the SLF4J API and ships no logging backend; the applica
 The converters log the types and objects they convert at debug level.
 Syntax errors are logged as warnings by `LoggingSyntaxErrorListener` while the parsers recover and continue,
 nothing is printed to the console. The file parsers accept another ANTLR error listener in their constructor.
+
+## Reading text with diagnostics
+
+The converters stop at the first problem, which suits documents that are finished. For text that is still being
+written, the readers never throw: `read` returns a `ParseResult` with the model, the diagnostics and a source map.
+Each diagnostic marks the offending part of the text with a `SourceRange` of offsets, lines and columns, and carries a
+severity, a stable `DiagnosticCode` and a message. The reader keeps going after a problem, so that a text in the middle
+of an edit still yields a partial model; the KDoc of each reader says what it reports and what a partial model leaves
+out. Without errors, the model is the one the converter builds. The `SourceMap` is a side table keyed by identity that
+locates the elements of the model at their construct, their name and the code of their `EVAL` bodies; its KDoc lists
+the elements it covers. The model classes know nothing of their text.
+
+The reader tests check the source maps on every example, report the problems of broken texts where they occur, and
+read thousands of mutated examples and every prefix of an example without throwing and in agreement with the
+converters.
+
+## Printing
+
+The printers turn a metamodel, a model or a state machine back into text: a whole document, or a fragment for a single
+element such as a type, a rule, an object, a state, a transition or a macro, laid out to replace that element's text
+in an existing document. The `convertTo...String` functions of the converters delegate to them. All output uses one
+canonical layout, keeps `EVAL` code verbatim and drops comments; the KDoc of the printers describes the layout and
+the values they reject. The printer tests parse every example, print it and parse the text again.
 
 ## Building
 
@@ -54,6 +83,12 @@ The lexers and parsers are not checked in: the build generates them from the gra
 and the package of each grammar comes from the `@header` in its `.g4` file.
 The build is configuration-cache compatible and can also be included as a subproject or as a composite build of another Gradle build.
 The workflow in `.github/workflows/build.yml` builds and tests every push and pull request on JDK 21.
+
+The task `compatibilityTest` holds the converters to the behaviour of version 1.0: it converts the examples and
+thousands of mutations of them with the converters of version 1.0, the artifact `io.karpfen:karpfen-dsl-tools:1.0-SNAPSHOT`
+from the local Maven repository, and with the current ones, and requires the same models and the same exceptions.
+`check`, and therefore `build`, runs it whenever that artifact is in `~/.m2`, and leaves it out where it is missing,
+as in the workflow.
 
 ## Using the library
 

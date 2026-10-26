@@ -223,6 +223,10 @@ Low-level parse access is available via `KStatesFileParser` in the package `io.k
 
 The integration test `KstatesParserIntegrationTest` shows a full parse flow against the example file.
 
+For text that may contain errors, such as text being typed in an editor, `KstatesReader` from the package `io.karpfen.dsl.reader.kstates` reads without throwing: it reports every problem as a diagnostic with a range, among them a wrong number of `INITIAL` states and action rules of the wrong arity, builds a partial state machine and locates its elements, and the code of every `EVAL` body, in a source map. The test `KstatesReaderDiagnosticsTest` shows the problems it reports.
+
+The way back is `KstatesPrinter` from the package `io.karpfen.dsl.printer.kstates`, to which `KstatesDSLConverter.convertToKstatesString` delegates: it writes a state machine, a single state, transition or macro as KStates text in the canonical layout, with the code of `EVAL` blocks verbatim.
+
 
 ## Full ANTLR KStates Grammar (`Kstates.g4`)
 
