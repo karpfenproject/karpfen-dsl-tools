@@ -27,6 +27,7 @@ import io.karpfen.dsl.meta.ClassType
 import io.karpfen.dsl.meta.Metamodel
 import io.karpfen.dsl.meta.SimpleProperty
 import io.karpfen.dsl.meta.SimplePropertyType
+import io.karpfen.dsl.parser.KmetaVocabulary
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -101,13 +102,14 @@ class JsonToModelConverter(
      */
     fun toList(jsonArrayString: String, elementType: String): List<Any> {
         val arr = JSONArray(jsonArrayString.trim())
+        val primitiveType = KmetaVocabulary.primitiveTypeNamed(elementType.lowercase())
         val results = mutableListOf<Any>()
         for (i in 0 until arr.length()) {
-            when (elementType.lowercase()) {
-                "number" -> results.add((arr.get(i) as Number).toDouble())
-                "boolean" -> results.add(arr.get(i) as Boolean)
-                "string" -> results.add(arr.get(i).toString())
-                else -> results.add(toDataObject(arr.getJSONObject(i), elementType))
+            when (primitiveType) {
+                SimplePropertyType.NUMBER -> results.add((arr.get(i) as Number).toDouble())
+                SimplePropertyType.BOOLEAN -> results.add(arr.get(i) as Boolean)
+                SimplePropertyType.STRING -> results.add(arr.get(i).toString())
+                null -> results.add(toDataObject(arr.getJSONObject(i), elementType))
             }
         }
         return results

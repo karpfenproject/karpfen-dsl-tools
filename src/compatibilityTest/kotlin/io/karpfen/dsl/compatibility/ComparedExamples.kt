@@ -19,6 +19,7 @@ import io.karpfen.dsl.dsl.textual.JsonToModelConverter
 import io.karpfen.dsl.dsl.textual.KmetaDSLConverter
 import io.karpfen.dsl.dsl.textual.KmodelDSLConverter
 import io.karpfen.dsl.dsl.textual.KstatesDSLConverter
+import io.karpfen.dsl.meta.Metamodel
 import io.karpfen.dsl.parser.KStatesFileParser
 import io.karpfen.dsl.parser.KmetaFileParser
 import io.karpfen.dsl.parser.KmodelFileParser
@@ -30,6 +31,7 @@ import dsl.textual.JsonToModelConverter as LegacyJsonConverter
 import dsl.textual.KmetaDSLConverter as LegacyKmetaConverter
 import dsl.textual.KmodelDSLConverter as LegacyKmodelConverter
 import dsl.textual.KstatesDSLConverter as LegacyKstatesConverter
+import meta.Metamodel as LegacyMetamodel
 import parser.KStatesFileParser as LegacyKstatesFileParser
 import parser.KmetaFileParser as LegacyKmetaFileParser
 import parser.KmodelFileParser as LegacyKmodelFileParser
@@ -171,6 +173,38 @@ class ComparedExamples(
         )
     }
 
+    /**
+     * Returns JSON arrays with the conversion of JSON arrays into lists: the root object of every KModel example in
+     * an array of its class type, and arrays of primitive values of each primitive type.
+     */
+    fun jsonListConversions(): List<ComparedExample> {
+        val objectLists = catalog.models().map { example ->
+            val legacyMetamodel = legacyDomainNextTo(example.file)
+            val root = example.parse().objects.single()
+            val array = "[${JsonDocuments.of(root)}]"
+            val name = "${example.file} as a JSON array"
+            jsonListExample(name, array, root.ofType.name, legacyMetamodel, example.metamodel)
+        }
+        val anyModel = catalog.models().first()
+        val primitiveLists = PRIMITIVE_ARRAYS.map { (type, array) ->
+            jsonListExample("an array of $type", array, type, legacyDomainNextTo(anyModel.file), anyModel.metamodel)
+        }
+        return objectLists + primitiveLists
+    }
+
+    private fun jsonListExample(
+        name: String,
+        array: String,
+        elementType: String,
+        legacyMetamodel: LegacyMetamodel,
+        metamodel: Metamodel
+    ) = ComparedExample(
+        name,
+        array,
+        { LegacyJsonConverter(legacyMetamodel).toList(it, elementType) },
+        { JsonToModelConverter(metamodel).toList(it, elementType) }
+    )
+
     private fun legacyBaseTypesOf(example: MetamodelExample) =
         if (example.baseTypes.isEmpty()) emptyList() else legacyDomainNextTo(example.file).types
 
@@ -187,5 +221,12 @@ class ComparedExamples(
     private companion object {
 
         const val EVENTS_FILE_NAME = "EVENTS.kmeta"
+
+        /** Arrays of primitive values by the name of their element type, which converts case-insensitively. */
+        val PRIMITIVE_ARRAYS = listOf(
+            "number" to "[1.5, 2, -3]",
+            "Boolean" to "[true, false]",
+            "string" to "[\"a\", 1, true]"
+        )
     }
 }

@@ -21,8 +21,8 @@ import kotlin.test.Test
 
 /**
  * Compares the entry points of the library besides the conversion of texts with those of version 1.0, see
- * [Comparison]: the conversion of files, of a single KModel object and of JSON documents, and the syntax-level file
- * parsers, which report syntax errors to another listener than version 1.0 but must read the same.
+ * [Comparison]: the conversion of files, of a single KModel object and of JSON documents and arrays, and the
+ * syntax-level file parsers, which report syntax errors to another listener than version 1.0 but must read the same.
  */
 class EntryPointCompatibilityTest {
 
@@ -65,6 +65,17 @@ class EntryPointCompatibilityTest {
     @Test
     fun `json documents convert or fail as in version 1_0`() {
         val conversions = examples.jsonConversions()
+        comparison.inEveryLayout(conversions)
+        comparison.onMutations(conversions, Mutator(JSON_VOCABULARY), MUTATIONS_PER_FILE)
+    }
+
+    /**
+     * JSON arrays of objects and of primitive values and mutations of them convert into lists or fail as in
+     * version 1.0.
+     */
+    @Test
+    fun `json arrays convert or fail as in version 1_0`() {
+        val conversions = examples.jsonListConversions()
         comparison.inEveryLayout(conversions)
         comparison.onMutations(conversions, Mutator(JSON_VOCABULARY), MUTATIONS_PER_FILE)
     }
