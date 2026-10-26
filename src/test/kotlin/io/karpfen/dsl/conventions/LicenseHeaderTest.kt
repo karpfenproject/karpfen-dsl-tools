@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.karpfen.dsl
+package io.karpfen.dsl.conventions
 
-import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -28,21 +27,23 @@ import kotlin.test.assertTrue
  * The header is the block that this file starts with too: the copyright of Karl Kegel and the notice of the Apache
  * License, Version 2.0, between the delimiters of a documentation comment. It stands once in each file, as its first
  * lines, before the package declaration, the grammar declaration or the first statement of a script. The files are
- * found below the project folder the tests run in, without the build output and the hidden folders.
+ * the [SourceFiles] with the extensions of [SOURCE_EXTENSIONS].
  */
 class LicenseHeaderTest {
 
     /** The text of every source file under guard, by its path relative to the project folder, with '/' separators. */
-    private val sources: Map<String, String> by lazy { readSources(File("").absoluteFile) }
+    private val sources: Map<String, String> by lazy { SourceFiles.read(SOURCE_EXTENSIONS) }
 
     /**
-     * The guard reads the Kotlin sources of the main, test and compatibility test source sets, both Gradle scripts and
+     * The guard reads the Kotlin sources of the main, test and compatibility test source sets, the Gradle scripts and
      * the three grammars, so it cannot pass on a walk that misses them.
      */
     @Test
     fun `the guarded files are the Kotlin sources, the Gradle scripts and the grammars`() {
         val paths = sources.keys
-        listOf("build.gradle", "settings.gradle").forEach { assertTrue(it in paths, "$it is not guarded") }
+        listOf("build.gradle", "settings.gradle", "gradle/compatibility-test.gradle").forEach {
+            assertTrue(it in paths, "$it is not guarded")
+        }
         listOf("src/main/kotlin/", "src/test/kotlin/", "src/compatibilityTest/kotlin/").forEach { root ->
             assertTrue(paths.any { it.startsWith(root) && it.endsWith(".kt") }, "no Kotlin source below $root is guarded")
         }
@@ -82,16 +83,6 @@ class LicenseHeaderTest {
         val normalized = text.replace("\r\n", "\n")
         return normalized.startsWith("$HEADER\n") && normalized.indexOf(HEADER, startIndex = HEADER.length) < 0
     }
-
-    /**
-     * Reads the files below [root] whose extension is one of [SOURCE_EXTENSIONS], skipping the build output of the
-     * project and every hidden folder.
-     */
-    private fun readSources(root: File): Map<String, String> =
-        root.walkTopDown()
-            .onEnter { it == root || !(it.name.startsWith(".") || it == root.resolve("build")) }
-            .filter { it.isFile && it.extension in SOURCE_EXTENSIONS }
-            .associate { it.relativeTo(root).invariantSeparatorsPath to it.readText() }
 
     private companion object {
 

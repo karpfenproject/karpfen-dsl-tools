@@ -42,7 +42,9 @@ also read the karpfen runtime examples copied to `src/test/resources/examples` (
 all of them through `ExampleCatalog`. It lives with the other fixtures the tests share, such as `TextLayout` and
 `Mutator`, in the test package `io.karpfen.dsl.fixtures`. The comparison with version 1.0 has a source set of its own,
 `src/compatibilityTest`.
-Every Kotlin source, every Gradle script and the grammars start with the Apache 2.0 license header, which `LicenseHeaderTest` requires.
+Every Kotlin source, every Gradle script and the grammars start with the Apache 2.0 license header, which
+`LicenseHeaderTest` requires; documentation lives in KDoc on declarations, and `DocumentationStyleTest` rejects any
+other comment in the Kotlin sources and the Gradle scripts. Both tests are in `io.karpfen.dsl.conventions`.
 
 ## Logging
 
