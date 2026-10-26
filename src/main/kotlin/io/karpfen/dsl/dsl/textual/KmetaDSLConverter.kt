@@ -22,6 +22,7 @@ import io.karpfen.dsl.meta.ClassTypeReference
 import io.karpfen.dsl.meta.Metamodel
 import io.karpfen.dsl.meta.SimpleProperty
 import io.karpfen.dsl.parser.KmetaFileParser
+import io.karpfen.dsl.parser.KmetaSemantics
 import io.karpfen.dsl.parser.KmetaVocabulary
 import io.karpfen.dsl.parser.ListValue
 import io.karpfen.dsl.parser.Rule
@@ -44,7 +45,7 @@ object KmetaDSLConverter {
     /**
      * Parses KMeta text and converts it into a [Metamodel].
      *
-     * The last type defined in [content] becomes the root class type of the metamodel.
+     * The last type defined in [content] becomes the root class type of the metamodel, see [KmetaSemantics].
      *
      * [baseTypes] are class types that are already known from another metamodel and may be referenced
      * by the types in this file but are not redefined here. This is what lets an EVENTS.kmeta describe
@@ -68,8 +69,7 @@ object KmetaDSLConverter {
             throw IllegalArgumentException("KMeta content does not define any types")
         }
 
-        val allTypes = (classTypes + baseTypes).toMutableList()
-        return Metamodel(allTypes, classTypes.last())
+        return KmetaSemantics.metamodelOf(classTypes, baseTypes)
     }
 
     /**

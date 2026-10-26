@@ -20,6 +20,7 @@ import io.karpfen.dsl.grammar.kmeta.KmetaLexer
 import io.karpfen.dsl.grammar.kmeta.KmetaParser
 import io.karpfen.dsl.meta.ClassType
 import io.karpfen.dsl.meta.Metamodel
+import io.karpfen.dsl.parser.KmetaSemantics
 import io.karpfen.dsl.reader.LexerInput
 import io.karpfen.dsl.reader.ParseResult
 import io.karpfen.dsl.reader.ReadingSession
@@ -67,8 +68,8 @@ class KmetaReader(baseTypes: List<ClassType> = emptyList()) : TextReader<Metamod
     }
 
     /**
-     * Builds the metamodel of [classTypes] and the base types, rooted in the last of [classTypes]; reports a
-     * text without types and returns null for it.
+     * Builds the metamodel of [classTypes] and the base types, see [KmetaSemantics]; reports a text without types
+     * and returns null for it.
      */
     private fun metamodelOf(classTypes: List<ClassType>, session: ReadingSession): Metamodel? {
         if (classTypes.isEmpty()) {
@@ -79,6 +80,6 @@ class KmetaReader(baseTypes: List<ClassType> = emptyList()) : TextReader<Metamod
             )
             return null
         }
-        return Metamodel((classTypes + baseTypes).toMutableList(), classTypes.last())
+        return KmetaSemantics.metamodelOf(classTypes, baseTypes)
     }
 }

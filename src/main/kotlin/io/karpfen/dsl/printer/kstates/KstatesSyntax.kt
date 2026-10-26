@@ -16,6 +16,7 @@
 package io.karpfen.dsl.printer.kstates
 
 import io.karpfen.dsl.grammar.kstates.KstatesLexer
+import io.karpfen.dsl.parser.EvalCodeSyntax
 import io.karpfen.dsl.parser.MacroTypeSyntax
 import io.karpfen.dsl.parser.StringLiteralSyntax
 import io.karpfen.dsl.printer.CodeWriter
@@ -59,12 +60,13 @@ internal class KstatesSyntax(
      *
      * Code on a single line stays on the line of the block. Code with several lines goes onto lines of its own
      * between the braces, laid out by [CodeWriter.verbatimBlock], which keeps the indentation of its lines relative
-     * to each other. The parser reads the code back trimmed, so whitespace at its edges is not written.
+     * to each other. Whitespace at the edges of [code] is not part of the code, see [EvalCodeSyntax], so it is not
+     * written.
      *
      * @throws IllegalArgumentException If KStates cannot hold [code], see [EvalCodeCheck].
      */
     fun eval(code: String, writer: CodeWriter): String {
-        val trimmed = code.trim()
+        val trimmed = EvalCodeSyntax.codeOf(code)
         evalCode.requireExpressible(trimmed)
         return when {
             trimmed.isEmpty() -> "EVAL { }"

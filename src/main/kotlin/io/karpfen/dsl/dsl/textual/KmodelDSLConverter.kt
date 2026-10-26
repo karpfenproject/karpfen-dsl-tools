@@ -27,9 +27,9 @@ import io.karpfen.dsl.instance.SimplePropertyObject
 import io.karpfen.dsl.meta.AssociationType
 import io.karpfen.dsl.meta.ClassType
 import io.karpfen.dsl.meta.Metamodel
-import io.karpfen.dsl.meta.SimplePropertyType
 import io.karpfen.dsl.parser.HasRelation
 import io.karpfen.dsl.parser.KmodelFileParser
+import io.karpfen.dsl.parser.KmodelSemantics
 import io.karpfen.dsl.parser.KnowsRelation
 import io.karpfen.dsl.parser.ModelObject
 import io.karpfen.dsl.parser.ObjectProperty
@@ -166,7 +166,8 @@ object KmodelDSLConverter {
     fun convertToKmodelString(model: Model): String = KmodelPrinter().print(model)
 
     /**
-     * Converts the `prop` statements of one object; several statements with the same key form a list.
+     * Converts the `prop` statements of one object; the statements of one key form a single value or a list, see
+     * [KmodelSemantics].
      */
     private fun convertProps(
         props: List<ObjectProperty>,
@@ -180,34 +181,20 @@ object KmodelDSLConverter {
                 ?: throw IllegalArgumentException(
                     "Unknown property '$propKey' for class type '${classType.name}' in object '$objectKey'"
                 )
-            if (bag.value.size == 1 && propType.isList.not()) {
-                val propValue = bag.value[0].value
-                val property = when (propType.propertyType) {
-                    SimplePropertyType.STRING -> SimpleAtomicPropertyObject(propType, propKey, propValue)
-                    SimplePropertyType.NUMBER -> SimpleAtomicPropertyObject(propType, propKey, propValue.toDouble())
-                    SimplePropertyType.BOOLEAN -> SimpleAtomicPropertyObject(propType, propKey, propValue.toBoolean())
-                }
-                simpleObjectProperties.add(property)
+            if (!KmodelSemantics.formsList(bag.value.size, propType.isList)) {
+                val propValue = KmodelSemantics.valueOf(propType.propertyType, bag.value[0].value)
+                simpleObjectProperties.add(SimpleAtomicPropertyObject(propType, propKey, propValue))
             } else {
-                val propValuesList = mutableListOf<Any>()
-                for (prop in bag.value) {
-                    val propValue = prop.value
-                    val parsedValue = when (propType.propertyType) {
-                        SimplePropertyType.STRING -> propValue
-                        SimplePropertyType.NUMBER -> propValue.toDouble()
-                        SimplePropertyType.BOOLEAN -> propValue.toBoolean()
-                    }
-                    propValuesList.add(parsedValue)
-                }
-                simpleObjectProperties.add(SimpleListPropertyObject(propType, propKey, propValuesList))
+                val propValuesList = bag.value.map { KmodelSemantics.valueOf(propType.propertyType, it.value) }
+                simpleObjectProperties.add(SimpleListPropertyObject(propType, propKey, propValuesList.toMutableList()))
             }
         }
         return simpleObjectProperties
     }
 
     /**
-     * Converts the `has` statements of one object, converting the embedded objects recursively; several
-     * statements with the same key form a list.
+     * Converts the `has` statements of one object, converting the embedded objects recursively; the statements of
+     * one key form a single value or a list, see [KmodelSemantics].
      */
     private fun convertEmbeddings(
         embeddings: List<HasRelation>,
@@ -222,7 +209,7 @@ object KmodelDSLConverter {
                 ?: throw IllegalArgumentException(
                     "Unknown object property '$embedKey' for class type '${classType.name}' in object '$objectKey'"
                 )
-            if (bag.value.size == 1 && embedType.isList.not()) {
+            if (!KmodelSemantics.formsList(bag.value.size, embedType.isList)) {
                 val embedObject = parseMakeObjects(bag.value.first().childObject, meta)
                 val reference = ObjectReference(embedObject.id, embedObject)
                 classTypeProperties.add(ClassTypeAtomicPropertyObject(embedType, embedKey, reference))
@@ -239,8 +226,8 @@ object KmodelDSLConverter {
     }
 
     /**
-     * Converts the `knows` statements of one object into unresolved references; several statements with
-     * the same key form a list.
+     * Converts the `knows` statements of one object into unresolved references; the statements of one key form a
+     * single value or a list, see [KmodelSemantics].
      */
     private fun convertLinks(
         links: List<KnowsRelation>,
@@ -254,7 +241,7 @@ object KmodelDSLConverter {
                 ?: throw IllegalArgumentException(
                     "Unknown object property '$knowsKey' for class type '${classType.name}' in object '$objectKey'"
                 )
-            if (bag.value.size == 1 && knowsType.isList.not()) {
+            if (!KmodelSemantics.formsList(bag.value.size, knowsType.isList)) {
                 val reference = ObjectReference(bag.value.first().value, null)
                 classTypeProperties.add(ClassTypeAtomicPropertyObject(knowsType, knowsKey, reference))
             } else {
@@ -266,12 +253,13 @@ object KmodelDSLConverter {
     }
 
     /**
-     * Resolves the linked (`knows`) relations of [flatObjects] against the named objects among them.
+     * Resolves the linked (`knows`) relations of [flatObjects] against the objects among them that can be referred
+     * to, see [KmodelSemantics.referableById].
      *
      * @throws IllegalArgumentException If a reference names an object that does not exist.
      */
     private fun resolveLinks(flatObjects: Set<DataObject>) {
-        val allObjMap = flatObjects.filter { it.id.isNotEmpty() || it.id == "_" }.associateBy { it.id }
+        val allObjMap = KmodelSemantics.referableById(flatObjects)
         for (obj in flatObjects) {
             for (knowsProp in obj.relations.filter { it.getPropertyType().associationType == AssociationType.LINK }) {
                 if (knowsProp is ClassTypeAtomicPropertyObject) {

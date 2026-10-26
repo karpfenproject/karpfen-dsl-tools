@@ -211,19 +211,10 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
     private fun unquote(text: String): String = StringLiteralSyntax.KSTATES.unquote(text)
 
     /**
-     * Returns the source text between the braces of an `EVAL { ... }` block, trimmed, exactly as written,
-     * hidden-channel whitespace and comments included.
+     * Returns the code of an `EVAL { ... }` body exactly as written, comments included, see [EvalCodeSyntax].
      */
     private fun extractInnerBlockText(ctx: KstatesParser.Eval_code_blockContext): String {
-        if (ctx.childCount == 0) {
-            return ""
-        }
-        val input = ctx.start.inputStream
-        val start = ctx.start.startIndex
-        val stop = ctx.stop.stopIndex
-        if (stop < start) {
-            return ""
-        }
-        return input.getText(Interval.of(start, stop)).trim()
+        val span = EvalCodeSyntax.spanOf(ctx) ?: return ""
+        return EvalCodeSyntax.codeOf(ctx.start.inputStream.getText(Interval.of(span.first, span.last)))
     }
 }

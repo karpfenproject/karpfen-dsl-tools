@@ -15,6 +15,7 @@
  */
 package io.karpfen.dsl.printer.kstates
 
+import io.karpfen.dsl.parser.ConditionClauses
 import io.karpfen.dsl.printer.CodeWriter
 import io.karpfen.dsl.states.conditions.CompositeCondition
 import io.karpfen.dsl.states.conditions.Condition
@@ -23,10 +24,9 @@ import io.karpfen.dsl.states.conditions.EventCondition
 import io.karpfen.dsl.states.conditions.ValueCondition
 
 /**
- * Writes the `CONDITION` block of a transition with one clause per line.
- *
- * A [CompositeCondition] contributes its clauses in order. A transition without a `CONDITION` block reads as
- * the condition `VALUE("true")`, so that condition on its own is written as no block at all.
+ * Writes the `CONDITION` block of a transition with one clause per line, the clauses that [ConditionClauses] takes
+ * the condition apart into: a [CompositeCondition] contributes its clauses in order, and the always-true condition
+ * of a transition without a `CONDITION` block is written as no block at all.
  *
  * @param syntax The shared pieces of KStates syntax.
  */
@@ -38,17 +38,11 @@ internal class ConditionWriter(private val syntax: KstatesSyntax) {
      * @throws IllegalArgumentException If a clause is of a kind KStates cannot express.
      */
     fun write(condition: Condition, writer: CodeWriter) {
-        val clauses = if (isUnconditional(condition)) emptyList() else clausesOf(condition)
+        val clauses = ConditionClauses.clausesOf(condition)
         if (clauses.isNotEmpty()) {
             writer.block("CONDITION") { clauses.forEach { writer.line(clauseText(it, writer)) } }
         }
     }
-
-    private fun isUnconditional(condition: Condition): Boolean =
-        condition is ValueCondition && condition.boolVariable == UNCONDITIONAL_VARIABLE
-
-    private fun clausesOf(condition: Condition): List<Condition> =
-        if (condition is CompositeCondition) condition.clauses.flatMap { clausesOf(it) } else listOf(condition)
 
     /**
      * Returns one clause: `EVENT("domain", "event")`, `VALUE("variable")` or an `EVAL` block.
@@ -60,11 +54,5 @@ internal class ConditionWriter(private val syntax: KstatesSyntax) {
         is ValueCondition -> "VALUE(${syntax.quote(clause.boolVariable)})"
         is EvalCondition -> syntax.eval(clause.code, writer)
         else -> throw IllegalArgumentException("Unsupported kind of condition: ${clause.conditionType}")
-    }
-
-    private companion object {
-
-        /** The variable of the condition that KStates reads for a transition without a `CONDITION` block. */
-        const val UNCONDITIONAL_VARIABLE = "true"
     }
 }

@@ -18,6 +18,7 @@ package io.karpfen.dsl.reader.kmodel
 import io.karpfen.dsl.diagnostics.DiagnosticCode
 import io.karpfen.dsl.instance.ClassTypeListPropertyObject
 import io.karpfen.dsl.instance.DataObject
+import io.karpfen.dsl.parser.KmodelSemantics
 import io.karpfen.dsl.reader.ReadingSession
 
 /**
@@ -38,11 +39,10 @@ internal class KnowsResolver(
 ) {
 
     /**
-     * Resolves [links] against [objects]; of several objects with the same id, the last one wins, and objects
-     * with an empty id cannot be referred to.
+     * Resolves [links] against those of [objects] that can be referred to, see [KmodelSemantics.referableById].
      */
     fun resolve(links: List<PendingLink>, objects: Collection<DataObject>) {
-        val objectsById = objects.filter { it.id.isNotEmpty() }.associateBy { it.id }
+        val objectsById = KmodelSemantics.referableById(objects)
         for (link in links) {
             val target = objectsById[link.reference.objectId]
             when {

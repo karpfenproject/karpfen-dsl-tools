@@ -25,7 +25,7 @@ All code lives below the package `io.karpfen.dsl`; the KDoc on the declarations 
 | Package | Content |
 | --- | --- |
 | `io.karpfen.dsl.grammar.kmeta`, `.kmodel`, `.kstates` | Lexers, parsers and visitors that the build generates from the grammars in `src/main/antlr` |
-| `io.karpfen.dsl.parser` | File parsers that turn text into a syntax-level form (`KmetaFile`, `KmodelFile`, `KstatesFile`), `LoggingSyntaxErrorListener`, and the syntax rules the converters, readers and printers share, such as `StringLiteralSyntax` |
+| `io.karpfen.dsl.parser` | File parsers that turn text into a syntax-level form (`KmetaFile`, `KmodelFile`, `KstatesFile`), `LoggingSyntaxErrorListener`, and the one home of each language rule that the converters, readers and printers share, such as `StringLiteralSyntax`, `ConditionClauses` and `KmodelSemantics` |
 | `io.karpfen.dsl.dsl.textual` | The converters `KmetaDSLConverter`, `KmodelDSLConverter`, `KstatesDSLConverter` and `JsonToModelConverter`, the usual entry points |
 | `io.karpfen.dsl.reader`, `.kmeta`, `.kmodel`, `.kstates` | The readers `KmetaReader`, `KmodelReader` and `KstatesReader`, which read text without throwing, behind the interface `TextReader`, and their `ParseResult` |
 | `io.karpfen.dsl.diagnostics` | `Diagnostic`, the problem a reader reports, with its `Severity` and its stable `DiagnosticCode` |

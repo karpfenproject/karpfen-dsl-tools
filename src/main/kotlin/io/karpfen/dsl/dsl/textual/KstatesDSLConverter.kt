@@ -152,19 +152,10 @@ object KstatesDSLConverter {
     }
 
     /**
-     * Converts the ordered clauses of a CONDITION block into a single [Condition].
-     *
-     * No clauses means an unconditional transition (always true). A single clause keeps its leaf type,
-     * so existing single-condition state machines parse exactly as before. Several clauses become a
-     * [CompositeCondition] that is evaluated in order with all clauses required to hold.
+     * Converts the ordered clauses of a CONDITION block into a single [Condition], see [ConditionClauses].
      */
-    private fun convertCondition(clauses: List<ParsedCondition>): Condition {
-        return when {
-            clauses.isEmpty() -> ValueCondition("true")
-            clauses.size == 1 -> convertLeafCondition(clauses.first())
-            else -> CompositeCondition(clauses.map { convertLeafCondition(it) })
-        }
-    }
+    private fun convertCondition(clauses: List<ParsedCondition>): Condition =
+        ConditionClauses.conditionOf(clauses.map { convertLeafCondition(it) })
 
     private fun convertLeafCondition(condition: ParsedCondition): Condition {
         return when (condition) {

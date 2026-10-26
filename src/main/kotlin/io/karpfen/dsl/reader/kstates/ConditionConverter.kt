@@ -16,6 +16,7 @@
 package io.karpfen.dsl.reader.kstates
 
 import io.karpfen.dsl.grammar.kstates.KstatesParser
+import io.karpfen.dsl.parser.ConditionClauses
 import io.karpfen.dsl.reader.ReadingSession
 import io.karpfen.dsl.reader.containsSyntaxError
 import io.karpfen.dsl.reader.presentToken
@@ -27,11 +28,10 @@ import io.karpfen.dsl.states.conditions.EventCondition
 import io.karpfen.dsl.states.conditions.ValueCondition
 
 /**
- * Converts KStates `CONDITION` blocks into a single [Condition] the way the throwing converter does, and records
- * where each clause is written.
+ * Converts KStates `CONDITION` blocks into a single [Condition] the way the throwing converter does, see
+ * [ConditionClauses], and records where each clause is written and where a [CompositeCondition] is written.
  *
- * No clause means an unconditional transition, one clause keeps its own condition, several clauses become a
- * [CompositeCondition]. A clause that contains a syntax error is left out.
+ * A clause that contains a syntax error is left out.
  *
  * @param session The read the conversion belongs to.
  * @param evalBodies Reads the code of `EVAL` clauses.
@@ -46,14 +46,10 @@ internal class ConditionConverter(
      */
     fun convert(block: KstatesParser.Condition_blockContext?): Condition {
         if (block == null) {
-            return alwaysTrue()
+            return ConditionClauses.alwaysTrue()
         }
         val clauses = block.condition_clause().mapNotNull { convertClause(it) }
-        return when (clauses.size) {
-            0 -> alwaysTrue()
-            1 -> clauses.single()
-            else -> CompositeCondition(clauses).also { session.record(it, block) }
-        }
+        return ConditionClauses.conditionOf(clauses).also { if (it is CompositeCondition) session.record(it, block) }
     }
 
     private fun convertClause(clause: KstatesParser.Condition_clauseContext): Condition? {
@@ -75,9 +71,4 @@ internal class ConditionConverter(
         val keyToken = value.presentToken(KstatesParser.STRING) ?: return null
         return ValueCondition(unquoted(keyToken)).also { session.record(it, clause, keyToken) }
     }
-
-    /**
-     * Returns the condition of a transition without condition, which has no location.
-     */
-    private fun alwaysTrue(): Condition = ValueCondition("true")
 }

@@ -19,13 +19,13 @@ import io.karpfen.dsl.diagnostics.DiagnosticCode
 import io.karpfen.dsl.instance.SimpleAtomicPropertyObject
 import io.karpfen.dsl.instance.SimpleListPropertyObject
 import io.karpfen.dsl.instance.SimplePropertyObject
-import io.karpfen.dsl.meta.SimplePropertyType
+import io.karpfen.dsl.parser.KmodelSemantics
 import io.karpfen.dsl.reader.ReadingSession
 
 /**
  * Turns the checked `prop` statements of one object into its [SimplePropertyObject]s, the way the throwing
- * converter does: the statements of one key form a single value, or a list if there are several of them or
- * the property is a list.
+ * converter does: the statements of one key form a single value or a list, and each value is read by the type of
+ * its property, see [KmodelSemantics].
  *
  * A value that is not a number for a number property is reported and left out.
  *
@@ -47,10 +47,10 @@ internal class PropertyAssignments(private val session: ReadingSession) {
         if (valued.isEmpty()) {
             return null
         }
-        val propertyObject = if (valued.size == 1 && !property.isList) {
-            SimpleAtomicPropertyObject(property, key, valued.single().second)
-        } else {
+        val propertyObject = if (KmodelSemantics.formsList(valued.size, property.isList)) {
             SimpleListPropertyObject(property, key, valued.map { it.second }.toMutableList())
+        } else {
+            SimpleAtomicPropertyObject(property, key, valued.single().second)
         }
         for ((statement, _) in valued) {
             session.record(propertyObject, statement.context, statement.keyToken)
@@ -58,18 +58,12 @@ internal class PropertyAssignments(private val session: ReadingSession) {
         return propertyObject
     }
 
-    private fun valueOf(statement: PropStatement): Any? = when (statement.property.propertyType) {
-        SimplePropertyType.STRING -> statement.value
-        SimplePropertyType.NUMBER -> numberOf(statement)
-        SimplePropertyType.BOOLEAN -> statement.value.toBoolean()
-    }
-
     /**
-     * Parses the value of [statement] the way the throwing converter does, with [String.toDouble], and reports
-     * a value it cannot parse.
+     * Reads the value of [statement] the way the throwing converter does, and reports a value that is not a number
+     * for a number property.
      */
-    private fun numberOf(statement: PropStatement): Double? = try {
-        statement.value.toDouble()
+    private fun valueOf(statement: PropStatement): Any? = try {
+        KmodelSemantics.valueOf(statement.property.propertyType, statement.value)
     } catch (notANumber: NumberFormatException) {
         session.report(
             DiagnosticCode.INVALID_NUMBER,

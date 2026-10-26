@@ -16,6 +16,7 @@
 package io.karpfen.dsl.reader.kstates
 
 import io.karpfen.dsl.grammar.kstates.KstatesParser
+import io.karpfen.dsl.parser.EvalCodeSyntax
 import io.karpfen.dsl.reader.ReadingSession
 import io.karpfen.dsl.reader.presentToken
 import io.karpfen.dsl.source.SourceRange
@@ -29,8 +30,7 @@ import io.karpfen.dsl.source.SourceRange
 internal class EvalBody(val code: String, val codeRange: SourceRange)
 
 /**
- * Reads the code of `EVAL { ... }` statements the way the throwing converter does: the source text from the
- * first to the last token between the braces, comments and whitespace in between included, trimmed.
+ * Reads the code of `EVAL { ... }` statements the way the throwing converter does, see [EvalCodeSyntax].
  *
  * @param session The read the statements belong to.
  */
@@ -41,15 +41,14 @@ internal class EvalBodies(private val session: ReadingSession) {
      */
     fun read(statement: KstatesParser.Eval_statementContext): EvalBody {
         val locator = session.locator
-        val block = statement.eval_code_block()
-        val first = block?.start
-        val last = block?.stop
-        if (block == null || block.childCount == 0 || first == null || last == null || last.stopIndex < first.startIndex) {
+        val span = EvalCodeSyntax.spanOf(statement.eval_code_block())
+        if (span == null) {
             val brace = statement.presentToken(KstatesParser.LBRACE)
             val emptyCode = brace?.let { locator.rangeOf(it).end } ?: locator.rangeOf(statement).start
             return EvalBody("", SourceRange(emptyCode, emptyCode))
         }
-        val codeRange = locator.trimmed(locator.rangeOfCodePoints(first.startIndex, last.stopIndex + 1))
+        val bodyRange = locator.rangeOfCodePoints(span.first, span.last + 1)
+        val codeRange = locator.narrowed(bodyRange, EvalCodeSyntax::codeBoundsIn)
         return EvalBody(locator.textOf(codeRange), codeRange)
     }
 }

@@ -87,19 +87,11 @@ internal class TokenLocator(private val sourceText: SourceText, private val inpu
         innerRangeOf(quoted).takeIf { it.length > 0 } ?: rangeOf(quoted)
 
     /**
-     * Returns the part of [range] that remains when whitespace is trimmed from both of its ends, the way
-     * [String.trim] trims.
+     * Returns the part of [range] that [bounds] finds: given the text being read and the start inclusive and the end
+     * exclusive of [range] in it, [bounds] returns those of the part.
      */
-    fun trimmed(range: SourceRange): SourceRange {
-        val text = sourceText.text
-        var start = range.start.offset
-        var end = range.end.offset
-        while (start < end && text[start].isWhitespace()) {
-            start += 1
-        }
-        while (end > start && text[end - 1].isWhitespace()) {
-            end -= 1
-        }
+    fun narrowed(range: SourceRange, bounds: (CharSequence, Int, Int) -> Pair<Int, Int>): SourceRange {
+        val (start, end) = bounds(sourceText.text, range.start.offset, range.end.offset)
         return sourceText.rangeOf(start, end)
     }
 

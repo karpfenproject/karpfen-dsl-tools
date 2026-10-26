@@ -20,13 +20,13 @@ import io.karpfen.dsl.instance.ClassTypeListPropertyObject
 import io.karpfen.dsl.instance.ClassTypePropertyObject
 import io.karpfen.dsl.instance.ObjectReference
 import io.karpfen.dsl.meta.ClassTypeProperty
+import io.karpfen.dsl.parser.KmodelSemantics
 import io.karpfen.dsl.reader.ReadingSession
 import io.karpfen.dsl.source.SourceLocation
 
 /**
  * Turns the checked `has` and `knows` statements of one object into its [ClassTypePropertyObject]s, the way the
- * throwing converter does: the statements of one key form a single reference, or a list if there are several
- * of them or the relation is a list.
+ * throwing converter does: the statements of one key form a single reference or a list, see [KmodelSemantics].
  *
  * A `has` reference points to its embedded object right away; a `knows` reference names its object by id and
  * is handed to [pendingLinks] for resolution.
@@ -80,9 +80,9 @@ internal class RelationAssignments(
         key: String,
         references: List<ObjectReference>
     ): ClassTypePropertyObject =
-        if (references.size == 1 && !relation.isList) {
-            ClassTypeAtomicPropertyObject(relation, key, references.single())
-        } else {
+        if (KmodelSemantics.formsList(references.size, relation.isList)) {
             ClassTypeListPropertyObject(relation, key, references.toMutableList())
+        } else {
+            ClassTypeAtomicPropertyObject(relation, key, references.single())
         }
 }
