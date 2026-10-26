@@ -90,13 +90,13 @@ The build needs JDK 21 and uses the Gradle wrapper:
 ./gradlew build
 ```
 
-The lexers and parsers are not checked in: the build generates them from the grammars into `build/generated-src/antlr`,
-and the package of each grammar comes from the `@header` in its `.g4` file.
-The build is configuration-cache compatible and can also be included as a subproject or as an included build of
-another Gradle build, as karpfen-runtime and the karpfen IDE do; there `check` runs the tests only and needs neither
-git nor the history of this repository. The workflow in `.github/workflows/build.yml` builds and tests every push and
-pull request on JDK 21. The doc blocks in `build.gradle` and in the scripts it applies from `gradle/` explain how the build is put
-together.
+The lexers and parsers are not checked in: the build generates them from the grammars into
+`build/generated-src/antlr`, and the package of each grammar comes from the `@header` in its `.g4` file. The build is
+configuration-cache compatible and can also be included as a subproject or as an included build of another Gradle
+build, as karpfen-runtime and the karpfen IDE do; there `check` runs the tests only and needs neither git nor the
+history of this repository. The workflow in `.github/workflows/build.yml` builds and tests every push and pull request
+on JDK 21, configures publishing without publishing, and builds the library as a subproject of another build. The doc
+blocks in `build.gradle` and in the scripts it applies from `gradle/` explain how the build is put together.
 
 Two more checks of what this repository delivers are part of `check`, and therefore of `build`, in its own build only.
 The task `compatibilityTest` holds the converters to the behaviour of version 1.0: it converts the examples and
