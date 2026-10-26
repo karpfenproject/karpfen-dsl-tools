@@ -101,6 +101,28 @@ tasks.named('test', Test) {
 }
 
 /**
+ * The files of the project folder that the tests read from disk rather than from their classpath: the example
+ * documents, and the sources, scripts and grammars whose license headers and comments the tests check.
+ */
+def filesTheTestsRead = files(
+        'example',
+        'build.gradle',
+        'settings.gradle',
+        fileTree('gradle') { include '**/*.gradle' },
+        fileTree('src') { include '**/*.kt', '**/*.kts', '**/*.g4', '**/*.kmeta', '**/*.kmodel', '**/*.kstates' }
+)
+
+/**
+ * The files the tests read are inputs of every test task, so that a change of one of them runs the tests again instead
+ * of taking their results as up to date or from the build cache.
+ */
+tasks.withType(Test).configureEach {
+    inputs.files(filesTheTestsRead)
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+            .withPropertyName('filesTheTestsRead')
+}
+
+/**
  * The comparison of the converters with those of version 1.0, in the task `compatibilityTest`.
  */
 apply from: 'gradle/compatibility-test.gradle'
