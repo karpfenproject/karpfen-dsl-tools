@@ -38,7 +38,9 @@ import org.slf4j.LoggerFactory
  * not numbers for number properties, and `knows` references to missing objects or to objects of another class
  * type; it warns about embedded objects of another class type than their relation declares. A text with a syntax
  * error gets no report of references to missing objects, since the parser may have lost an object while it
- * recovered.
+ * recovered. Where a syntax error in the braces may have given the statements of one object to another, see
+ * [StatementOwnership], those statements get no report of their own: they are read as far as they match the class
+ * type of the object they landed in.
  *
  * A partial model leaves out what it cannot build: an object without a known class type, with its whole
  * content, and every statement with an unknown key, a wrong kind of relation or an invalid value. An
@@ -52,19 +54,24 @@ import org.slf4j.LoggerFactory
  */
 class KmodelReader(private val metamodel: Metamodel) : TextReader<Model> {
 
+    /** Receives the failures of reads, see [TextReader]. */
     private val logger = LoggerFactory.getLogger(KmodelReader::class.java)
 
     override fun read(text: String): ParseResult<Model> =
         ReadingSession.read(LexerInput.withIndentTrimmed(text), logger) { session ->
+            val file = parse(session)
             val pendingLinks = PendingLinks()
-            val converter = DataObjectConverter(session, metamodel, pendingLinks)
-            val root = parse(session).make_object_block()?.let { converter.convert(it) }
+            val converter = DataObjectConverter(session, metamodel, pendingLinks, StatementOwnership.of(file))
+            val root = file.make_object_block()?.let { converter.convert(it) }
             val rootObjects = listOfNotNull(root).toMutableList()
             val resolver = KnowsResolver(session, reportsMissingObjects = !session.hasSyntaxErrors())
             resolver.resolve(pendingLinks.all, referableObjects(rootObjects, converter.detachedObjects))
             Model(rootObjects, metamodel)
         }
 
+    /**
+     * Parses the text of [session], whose lexer and parser report their syntax errors to it.
+     */
     private fun parse(session: ReadingSession): KmodelParser.Kmodel_fileContext {
         val lexer = session.reportingSyntaxErrors(KmodelLexer(session.charStream()))
         val parser = session.reportingSyntaxErrors(KmodelParser(CommonTokenStream(lexer)))

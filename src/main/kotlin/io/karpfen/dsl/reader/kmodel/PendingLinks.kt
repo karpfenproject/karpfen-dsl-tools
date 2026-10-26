@@ -26,12 +26,15 @@ import io.karpfen.dsl.source.SourceRange
  * @property relation The `knows` relation of the owner the reference belongs to.
  * @property ownerKey The key of the object that owns [relation].
  * @property targetRange Where the id is written.
+ * @property belongsToOwner False if the statement of the reference may belong to another object than the owner, see
+ * [StatementOwnership], so that the problems of the reference are not reported.
  */
 internal class PendingLink(
     val reference: ObjectReference,
     val relation: ClassTypePropertyObject,
     val ownerKey: String,
-    val targetRange: SourceRange
+    val targetRange: SourceRange,
+    val belongsToOwner: Boolean
 )
 
 /**
@@ -39,6 +42,7 @@ internal class PendingLink(
  */
 internal class PendingLinks {
 
+    /** The links added so far, in text order. */
     private val links = mutableListOf<PendingLink>()
 
     /** Every link added so far. */

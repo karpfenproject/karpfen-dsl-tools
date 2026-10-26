@@ -37,7 +37,8 @@ import org.slf4j.LoggerFactory
  * with its common indentation trimmed, see [LexerInput.withIndentTrimmed]. The reader reports syntax errors, a
  * `prop` of a type other than `string`, `number` and `boolean` at that type, a relation to an unknown class
  * type at the type name, and a text without any type, which yields no model. A text with a syntax error gets no
- * report of unknown class types, since the parser may have lost the definition of a type while it recovered.
+ * report of unknown class types and none of a missing type, since the parser may have lost the definition of a type
+ * while it recovered; it yields no model either if no type is left.
  *
  * In a partial metamodel, a type without a name, a rule without key or type, and a `prop` of an unknown type
  * are left out. A relation to an unknown class type stays in, with a [io.karpfen.dsl.meta.ClassTypeReference]
@@ -51,6 +52,7 @@ class KmetaReader(baseTypes: List<ClassType> = emptyList()) : TextReader<Metamod
 
     private val baseTypes = baseTypes.toList()
 
+    /** Receives the failures of reads, see [TextReader]. */
     private val logger = LoggerFactory.getLogger(KmetaReader::class.java)
 
     override fun read(text: String): ParseResult<Metamodel> =
@@ -61,6 +63,9 @@ class KmetaReader(baseTypes: List<ClassType> = emptyList()) : TextReader<Metamod
             metamodelOf(classTypes, session)
         }
 
+    /**
+     * Parses the text of [session], whose lexer and parser report their syntax errors to it.
+     */
     private fun parse(session: ReadingSession): KmetaParser.Kmeta_fileContext {
         val lexer = session.reportingSyntaxErrors(KmetaLexer(session.charStream()))
         val parser = session.reportingSyntaxErrors(KmetaParser(CommonTokenStream(lexer)))
@@ -68,18 +73,20 @@ class KmetaReader(baseTypes: List<ClassType> = emptyList()) : TextReader<Metamod
     }
 
     /**
-     * Builds the metamodel of [classTypes] and the base types, see [KmetaSemantics]; reports a text without types
-     * and returns null for it.
+     * Builds the metamodel of [classTypes] and the base types, see [KmetaSemantics]; returns null for a text without
+     * types and reports it, unless a syntax error may have cost the types.
      */
     private fun metamodelOf(classTypes: List<ClassType>, session: ReadingSession): Metamodel? {
-        if (classTypes.isEmpty()) {
+        if (classTypes.isNotEmpty()) {
+            return KmetaSemantics.metamodelOf(classTypes, baseTypes)
+        }
+        if (!session.hasSyntaxErrors()) {
             session.report(
                 DiagnosticCode.NO_TYPES,
                 session.locator.startOfText(),
                 "The text defines no type; a KMeta text needs at least one, and its last type is the root type"
             )
-            return null
         }
-        return KmetaSemantics.metamodelOf(classTypes, baseTypes)
+        return null
     }
 }

@@ -27,7 +27,8 @@ import io.karpfen.dsl.reader.ReadingSession
  *
  * A reference is resolved in place, so its location in the source map stays valid. An unresolvable entry of a
  * list is removed from the list, so that the list can still be read; a single unresolvable reference stays,
- * pointing to no object.
+ * pointing to no object. A reference whose statement may belong to another object, see [StatementOwnership], is
+ * resolved the same way, but its problems are not reported.
  *
  * @param session The read the references belong to.
  * @param reportsMissingObjects False to leave out the report of a reference to a missing object, for a text whose
@@ -67,10 +68,11 @@ internal class KnowsResolver(
     }
 
     /**
-     * Reports why [link] cannot be resolved, unless [code] is null, and takes its reference out of a list relation.
+     * Reports why [link] cannot be resolved, unless [code] is null or the statement of the link may belong to another
+     * object, and takes its reference out of a list relation.
      */
     private fun drop(link: PendingLink, code: DiagnosticCode?, message: String) {
-        code?.let { session.report(it, link.targetRange, message) }
+        code?.takeIf { link.belongsToOwner }?.let { session.report(it, link.targetRange, message) }
         val relation = link.relation
         if (relation is ClassTypeListPropertyObject) {
             relation.removeById(link.reference.objectId)

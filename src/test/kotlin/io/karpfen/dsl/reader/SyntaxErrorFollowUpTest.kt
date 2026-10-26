@@ -25,9 +25,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Tests that the checks which look for something in the whole text, the initial state of a state machine, the
- * target type of a relation and the object a `knows` names, report nothing where a syntax error may have made the
- * parser lose what they look for; the syntax error is reported instead.
+ * Tests that the checks a syntax error may mislead report nothing; the syntax error is reported instead. These are the
+ * checks which look for something in the whole text, the initial state of a state machine, the types of a metamodel,
+ * the target type of a relation and the object a `knows` names, where the parser may have lost what they look for,
+ * and the checks of KModel statements against the class type of their object, where a syntax error in the braces
+ * may have put the statements into another object.
  */
 class SyntaxErrorFollowUpTest {
 
@@ -92,7 +94,98 @@ class SyntaxErrorFollowUpTest {
         assertEquals(listOf(DiagnosticCode.UNRESOLVED_REFERENCE), missingCodes)
     }
 
+    /**
+     * A typo in the keyword of the only type, or a type whose name is still being typed, makes the parser drop the
+     * type; that the text then defines no type is no problem of its own. Without a syntax error it is one.
+     */
+    @Test
+    fun `a type lost to a syntax error leaves the missing types unreported`() {
+        val texts = listOf("typ \"A\" \"d\" { prop(\"x\", \"number\") }", "type", "type { }")
+        texts.forEach { text ->
+            val result = KmetaReader().read(text)
+            val codes = result.diagnostics.map { it.code }
+            assertTrue(codes.isNotEmpty() && DiagnosticCode.NO_TYPES !in codes, "$codes for $text")
+            assertEquals(null, result.model, text)
+        }
+        assertEquals(listOf(DiagnosticCode.NO_TYPES), KmetaReader().read("// no type\n").diagnostics.map { it.code })
+    }
+
+    /**
+     * An object block that is not closed yet takes in the statements that follow it in its parent; they are no
+     * unknown properties or relations of the object they landed in. With the block closed, the text has no problem.
+     */
+    @Test
+    fun `statements an unclosed object takes in are not checked against its class type`() {
+        val unclosed = robotRoom(
+            "has(\"robots\") -> make object \"r1\":\"Robot\" {\n    prop(\"name\") -> \"Robby\"",
+            "prop(\"area\") -> \"12\"\nprop(\"label\") -> \"lab\"\nknows(\"door\") -> \"r1\""
+        )
+        val closed = unclosed.replace("\"Robby\"", "\"Robby\" }")
+
+        val codes = KmodelReader(robotRoomMetamodel).read(unclosed).diagnostics.map { it.code }
+
+        assertEquals(listOf(DiagnosticCode.SYNTAX_ERROR), codes, unclosed)
+        assertEquals(emptyList(), KmodelReader(robotRoomMetamodel).read(closed).diagnostics, closed)
+    }
+
+    /**
+     * An object closed before the block that is not closed keeps the checks of its statements, and so does the block
+     * that lacks the closing brace.
+     */
+    @Test
+    fun `objects closed before an unclosed one are still checked`() {
+        val text = robotRoom(
+            "prop(\"aera\") -> \"12\"\n" +
+                "has(\"robots\") -> make object \"r0\":\"Robot\" { prop(\"nmae\") -> \"x\" }\n" +
+                "has(\"robots\") -> make object \"r1\":\"Robot\" {",
+            "prop(\"label\") -> \"lab\""
+        )
+
+        val diagnostics = KmodelReader(robotRoomMetamodel).read(text).diagnostics
+
+        assertEquals(
+            listOf("SYNTAX_ERROR", "UNKNOWN_PROPERTY aera", "UNKNOWN_PROPERTY nmae"),
+            diagnostics.map { if (it.code == DiagnosticCode.SYNTAX_ERROR) "SYNTAX_ERROR" else "${it.code} ${it.range.textIn(text)}" }
+                .sorted(),
+            text
+        )
+    }
+
+    /**
+     * A closing brace too many ends an object early and hands its remaining statements to the objects around it,
+     * whose class types do not define them.
+     */
+    @Test
+    fun `statements handed out by a closing brace too many are not checked`() {
+        val text = robotRoom(
+            "has(\"robots\") -> make object \"r1\":\"Robot\" {\n    prop(\"on\") -> \"true\" }\n" +
+                "    prop(\"name\") -> \"Robby\"\n}",
+            "prop(\"area\") -> \"12\""
+        )
+
+        val codes = KmodelReader(robotRoomMetamodel).read(text).diagnostics.map { it.code }.distinct()
+
+        assertEquals(listOf(DiagnosticCode.SYNTAX_ERROR), codes, text)
+    }
+
+    /**
+     * Returns a state machine with the lines [states] in its `STATES` block and [transitions] in its `TRANSITIONS`
+     * block.
+     */
     private fun machine(states: String, transitions: String = ""): String =
         "STATEMACHINE ATTACHED TO \"Robot\" {\n    STATES {\n" + states.prependIndent("        ") +
             "\n    }\n    TRANSITIONS {\n" + transitions.prependIndent("        ") + "\n    }\n}\n"
+
+    /**
+     * Returns a room of [robotRoomMetamodel] with the lines [statements] followed by the lines [moreStatements].
+     */
+    private fun robotRoom(statements: String, moreStatements: String): String =
+        "make object \"lab\":\"Room\" {\n" + "$statements\n$moreStatements".prependIndent("    ") + "\n}\n"
+
+    /** The metamodel of [robotRoom]. */
+    private val robotRoomMetamodel = KmetaDSLConverter.parseKmetaString(
+        "type \"Robot\" \"a robot\" { prop(\"name\", \"string\") prop(\"on\", \"boolean\") }\n" +
+            "type \"Room\" \"a room\" { prop(\"area\", \"number\") prop(\"label\", \"string\") " +
+            "has(\"robots\", list(\"Robot\")) knows(\"door\", \"Robot\") }"
+    )
 }

@@ -18,21 +18,17 @@ package io.karpfen.dsl.reader.kmodel
 import io.karpfen.dsl.diagnostics.DiagnosticCode
 import io.karpfen.dsl.grammar.kmodel.KmodelParser
 import io.karpfen.dsl.instance.DataObject
-import io.karpfen.dsl.meta.AssociationType
 import io.karpfen.dsl.meta.ClassType
-import io.karpfen.dsl.meta.ClassTypeProperty
 import io.karpfen.dsl.meta.Metamodel
-import io.karpfen.dsl.parser.KmetaVocabulary
 import io.karpfen.dsl.parser.StringLiteralSyntax
 import io.karpfen.dsl.reader.ReadingSession
 import io.karpfen.dsl.reader.presentToken
 import io.karpfen.dsl.reader.presentTokens
-import io.karpfen.dsl.source.SourceRange
 import org.antlr.v4.runtime.tree.TerminalNode
 
 /**
  * Converts the `make object` blocks of a KModel parse tree into [DataObject]s of [metamodel], checks every
- * statement against the class type of its object and records where each object is written.
+ * statement against the class type of its object with a [StatementMatcher] and records where each object is written.
  *
  * The `knows` references of the objects are left unresolved; they wait in the [PendingLinks] for the
  * [KnowsResolver]. An object that cannot become part of the model is still converted, so that the problems
@@ -41,17 +37,22 @@ import org.antlr.v4.runtime.tree.TerminalNode
  * @param session The read the conversion belongs to.
  * @param metamodel The metamodel that defines the class types.
  * @param pendingLinks Receives the unresolved `knows` references.
+ * @param ownership Tells which blocks may hold the statements of other objects, whose problems are not reported.
  */
 internal class DataObjectConverter(
     private val session: ReadingSession,
     private val metamodel: Metamodel,
-    pendingLinks: PendingLinks
+    pendingLinks: PendingLinks,
+    private val ownership: StatementOwnership
 ) {
 
+    /** Turns the matched `prop` statements of an object into its property values. */
     private val propertyAssignments = PropertyAssignments(session)
 
+    /** Turns the matched `has` and `knows` statements of an object into its relation values. */
     private val relationAssignments = RelationAssignments(session, pendingLinks)
 
+    /** The objects converted so far that are not part of the model, in text order. */
     private val detached = mutableListOf<DataObject>()
 
     /** The objects converted so far whose parent object or relation was left out of the model, in text order. */
@@ -81,7 +82,7 @@ internal class DataObjectConverter(
 
     /**
      * Builds the object of [block], which has the class type [classType] and the [key] written as [keyToken],
-     * from its statements.
+     * from the statements that match its class type.
      */
     private fun objectOf(
         block: KmodelParser.Make_object_blockContext,
@@ -89,13 +90,14 @@ internal class DataObjectConverter(
         keyToken: TerminalNode,
         key: String
     ): DataObject {
+        val matcher = StatementMatcher(session, classType, key, ownership.ownsItsStatements(block))
         val props = mutableListOf<PropStatement>()
         val embeddings = mutableListOf<HasStatement>()
         val links = mutableListOf<KnowsStatement>()
         for (statement in block.statement()) {
-            statement.prop_statement()?.let { propStatementOf(it, classType, key) }?.let { props.add(it) }
-            statement.has_statement()?.let { hasStatementOf(it, classType, key) }?.let { embeddings.add(it) }
-            statement.knows_statement()?.let { knowsStatementOf(it, classType, key) }?.let { links.add(it) }
+            statement.prop_statement()?.let { matcher.propStatementOf(it) }?.let { props.add(it) }
+            statement.has_statement()?.let { hasStatementOf(it, matcher) }?.let { embeddings.add(it) }
+            statement.knows_statement()?.let { matcher.knowsStatementOf(it) }?.let { links.add(it) }
         }
         val relations = relationAssignments.embed(embeddings) + relationAssignments.link(links, key)
         val dataObject = DataObject(classType, key, propertyAssignments.assign(props), relations.toMutableList())
@@ -103,6 +105,10 @@ internal class DataObjectConverter(
         return dataObject
     }
 
+    /**
+     * Returns the class type that [classToken] names for the object with [key]; reports and returns null if the
+     * metamodel has no such class type.
+     */
     private fun classTypeOf(classToken: TerminalNode, key: String): ClassType? {
         val className = signatureText(classToken)
         val classType = metamodel.types.find { it.name == className }
@@ -125,119 +131,28 @@ internal class DataObjectConverter(
         }
     }
 
-    private fun propStatementOf(
-        statement: KmodelParser.Prop_statementContext,
-        classType: ClassType,
-        objectKey: String
-    ): PropStatement? {
-        val strings = statement.presentTokens(KmodelParser.STRING)
-        val keyToken = strings.getOrNull(0) ?: return null
-        val valueToken = strings.getOrNull(1) ?: return null
-        val key = statementText(keyToken)
-        val property = classType.simpleProperties.find { it.key == key }
-        if (property == null) {
-            session.report(
-                DiagnosticCode.UNKNOWN_PROPERTY,
-                session.locator.problemRangeOf(keyToken),
-                "Class type '${classType.name}' has no property '$key' (object '$objectKey')"
-            )
-            return null
-        }
-        return PropStatement(statement, property, keyToken, valueToken)
-    }
-
     /**
-     * Converts the object a `has` statement embeds and checks the relation; the object becomes detached if the
-     * relation is not an embedding relation of [classType].
+     * Converts the object a `has` statement embeds and matches the statement with [matcher]; the object becomes
+     * detached if its key names no embedding relation of the class type.
      */
-    private fun hasStatementOf(
-        statement: KmodelParser.Has_statementContext,
-        classType: ClassType,
-        objectKey: String
-    ): HasStatement? {
+    private fun hasStatementOf(statement: KmodelParser.Has_statementContext, matcher: StatementMatcher): HasStatement? {
         val childBlock = statement.make_object_block()
         val child = childBlock?.let { convert(it) }
         val keyToken = statement.presentToken(KmodelParser.STRING)
-        val relation = keyToken?.let { relationOf(it, classType, objectKey, AssociationType.EMBEDDED) }
-        if (child == null) {
+        val relation = keyToken?.let { matcher.embeddingNamedBy(it) }
+        if (childBlock == null || child == null) {
             return null
         }
         if (keyToken == null || relation == null) {
             detached.add(child)
             return null
         }
-        if (child.ofType.name != relation.reference.classTypeName) {
-            session.report(
-                DiagnosticCode.EMBEDDED_TYPE_MISMATCH,
-                classNameRangeOf(childBlock),
-                "Relation '${relation.key}' of class type '${classType.name}' embeds a " +
-                    "'${relation.reference.classTypeName}', but object '${child.id}' is a '${child.ofType.name}'"
-            )
-        }
+        matcher.checkEmbeddedType(relation, child, childBlock)
         return HasStatement(statement, relation, keyToken, child)
-    }
-
-    private fun knowsStatementOf(
-        statement: KmodelParser.Knows_statementContext,
-        classType: ClassType,
-        objectKey: String
-    ): KnowsStatement? {
-        val strings = statement.presentTokens(KmodelParser.STRING)
-        val keyToken = strings.getOrNull(0) ?: return null
-        val targetToken = strings.getOrNull(1) ?: return null
-        val relation = relationOf(keyToken, classType, objectKey, AssociationType.LINK) ?: return null
-        return KnowsStatement(statement, relation, keyToken, targetToken)
-    }
-
-    /**
-     * Finds the relation [keyToken] names in [classType] and checks that it is of the [expectedKind]; reports
-     * and returns null otherwise.
-     */
-    private fun relationOf(
-        keyToken: TerminalNode,
-        classType: ClassType,
-        objectKey: String,
-        expectedKind: AssociationType
-    ): ClassTypeProperty? {
-        val key = statementText(keyToken)
-        val relation = classType.objectProperties.find { it.key == key }
-        val problemRange = session.locator.problemRangeOf(keyToken)
-        if (relation == null) {
-            session.report(
-                DiagnosticCode.UNKNOWN_RELATION,
-                problemRange,
-                "Class type '${classType.name}' has no relation '$key' (object '$objectKey')"
-            )
-            return null
-        }
-        if (relation.associationType != expectedKind) {
-            session.report(DiagnosticCode.WRONG_RELATION_KIND, problemRange, wrongKindMessage(relation, classType))
-            return null
-        }
-        return relation
-    }
-
-    private fun wrongKindMessage(relation: ClassTypeProperty, classType: ClassType): String {
-        val keyword = KmetaVocabulary.relationKeyword(relation.associationType)
-        val usage = when (relation.associationType) {
-            AssociationType.LINK -> "refer to an existing object with $keyword(\"${relation.key}\") -> \"id\""
-            AssociationType.EMBEDDED -> "embed an object with $keyword(\"${relation.key}\") -> make object"
-        }
-        return "'${relation.key}' is a $keyword relation of class type '${classType.name}'; $usage"
-    }
-
-    private fun classNameRangeOf(block: KmodelParser.Make_object_blockContext): SourceRange {
-        val classToken = block.object_signature()?.presentTokens(KmodelParser.STRING)?.getOrNull(1)
-        return classToken?.let { session.locator.problemRangeOf(it) } ?: session.locator.rangeOf(block)
     }
 
     /**
      * Returns the value of a string token of an object signature.
      */
     private fun signatureText(token: TerminalNode): String = StringLiteralSyntax.KMODEL_SIGNATURE.unquote(token.text)
-
-    /**
-     * Returns the value of a string token of a statement.
-     */
-    private fun statementText(token: TerminalNode): String = StringLiteralSyntax.KMODEL.unquote(token.text)
 }

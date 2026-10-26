@@ -29,12 +29,15 @@ import org.antlr.v4.runtime.tree.TerminalNode
  * @property property The property the key names.
  * @property keyToken The quoted key.
  * @property valueToken The quoted value.
+ * @property belongsToObject False if the statement may belong to another object, see [StatementOwnership], so that a
+ * problem of its value is not reported.
  */
 internal class PropStatement(
     val context: ParserRuleContext,
     val property: SimpleProperty,
     val keyToken: TerminalNode,
-    val valueToken: TerminalNode
+    val valueToken: TerminalNode,
+    val belongsToObject: Boolean
 ) {
 
     /** The key without quotes. */
@@ -73,12 +76,15 @@ internal class HasStatement(
  * @property relation The relation the key names.
  * @property keyToken The quoted key.
  * @property targetToken The quoted id of the object referred to.
+ * @property belongsToObject False if the statement may belong to another object, see [StatementOwnership], so that a
+ * problem of the object it refers to is not reported.
  */
 internal class KnowsStatement(
     val context: ParserRuleContext,
     val relation: ClassTypeProperty,
     val keyToken: TerminalNode,
-    val targetToken: TerminalNode
+    val targetToken: TerminalNode,
+    val belongsToObject: Boolean
 ) {
 
     /** The key without quotes. */
