@@ -18,7 +18,6 @@ package io.karpfen.dsl.reader.kmeta
 import io.karpfen.dsl.diagnostics.DiagnosticCode
 import io.karpfen.dsl.meta.ClassType
 import io.karpfen.dsl.meta.ClassTypeProperty
-import io.karpfen.dsl.parser.KmetaVocabulary
 import io.karpfen.dsl.reader.ReadingSession
 
 /**
@@ -54,7 +53,7 @@ internal class TargetTypeResolver(
 
     /** Reports that the target type of [relation] of [classType] is unknown, at the target type name. */
     private fun reportUnknownType(classType: ClassType, relation: ClassTypeProperty) {
-        val keyword = KmetaVocabulary.relationKeyword(relation.associationType)
+        val keyword = relation.associationType.keyword
         session.report(
             DiagnosticCode.UNKNOWN_TARGET_TYPE,
             session.problemRangeOf(relation.reference),

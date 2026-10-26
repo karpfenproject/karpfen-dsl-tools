@@ -22,9 +22,8 @@ import io.karpfen.dsl.states.actions.ActionOperationType
  * The syntax of KStates action rules that the parse visitor, the reader and the printer share: which operation a
  * rule names, the keyword an operation is written with, and the [Arity] each operation expects.
  *
- * `DROPLIST` and `DROPOBJ` take a path, `SETOBJ` and `APPENDOBJ` a source, a relation and a target, every other
- * operation a path and a value. A rule is written unary without a right side, binary with one string before its
- * right side and ternary with two.
+ * An operation expects the arity of its [ActionOperationType.operandCount]. A rule is written unary without a right
+ * side, binary with one string before its right side and ternary with two.
  */
 internal object ActionRuleSyntax {
 
@@ -54,13 +53,10 @@ internal object ActionRuleSyntax {
     fun keywordOf(operation: ActionOperationType): String = operation.name
 
     /**
-     * Returns the arity a rule of [operation] must be written with.
+     * Returns the arity a rule of [operation] must be written with, the one with its operand count.
      */
-    fun expectedArity(operation: ActionOperationType): Arity = when (operation) {
-        ActionOperationType.DROPLIST, ActionOperationType.DROPOBJ -> Arity.UNARY
-        ActionOperationType.SETOBJ, ActionOperationType.APPENDOBJ -> Arity.TERNARY
-        else -> Arity.BINARY
-    }
+    fun expectedArity(operation: ActionOperationType): Arity =
+        Arity.entries.single { it.operandCount == operation.operandCount }
 
     /**
      * Returns the arity of a rule written with [stringCount] strings before its right side, if [hasRightSide].

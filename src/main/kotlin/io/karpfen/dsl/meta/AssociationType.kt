@@ -17,11 +17,13 @@ package io.karpfen.dsl.meta
 
 /**
  * Kind of association between a class type and the class type one of its object properties points to.
+ *
+ * @property keyword the word by which KMeta declares a relation of this kind, and KModel writes it, such as `has`.
  */
-enum class AssociationType {
-    /** A reference to an object that lives elsewhere in the model and is found by its id, written as `knows` in KMeta. */
-    LINK,
+enum class AssociationType(val keyword: String) {
+    /** A reference to an object that lives elsewhere in the model and is found by its id, written as `knows`. */
+    LINK("knows"),
 
-    /** An object contained in the owning object, written as `has` in KMeta. */
-    EMBEDDED
+    /** An object contained in the owning object, written as `has`. */
+    EMBEDDED("has")
 }

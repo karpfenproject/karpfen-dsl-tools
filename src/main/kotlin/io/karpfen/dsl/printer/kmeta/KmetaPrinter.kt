@@ -19,7 +19,6 @@ import io.karpfen.dsl.meta.ClassType
 import io.karpfen.dsl.meta.ClassTypeProperty
 import io.karpfen.dsl.meta.Metamodel
 import io.karpfen.dsl.meta.SimpleProperty
-import io.karpfen.dsl.parser.KmetaVocabulary
 import io.karpfen.dsl.parser.StringLiteralSyntax
 import io.karpfen.dsl.printer.CodeWriter
 import io.karpfen.dsl.printer.DocumentPrinter
@@ -126,7 +125,7 @@ class KmetaPrinter : DocumentPrinter<Metamodel> {
      * Returns the rule `has("key", type)` or `knows("key", type)` of [property].
      */
     private fun relationRule(property: ClassTypeProperty): String {
-        val keyword = KmetaVocabulary.relationKeyword(property.associationType)
+        val keyword = property.associationType.keyword
         val target = typeValue(property.reference.classTypeName, property.isList)
         return "$keyword(${literals.quote(property.key)}, $target)"
     }

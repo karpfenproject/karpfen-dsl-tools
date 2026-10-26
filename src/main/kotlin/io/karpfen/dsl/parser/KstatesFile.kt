@@ -148,16 +148,17 @@ enum class ParsedActionOperationType(val operation: ActionOperationType) {
  * Number of operands an action operation is written with.
  *
  * @property usage The written form, used in error messages.
+ * @property operandCount The number of operands, as [ActionOperationType.operandCount] counts them.
  */
-enum class Arity(val usage: String) {
+enum class Arity(val usage: String, val operandCount: Int) {
     /** One operand, the target path. */
-    UNARY("OP(\"path\")"),
+    UNARY("OP(\"path\")", 1),
 
     /** A target path and a value. */
-    BINARY("OP(\"path\", value)"),
+    BINARY("OP(\"path\", value)", 2),
 
     /** A source path, a relation and a target. */
-    TERNARY("OP(\"source\", \"relation\", target)")
+    TERNARY("OP(\"source\", \"relation\", target)", 3)
 }
 
 /**

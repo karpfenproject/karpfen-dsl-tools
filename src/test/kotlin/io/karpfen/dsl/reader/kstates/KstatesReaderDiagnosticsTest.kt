@@ -17,8 +17,10 @@ package io.karpfen.dsl.reader.kstates
 
 import io.karpfen.dsl.diagnostics.DiagnosticCode
 import io.karpfen.dsl.dsl.textual.KstatesDSLConverter
+import io.karpfen.dsl.printer.kstates.KstatesPrinter
 import io.karpfen.dsl.reader.ParseResult
 import io.karpfen.dsl.states.Transition
+import io.karpfen.dsl.states.actions.ActionOperationType
 import io.karpfen.dsl.states.actions.ActionRule
 import io.karpfen.dsl.states.conditions.EvalCondition
 import io.karpfen.dsl.states.conditions.ValueCondition
@@ -84,6 +86,27 @@ class KstatesReaderDiagnosticsTest {
         }
         val kept = result.model!!.states.single().onEntry.items.map { (it as ActionRule).operationType.name }
         assertEquals(listOf("APPEND", "DROPOBJ"), kept)
+    }
+
+    /**
+     * Every operation, written with as many operands as its [ActionOperationType.operandCount] says, reads without a
+     * finding into a rule of that operation, which the printer writes with the same operands again.
+     */
+    @Test
+    fun `each operation reads and prints with its operand count`() {
+        ActionOperationType.entries.forEach { operation ->
+            val operands = listOf("\"a\"", "\"b\"", "\"c\"").take(operation.operandCount)
+            val rule = "${operation.name}(${operands.joinToString(", ")})"
+            val text = machine(states = "INITIAL STATE \"s\" {\n    ENTRY {\n        $rule\n    }\n}")
+
+            val result = KstatesReader().read(text)
+
+            assertEquals(emptyList(), result.diagnostics, rule)
+            val machine = result.model!!
+            val read = machine.states.single().onEntry.items.single() as ActionRule
+            assertEquals(operation, read.operationType)
+            assertTrue(rule in KstatesPrinter().print(machine), rule)
+        }
     }
 
     /**

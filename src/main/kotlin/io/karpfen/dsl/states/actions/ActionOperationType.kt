@@ -20,29 +20,32 @@ package io.karpfen.dsl.states.actions
  *
  * Simple-property operations work on primitive scalars and lists only, object operations work on the `has`
  * and `knows` relations of the model.
+ *
+ * @property operandCount the number of operands a rule of this operation is written with: one for a path alone, two
+ *   for a path and a value, three for a source, a relation and a target.
  */
-enum class ActionOperationType {
+enum class ActionOperationType(val operandCount: Int) {
     /** Overwrites a single scalar property. */
-    SET,
+    SET(2),
 
     /** Appends one element to a simple list property. */
-    APPEND,
+    APPEND(2),
 
     /** Overwrites a whole simple list property. */
-    SETLIST,
+    SETLIST(2),
 
-    /** Clears a simple list property (unary). */
-    DROPLIST,
+    /** Clears a simple list property. */
+    DROPLIST(1),
 
-    /** Replaces the target of a single-object relation (ternary: source, relation, target). */
-    SETOBJ,
+    /** Replaces the target of a single-object relation. */
+    SETOBJ(3),
 
-    /** Adds an object to a list relation (ternary: source, relation, target). */
-    APPENDOBJ,
+    /** Adds an object to a list relation. */
+    APPENDOBJ(3),
 
-    /** Removes an object and all relations pointing to it from the model (unary). */
-    DROPOBJ,
+    /** Removes an object and all relations pointing to it from the model. */
+    DROPOBJ(1),
 
     /** Sends an event to an event domain. */
-    EVENT
+    EVENT(2)
 }

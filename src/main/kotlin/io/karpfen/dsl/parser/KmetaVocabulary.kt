@@ -15,13 +15,12 @@
  */
 package io.karpfen.dsl.parser
 
-import io.karpfen.dsl.meta.AssociationType
 import io.karpfen.dsl.meta.SimplePropertyType
 
 /**
- * The words of KMeta that the converter, the readers and the printers share: the keyword of each kind of relation,
- * which KModel uses as well, and the primitive property types by their names, which [SimplePropertyType.keyword]
- * holds.
+ * The words of KMeta that the converter, the readers and the printers share: the primitive property types by their
+ * names, which [SimplePropertyType.keyword] holds. The keyword of each kind of relation is
+ * [io.karpfen.dsl.meta.AssociationType.keyword].
  */
 internal object KmetaVocabulary {
 
@@ -31,14 +30,6 @@ internal object KmetaVocabulary {
 
     /** The names of the primitive property types, in the order the documentation lists them. */
     val primitiveTypeNames: List<String> = primitiveTypesInDocumentedOrder.map { it.keyword }
-
-    /**
-     * Returns the keyword of a relation of [associationType]: `has` for an embedding, `knows` for a link.
-     */
-    fun relationKeyword(associationType: AssociationType): String = when (associationType) {
-        AssociationType.EMBEDDED -> "has"
-        AssociationType.LINK -> "knows"
-    }
 
     /**
      * Returns the primitive property type called [name], or null if no primitive type has that name.

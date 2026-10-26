@@ -22,7 +22,6 @@ import io.karpfen.dsl.instance.SimpleAtomicPropertyObject
 import io.karpfen.dsl.instance.SimpleListPropertyObject
 import io.karpfen.dsl.instance.SimplePropertyObject
 import io.karpfen.dsl.meta.AssociationType
-import io.karpfen.dsl.parser.KmetaVocabulary
 import io.karpfen.dsl.parser.StringLiteralSyntax
 import io.karpfen.dsl.printer.CodeWriter
 import io.karpfen.dsl.printer.DocumentPrinter
@@ -130,7 +129,7 @@ class KmodelPrinter internal constructor(private val tree: ObjectTree) : Documen
      */
     private fun writeRelation(relation: ClassTypePropertyObject, writer: CodeWriter, written: WrittenObjects) {
         val associationType = relation.getPropertyType().associationType
-        val statement = "${KmetaVocabulary.relationKeyword(associationType)}(${literals.quote(relation.key)}) -> "
+        val statement = "${associationType.keyword}(${literals.quote(relation.key)}) -> "
         when (associationType) {
             AssociationType.EMBEDDED -> tree.embeddedObjectsOf(relation).forEach {
                 writeObject(it, statement, writer, written)

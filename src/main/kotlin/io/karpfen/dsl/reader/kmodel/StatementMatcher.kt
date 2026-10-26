@@ -21,7 +21,6 @@ import io.karpfen.dsl.instance.DataObject
 import io.karpfen.dsl.meta.AssociationType
 import io.karpfen.dsl.meta.ClassType
 import io.karpfen.dsl.meta.ClassTypeProperty
-import io.karpfen.dsl.parser.KmetaVocabulary
 import io.karpfen.dsl.parser.StringLiteralSyntax
 import io.karpfen.dsl.reader.ReadingSession
 import io.karpfen.dsl.reader.presentTokens
@@ -131,7 +130,7 @@ internal class StatementMatcher(
      * that writes it right.
      */
     private fun wrongKindMessage(relation: ClassTypeProperty): String {
-        val keyword = KmetaVocabulary.relationKeyword(relation.associationType)
+        val keyword = relation.associationType.keyword
         val usage = when (relation.associationType) {
             AssociationType.LINK -> "refer to an existing object with $keyword(\"${relation.key}\") -> \"id\""
             AssociationType.EMBEDDED -> "embed an object with $keyword(\"${relation.key}\") -> make object"

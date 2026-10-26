@@ -15,6 +15,7 @@
  */
 package io.karpfen.dsl.parser
 
+import io.karpfen.dsl.meta.AssociationType
 import io.karpfen.dsl.meta.SimplePropertyType
 import io.karpfen.dsl.printer.kmeta.KmetaPrinter
 import io.karpfen.dsl.reader.kmeta.KmetaReader
@@ -22,8 +23,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * Checks that the keyword of each primitive property type, [SimplePropertyType.keyword], is the name by which KMeta
- * texts write it: the reader reads the type from it, the printer writes it, and the vocabulary knows it by that name.
+ * Checks that the keyword of each primitive property type, [SimplePropertyType.keyword], and of each kind of relation,
+ * [AssociationType.keyword], is the word by which KMeta texts write it: the reader reads the type or the kind from it,
+ * the printer writes it, and the vocabulary knows a primitive type by that name.
  */
 class KmetaVocabularyTest {
 
@@ -40,6 +42,21 @@ class KmetaVocabularyTest {
             assertEquals(type, property.propertyType)
             assertEquals(type, KmetaVocabulary.primitiveTypeNamed(type.keyword))
             assertEquals(rule, KmetaPrinter().printRule(property))
+        }
+    }
+
+    /** Every kind of relation reads from its keyword and prints with it again. */
+    @Test
+    fun `each kind of relation is read from and printed with its keyword`() {
+        AssociationType.entries.forEach { kind ->
+            val rule = "${kind.keyword}(\"r\", \"T\")"
+
+            val result = KmetaReader().read("type \"T\" \"t\" {\n    $rule\n}\n")
+
+            assertEquals(emptyList(), result.diagnostics, kind.name)
+            val relation = result.model!!.getTypeByName("T")!!.objectProperties.single()
+            assertEquals(kind, relation.associationType)
+            assertEquals(rule, KmetaPrinter().printRule(relation))
         }
     }
 
