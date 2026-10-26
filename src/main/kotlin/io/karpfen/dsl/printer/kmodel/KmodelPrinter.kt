@@ -81,14 +81,18 @@ class KmodelPrinter internal constructor(private val tree: ObjectTree) : Documen
      * The fragment fits both as the root of a document and after the arrow of a `has` statement. Its links may refer
      * to objects of the document around it.
      *
+     * @param sharedIndentation The number of whitespace chars that every line of the document the fragment stands in
+     * starts with, at least, as [String.trimIndent] counts them; the fragment adds as many spaces in front of the
+     * continuation lines of its string literals, see [DocumentPrinter].
      * @throws IllegalArgumentException If an object embeds itself or is embedded more than once, an object links to
      * an object of the fragment that has no id or whose id a later object of the fragment has too, a value cannot be
-     * written as a KModel string literal, the objects nest deeper than the printer can recurse, or [indentLevel] is
-     * negative.
+     * written as a KModel string literal, the objects nest deeper than the printer can recurse, or [indentLevel] or
+     * [sharedIndentation] is negative.
      */
-    fun printObject(obj: DataObject, indentLevel: Int = 0): String = CodeWriter.fragment(indentLevel) { writer ->
-        writeObject(obj, "", writer, tree.objectsWrittenFrom(obj, isDocument = false))
-    }
+    fun printObject(obj: DataObject, indentLevel: Int = 0, sharedIndentation: Int = 0): String =
+        CodeWriter.fragment(indentLevel, sharedIndentation) { writer ->
+            writeObject(obj, "", writer, tree.objectsWrittenFrom(obj, isDocument = false))
+        }
 
     /**
      * Writes [obj] as a `make object` block behind [prefix].

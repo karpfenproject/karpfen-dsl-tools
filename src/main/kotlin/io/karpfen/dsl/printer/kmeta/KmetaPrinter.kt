@@ -39,6 +39,7 @@ import io.karpfen.dsl.printer.DocumentPrinter
  */
 class KmetaPrinter : DocumentPrinter<Metamodel> {
 
+    /** The literal syntax of KMeta. */
     private val literals = StringLiteralSyntax.KMETA
 
     /**
@@ -72,27 +73,40 @@ class KmetaPrinter : DocumentPrinter<Metamodel> {
      * Returns the type definition `type "Name" "Description" { ... }` of [type] with its rules, as a fragment
      * whose first line stands at [indentLevel].
      *
+     * @param sharedIndentation The number of whitespace chars that every line of the document the fragment stands in
+     * starts with, at least, as [String.trimIndent] counts them; the fragment adds as many spaces in front of the
+     * continuation lines of its string literals, see [DocumentPrinter].
      * @throws IllegalArgumentException If a name or the description cannot be written as a KMeta string
-     * literal, or [indentLevel] is negative.
+     * literal, or [indentLevel] or [sharedIndentation] is negative.
      */
-    fun printType(type: ClassType, indentLevel: Int = 0): String =
-        CodeWriter.fragment(indentLevel) { writeType(type, it) }
+    fun printType(type: ClassType, indentLevel: Int = 0, sharedIndentation: Int = 0): String =
+        CodeWriter.fragment(indentLevel, sharedIndentation) { writeType(type, it) }
 
     /**
-     * Returns the `prop` rule of [property] as a one-line fragment, for example `prop("log", list("string"))`.
+     * Returns the `prop` rule of [property] as a fragment on one line, unless a string literal continues on the next
+     * line, for example `prop("log", list("string"))`.
      *
-     * @throws IllegalArgumentException If the property name cannot be written as a KMeta string literal.
+     * @param sharedIndentation The indentation that every line of the document shares, see [printType].
+     * @throws IllegalArgumentException If the property name cannot be written as a KMeta string literal, or
+     * [sharedIndentation] is negative.
      */
-    fun printRule(property: SimpleProperty): String = propRule(property)
+    fun printRule(property: SimpleProperty, sharedIndentation: Int = 0): String =
+        CodeWriter.fragment(0, sharedIndentation) { it.line(propRule(property)) }
 
     /**
-     * Returns the `has` rule of an embedded or the `knows` rule of a linked [property] as a one-line
-     * fragment, for example `has("position", "Point")`.
+     * Returns the `has` rule of an embedded or the `knows` rule of a linked [property] as a fragment on one line,
+     * unless a string literal continues on the next line, for example `has("position", "Point")`.
      *
-     * @throws IllegalArgumentException If a name cannot be written as a KMeta string literal.
+     * @param sharedIndentation The indentation that every line of the document shares, see [printType].
+     * @throws IllegalArgumentException If a name cannot be written as a KMeta string literal, or [sharedIndentation]
+     * is negative.
      */
-    fun printRule(property: ClassTypeProperty): String = relationRule(property)
+    fun printRule(property: ClassTypeProperty, sharedIndentation: Int = 0): String =
+        CodeWriter.fragment(0, sharedIndentation) { it.line(relationRule(property)) }
 
+    /**
+     * Writes the definition of [type] with its `prop` rules first and then its `has` and `knows` rules.
+     */
     private fun writeType(type: ClassType, writer: CodeWriter) {
         writer.block("type ${literals.quote(type.name)} ${literals.quote(type.comment)}") {
             type.simpleProperties.forEach { writer.line(propRule(it)) }
@@ -100,11 +114,17 @@ class KmetaPrinter : DocumentPrinter<Metamodel> {
         }
     }
 
+    /**
+     * Returns the rule `prop("key", type)` of [property].
+     */
     private fun propRule(property: SimpleProperty): String {
         val type = typeValue(property.propertyType.keyword, property.isList)
         return "prop(${literals.quote(property.key)}, $type)"
     }
 
+    /**
+     * Returns the rule `has("key", type)` or `knows("key", type)` of [property].
+     */
     private fun relationRule(property: ClassTypeProperty): String {
         val keyword = KmetaVocabulary.relationKeyword(property.associationType)
         val target = typeValue(property.reference.classTypeName, property.isList)

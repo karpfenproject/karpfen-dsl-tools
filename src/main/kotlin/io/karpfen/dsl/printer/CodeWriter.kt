@@ -28,8 +28,12 @@ package io.karpfen.dsl.printer
  * likewise report such nesting as a failure of the read.
  *
  * @param startLevel The indentation level of the first line.
+ * @param continuationIndentation The indentation added after every line break inside the text of a line, see [line].
  */
-internal class CodeWriter private constructor(private val startLevel: Int) {
+internal class CodeWriter private constructor(
+    private val startLevel: Int,
+    private val continuationIndentation: String
+) {
 
     /** The lines written so far. */
     private val lines = mutableListOf<String>()
@@ -45,10 +49,11 @@ internal class CodeWriter private constructor(private val startLevel: Int) {
      * Adds [text] as a line at the current indentation level.
      *
      * Line breaks inside [text] are kept as they are, so the lines after the first one keep their own
-     * indentation, such as the lines of a [codeBlock] or a string literal with an escaped line break.
+     * indentation, such as the lines of a [codeBlock] or a string literal with an escaped line break. A fragment
+     * adds the indentation its document shares in front of those lines, see [fragment].
      */
     fun line(text: String) {
-        lines.add(indentation + text)
+        lines.add(lineOf(text))
     }
 
     /**
@@ -70,7 +75,7 @@ internal class CodeWriter private constructor(private val startLevel: Int) {
         body()
         level--
         if (lines.size == headerIndex + 1) {
-            lines[headerIndex] = "$indentation$header { }"
+            lines[headerIndex] = lineOf("$header { }")
         } else {
             line("}")
         }
@@ -119,6 +124,13 @@ internal class CodeWriter private constructor(private val startLevel: Int) {
     }
 
     /**
+     * Returns [text] as a line at the current indentation level, with the continuation indentation after every line
+     * break inside it, see [line].
+     */
+    private fun lineOf(text: String): String =
+        indentation + text.replace(LINE_BREAKS) { it.value + continuationIndentation }
+
+    /**
      * Returns the lines as a document, each ending with a line break.
      */
     private fun documentText(): String = lines.joinToString(LINE_BREAK, postfix = LINE_BREAK)
@@ -139,24 +151,36 @@ internal class CodeWriter private constructor(private val startLevel: Int) {
         /** The separator between lines. */
         const val LINE_BREAK = "\n"
 
+        /** A line break, written as `\r\n`, `\n` or a lone `\r`. */
+        private val LINE_BREAKS = Regex("\r\n|\r|\n")
+
         /**
          * Returns the text that [write] writes as a whole document: starting at indentation level zero and
          * ending with a line break.
          *
          * @throws IllegalArgumentException If [write] throws it, or the element nests deeper than the stack allows.
          */
-        fun document(write: (CodeWriter) -> Unit): String = withinNestingLimit { CodeWriter(0).also(write).documentText() }
+        fun document(write: (CodeWriter) -> Unit): String =
+            withinNestingLimit { CodeWriter(0, "").also(write).documentText() }
 
         /**
          * Returns the text that [write] writes as a fragment whose first line stands at [indentLevel], laid out
          * as [DocumentPrinter] describes fragments.
          *
-         * @throws IllegalArgumentException If [indentLevel] is negative, [write] throws it, or the element nests
-         * deeper than the stack allows.
+         * The lines that a line break inside the text of a [line] starts, such as the continuation lines of a string
+         * literal, get [sharedIndentation] spaces in front of their own indentation: the indentation that all lines of
+         * the document the fragment stands in share, which KMeta and KModel cut from every line when they read it.
+         *
+         * @throws IllegalArgumentException If [indentLevel] or [sharedIndentation] is negative, [write] throws it, or
+         * the element nests deeper than the stack allows.
          */
-        fun fragment(indentLevel: Int, write: (CodeWriter) -> Unit): String {
+        fun fragment(indentLevel: Int, sharedIndentation: Int = 0, write: (CodeWriter) -> Unit): String {
             require(indentLevel >= 0) { "The indentation level must not be negative, but was $indentLevel." }
-            return withinNestingLimit { CodeWriter(indentLevel).also(write).fragmentText() }
+            require(sharedIndentation >= 0) {
+                "The shared indentation must not be negative, but was $sharedIndentation."
+            }
+            val continuationIndentation = " ".repeat(sharedIndentation)
+            return withinNestingLimit { CodeWriter(indentLevel, continuationIndentation).also(write).fragmentText() }
         }
 
         /**

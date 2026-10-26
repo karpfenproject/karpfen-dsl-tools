@@ -28,7 +28,9 @@ package io.karpfen.dsl.printer
  * laid out for an element whose first line stands at a given indentation level. The first line of a fragment
  * carries no indentation, every following line carries its full indentation, and there is no line break at the end.
  * A fragment thus replaces the text range of an existing element, which starts at its first token, without
- * changing the layout around it.
+ * changing the layout around it. KMeta and KModel read a document with the indentation that all its lines share cut
+ * from every line, the continuation lines of a string literal after an escaped line break included, so their fragment
+ * printers also take that shared indentation and add it in front of such lines, and the literals read back unchanged.
  *
  * @param D The element a document holds: a metamodel, a model or a state machine.
  */

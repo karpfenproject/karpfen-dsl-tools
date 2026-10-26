@@ -54,8 +54,9 @@ class PrinterNestingTest {
     fun `deeply nested states are rejected`() {
         val outermost = nestedStates(FAR_TOO_DEEP)
         val printer = KstatesPrinter()
+        val stateMachine = StateMachine("R", mutableListOf(outermost), mutableListOf(), mutableListOf())
 
-        assertFailsWith<IllegalArgumentException> { printer.print(StateMachine("R", mutableListOf(outermost), mutableListOf(), mutableListOf())) }
+        assertFailsWith<IllegalArgumentException> { printer.print(stateMachine) }
         assertFailsWith<IllegalArgumentException> { printer.printState(outermost) }
     }
 
