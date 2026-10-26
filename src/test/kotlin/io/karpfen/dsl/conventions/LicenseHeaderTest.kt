@@ -36,7 +36,7 @@ class LicenseHeaderTest {
 
     /**
      * The guard reads the Kotlin sources of the main, test and compatibility test source sets, the Gradle scripts and
-     * the three grammars, so it cannot pass on a walk that misses them.
+     * the three grammars, so it cannot pass on a list of files that misses them.
      */
     @Test
     fun `the guarded files are the Kotlin sources, the Gradle scripts and the grammars`() {
