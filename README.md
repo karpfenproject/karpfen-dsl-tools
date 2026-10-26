@@ -43,8 +43,11 @@ all of them through `ExampleCatalog`. It lives with the other fixtures the tests
 `Mutator`, in the test package `io.karpfen.dsl.fixtures`. The comparison with version 1.0 has a source set of its own,
 `src/compatibilityTest`.
 Every Kotlin source, every Gradle script and the grammars start with the Apache 2.0 license header, which
-`LicenseHeaderTest` requires; documentation lives in KDoc on declarations, and `DocumentationStyleTest` rejects any
-other comment in the Kotlin sources and the Gradle scripts. Both tests are in `io.karpfen.dsl.conventions`.
+`LicenseHeaderTest` requires. Documentation lives in KDoc on declarations: `DocumentationStyleTest` rejects any other
+comment in the Kotlin sources and the Gradle scripts and KDoc that documents no declaration, such as KDoc between two
+statements, and it rejects references to other documents by id, such as a section sign with a number, in the comments
+and in the markdown documents, the CI workflow and the grammars. Both tests are in `io.karpfen.dsl.conventions` and
+check the files that the build hands them, see `build.gradle`.
 
 ## Logging
 
