@@ -72,7 +72,8 @@ class KstatesPrinter internal constructor(
      * @throws IllegalArgumentException If a name, path or value cannot be written as a KStates string
      * literal, or the state machine holds something KStates cannot express, such as a split with a single
      * target, an action rule with another number of operands than its operation expects, `EVAL` code whose braces
-     * do not balance, or a typed call that a macro directive cannot hold.
+     * do not balance, or a typed call that a macro directive cannot hold, or if its states or actions nest deeper than
+     * the printer can recurse.
      */
     override fun print(document: StateMachine): String = CodeWriter.document { writer ->
         writer.block("STATEMACHINE ATTACHED TO ${syntax.quote(document.attachedToClass)}") {

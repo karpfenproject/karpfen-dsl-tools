@@ -65,7 +65,7 @@ internal class ObjectTree {
      */
     fun objectsWrittenFrom(root: DataObject): Set<DataObject> {
         val written = LinkedHashSet<DataObject>()
-        collectWritten(root, emptySet(), written)
+        collectWritten(root, HashSet(), written)
         return written
     }
 
@@ -111,16 +111,17 @@ internal class ObjectTree {
      * Adds [obj] and the objects it embeds to [written], checking that none of them embeds itself or is already
      * written.
      *
-     * @param enclosing The objects that embed [obj].
+     * @param enclosing The objects that embed [obj], which holds them again when the call returns.
      */
-    private fun collectWritten(obj: DataObject, enclosing: Set<DataObject>, written: MutableSet<DataObject>) {
+    private fun collectWritten(obj: DataObject, enclosing: MutableSet<DataObject>, written: MutableSet<DataObject>) {
         require(obj !in enclosing) { "The object '${obj.id}' of class type ${obj.ofType.name} embeds itself." }
         require(written.add(obj)) {
             "The object '${obj.id}' of class type ${obj.ofType.name} is embedded more than once, but KModel writes an " +
                 "embedded object where it is embedded, so the text would read back as several objects."
         }
-        val inside = enclosing + obj
-        embeddedObjectsOf(obj).forEach { collectWritten(it, inside, written) }
+        enclosing.add(obj)
+        embeddedObjectsOf(obj).forEach { collectWritten(it, enclosing, written) }
+        enclosing.remove(obj)
     }
 
     private fun ClassTypePropertyObject.isEmbedding(): Boolean =

@@ -62,13 +62,12 @@ class KmodelPrinter internal constructor(private val tree: ObjectTree) : Documen
      * root class type of the metamodel.
      *
      * @throws IllegalArgumentException If the model has no unique root object, an object embeds itself or is
-     * embedded more than once, an object links to an object of the document that has no id, or a value cannot be
-     * written as a KModel string literal.
+     * embedded more than once, an object links to an object of the document that has no id, a value cannot be
+     * written as a KModel string literal, or the objects nest deeper than the printer can recurse.
      */
-    override fun print(document: Model): String {
+    override fun print(document: Model): String = CodeWriter.document { writer ->
         val root = tree.rootOf(document)
-        val written = tree.objectsWrittenFrom(root)
-        return CodeWriter.document { writeObject(root, "", it, written) }
+        writeObject(root, "", writer, tree.objectsWrittenFrom(root))
     }
 
     /**
@@ -78,12 +77,11 @@ class KmodelPrinter internal constructor(private val tree: ObjectTree) : Documen
      * The fragment fits both as the root of a document and after the arrow of a `has` statement.
      *
      * @throws IllegalArgumentException If an object embeds itself or is embedded more than once, an object links to
-     * an object of the fragment that has no id, a value cannot be written as a KModel string literal, or
-     * [indentLevel] is negative.
+     * an object of the fragment that has no id, a value cannot be written as a KModel string literal, the objects
+     * nest deeper than the printer can recurse, or [indentLevel] is negative.
      */
-    fun printObject(obj: DataObject, indentLevel: Int = 0): String {
-        val written = tree.objectsWrittenFrom(obj)
-        return CodeWriter.fragment(indentLevel) { writeObject(obj, "", it, written) }
+    fun printObject(obj: DataObject, indentLevel: Int = 0): String = CodeWriter.fragment(indentLevel) { writer ->
+        writeObject(obj, "", writer, tree.objectsWrittenFrom(obj))
     }
 
     /**

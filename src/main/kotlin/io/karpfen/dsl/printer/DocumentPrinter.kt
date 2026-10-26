@@ -38,7 +38,7 @@ interface DocumentPrinter<in D> {
      * Returns [document] as the text of a whole document, ending with a line break.
      *
      * @throws IllegalArgumentException If [document] holds something its language cannot express, for
-     * example a name that cannot be written as a string literal.
+     * example a name that cannot be written as a string literal, or nests deeper than the printer can recurse.
      */
     fun print(document: D): String
 }

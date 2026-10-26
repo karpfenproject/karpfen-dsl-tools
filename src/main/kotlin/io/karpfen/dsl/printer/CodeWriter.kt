@@ -22,13 +22,19 @@ package io.karpfen.dsl.printer
  * the line of its header. A block without content is closed on its header line as `{ }`.
  *
  * A writer collects the text of one print call and is then dropped, it is never shared. Create one with
- * [document] or [fragment].
+ * [document] or [fragment], which also hold the printers to their nesting limit: the printers recurse once per level
+ * of nesting, so an element that nests deeper than the stack of the thread allows overflows it, and that error becomes
+ * an [IllegalArgumentException], the way the printers reject every other element they cannot write. The readers
+ * likewise report such nesting as a failure of the read.
  *
  * @param startLevel The indentation level of the first line.
  */
 internal class CodeWriter private constructor(private val startLevel: Int) {
 
+    /** The lines written so far. */
     private val lines = mutableListOf<String>()
+
+    /** The indentation level of the line that is written next. */
     private var level = startLevel
 
     /** The indentation of the line that is written next. */
@@ -112,8 +118,14 @@ internal class CodeWriter private constructor(private val startLevel: Int) {
         return "$opening {$LINE_BREAK$contentIndentation$content$LINE_BREAK$indentation}"
     }
 
+    /**
+     * Returns the lines as a document, each ending with a line break.
+     */
     private fun documentText(): String = lines.joinToString(LINE_BREAK, postfix = LINE_BREAK)
 
+    /**
+     * Returns the lines as a fragment, without the indentation of its first line and without a line break at its end.
+     */
     private fun fragmentText(): String = lines.joinToString(LINE_BREAK).removePrefix(indentationOf(startLevel))
 
     /**
@@ -130,18 +142,21 @@ internal class CodeWriter private constructor(private val startLevel: Int) {
         /**
          * Returns the text that [write] writes as a whole document: starting at indentation level zero and
          * ending with a line break.
+         *
+         * @throws IllegalArgumentException If [write] throws it, or the element nests deeper than the stack allows.
          */
-        fun document(write: (CodeWriter) -> Unit): String = CodeWriter(0).also(write).documentText()
+        fun document(write: (CodeWriter) -> Unit): String = withinNestingLimit { CodeWriter(0).also(write).documentText() }
 
         /**
          * Returns the text that [write] writes as a fragment whose first line stands at [indentLevel], laid out
          * as [DocumentPrinter] describes fragments.
          *
-         * @throws IllegalArgumentException If [indentLevel] is negative.
+         * @throws IllegalArgumentException If [indentLevel] is negative, [write] throws it, or the element nests
+         * deeper than the stack allows.
          */
         fun fragment(indentLevel: Int, write: (CodeWriter) -> Unit): String {
             require(indentLevel >= 0) { "The indentation level must not be negative, but was $indentLevel." }
-            return CodeWriter(indentLevel).also(write).fragmentText()
+            return withinNestingLimit { CodeWriter(indentLevel).also(write).fragmentText() }
         }
 
         /**
@@ -149,6 +164,20 @@ internal class CodeWriter private constructor(private val startLevel: Int) {
          * writer writes the lines of a [codeBlock].
          */
         fun withLineBreaks(text: String): String = text.lines().joinToString(LINE_BREAK)
+
+        /**
+         * Returns what [print] returns, or throws an [IllegalArgumentException] if it overflows the stack, see
+         * [CodeWriter].
+         */
+        private fun withinNestingLimit(print: () -> String): String =
+            try {
+                print()
+            } catch (overflow: StackOverflowError) {
+                throw IllegalArgumentException(
+                    "The element nests deeper than the printer can recurse on the stack of this thread.",
+                    overflow
+                )
+            }
 
         /**
          * Returns the indentation of [level].
