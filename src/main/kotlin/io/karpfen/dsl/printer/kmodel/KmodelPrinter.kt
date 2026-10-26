@@ -36,7 +36,8 @@ import io.karpfen.dsl.printer.DocumentPrinter
  * identifier. Values are written with [Any.toString], so a number reads `"1.0"` however it was written
  * before. Empty lists and empty relations are left out, as KModel has no statement for them. Comments are
  * not part of a model and are not written, so reading a KModel text and writing it again drops its comments. A
- * single object is written as a fragment, see [DocumentPrinter]. The key and the class type of an object follow the
+ * link to an object without an id outside the document is the default object of a builder and is left out too, see
+ * [ObjectTree.linkedIdsOf]. A single object is written as a fragment, see [DocumentPrinter]. The key and the class type of an object follow the
  * literal syntax of object signatures, every other value that of statements.
  *
  * The printer holds no state; one instance serves any number of calls, also concurrent ones on models that
@@ -60,12 +61,14 @@ class KmodelPrinter internal constructor(private val tree: ObjectTree) : Documen
      * the root object is then the one no other object embeds, and among several of those the one of the
      * root class type of the metamodel.
      *
-     * @throws IllegalArgumentException If the model has no unique root object, an object embeds itself, or a
-     * value cannot be written as a KModel string literal.
+     * @throws IllegalArgumentException If the model has no unique root object, an object embeds itself or is
+     * embedded more than once, an object links to an object of the document that has no id, or a value cannot be
+     * written as a KModel string literal.
      */
     override fun print(document: Model): String {
         val root = tree.rootOf(document)
-        return CodeWriter.document { writeObject(root, "", it, emptySet()) }
+        val written = tree.objectsWrittenFrom(root)
+        return CodeWriter.document { writeObject(root, "", it, written) }
     }
 
     /**
@@ -74,23 +77,24 @@ class KmodelPrinter internal constructor(private val tree: ObjectTree) : Documen
      *
      * The fragment fits both as the root of a document and after the arrow of a `has` statement.
      *
-     * @throws IllegalArgumentException If an object embeds itself, a value cannot be written as a KModel
-     * string literal, or [indentLevel] is negative.
+     * @throws IllegalArgumentException If an object embeds itself or is embedded more than once, an object links to
+     * an object of the fragment that has no id, a value cannot be written as a KModel string literal, or
+     * [indentLevel] is negative.
      */
-    fun printObject(obj: DataObject, indentLevel: Int = 0): String =
-        CodeWriter.fragment(indentLevel) { writeObject(obj, "", it, emptySet()) }
+    fun printObject(obj: DataObject, indentLevel: Int = 0): String {
+        val written = tree.objectsWrittenFrom(obj)
+        return CodeWriter.fragment(indentLevel) { writeObject(obj, "", it, written) }
+    }
 
     /**
      * Writes [obj] as a `make object` block behind [prefix].
      *
-     * @param enclosing The objects that embed [obj], to detect an object that embeds itself.
+     * @param written The objects the document or fragment writes, see [ObjectTree.objectsWrittenFrom].
      */
-    private fun writeObject(obj: DataObject, prefix: String, writer: CodeWriter, enclosing: Set<DataObject>) {
-        require(obj !in enclosing) { "The object '${obj.id}' of class type ${obj.ofType.name} embeds itself." }
-        val inside = enclosing + obj
+    private fun writeObject(obj: DataObject, prefix: String, writer: CodeWriter, written: Set<DataObject>) {
         writer.block("${prefix}make object ${signatureOf(obj)}") {
             obj.properties.forEach { writeProperty(it, writer) }
-            obj.relations.forEach { writeRelation(it, writer, inside) }
+            obj.relations.forEach { writeRelation(it, writer, written) }
         }
     }
 
@@ -109,13 +113,13 @@ class KmodelPrinter internal constructor(private val tree: ObjectTree) : Documen
         valuesOf(property).forEach { writer.line("prop($key) -> ${literals.quote(it.toString())}") }
     }
 
-    private fun writeRelation(relation: ClassTypePropertyObject, writer: CodeWriter, enclosing: Set<DataObject>) {
+    private fun writeRelation(relation: ClassTypePropertyObject, writer: CodeWriter, written: Set<DataObject>) {
         val key = literals.quote(relation.key)
         when (relation.getPropertyType().associationType) {
             AssociationType.EMBEDDED -> tree.embeddedObjectsOf(relation).forEach {
-                writeObject(it, "has($key) -> ", writer, enclosing)
+                writeObject(it, "has($key) -> ", writer, written)
             }
-            AssociationType.LINK -> tree.linkedIdsOf(relation).forEach {
+            AssociationType.LINK -> tree.linkedIdsOf(relation, written).forEach {
                 writer.line("knows($key) -> ${literals.quote(it)}")
             }
         }

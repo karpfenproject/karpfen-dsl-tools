@@ -77,7 +77,7 @@ in an existing document. The `convertTo...String` functions of the converters de
 canonical layout, re-indents `EVAL` code while it keeps its tokens, its comments and the indentation of the lines
 after the first relative to each other, and drops the comments outside `EVAL` code; the KDoc of the printers
 describes the layout, and the printers reject what their language cannot read back,
-such as a value no string literal carries or `EVAL` code whose braces do not balance. The printer tests parse every
+such as a value no string literal carries, an object embedded twice or `EVAL` code whose braces do not balance. The printer tests parse every
 example, print it and parse the text again.
 
 ## Building

@@ -24,6 +24,7 @@ import io.karpfen.dsl.fixtures.ModelExample
 import io.karpfen.dsl.grammar.kmodel.KmodelLexer
 import io.karpfen.dsl.grammar.kmodel.KmodelParser
 import io.karpfen.dsl.instance.ClassTypeAtomicPropertyObject
+import io.karpfen.dsl.instance.ClassTypeListPropertyObject
 import io.karpfen.dsl.instance.DataObject
 import io.karpfen.dsl.instance.Model
 import io.karpfen.dsl.instance.ObjectReference
@@ -36,6 +37,7 @@ import org.junit.jupiter.api.TestFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -193,12 +195,63 @@ class KmodelPrinterTest {
     }
 
     /**
+     * An object embedded under two relations, or twice in one list, would read back as several objects, so it is
+     * rejected instead of written twice.
+     */
+    @Test
+    fun `an object embedded more than once is rejected`() {
+        val point = objectOf("Point", "p")
+        val sharedPoint = objectOf("Room", "room", "origin" to listOf(point), "robots" to listOf(objectOf("Robot", "r", "position" to listOf(point))))
+        val robot = objectOf("Robot", "r")
+        val twiceInList = objectOf("Room", "room", "robots" to listOf(robot, robot))
+
+        assertFailsWith<IllegalArgumentException> { printer.printObject(sharedPoint) }
+        assertFailsWith<IllegalArgumentException> { printer.printObject(twiceInList) }
+    }
+
+    /**
+     * KModel refers to a linked object by its id, so a link to an object of the document without an id is rejected
+     * instead of left out; a link to such an object outside the document is the default object of a builder and is
+     * left out.
+     */
+    @Test
+    fun `a link to an object without an id is rejected inside the document and left out outside it`() {
+        val anonymous = objectOf("Robot", "")
+        val linking = objectOf("Robot", "r", "buddies" to listOf(anonymous))
+        val inside = objectOf("Room", "room", "robots" to listOf(anonymous, linking))
+        val outside = objectOf("Room", "room", "robots" to listOf(linking))
+
+        assertFailsWith<IllegalArgumentException> { printer.printObject(inside) }
+        assertFalse("knows" in printer.printObject(outside), printer.printObject(outside))
+    }
+
+    /**
      * The converter writes models with the printer.
      */
     @Test
     fun `the converter delegates to the printer`() {
         val model = examples.first().parse()
         assertEquals(printer.print(model), KmodelDSLConverter.convertToKmodelString(model))
+    }
+
+    /**
+     * Returns an object of the class type [typeName] of [metamodel] with the id [id] and the given [relations], each a
+     * key with the objects it holds, resolved.
+     */
+    private fun objectOf(typeName: String, id: String, vararg relations: Pair<String, List<DataObject>>): DataObject {
+        val type = metamodel.getTypeByName(typeName)!!
+        val obj = DataObject(type, id, mutableListOf(), mutableListOf())
+        relations.forEach { (key, targets) ->
+            val property = type.getObjectProperty(key)
+            val references = targets.map { ObjectReference(it.id, it) }
+            val relation = if (property.isList) {
+                ClassTypeListPropertyObject(property, key, references.toMutableList())
+            } else {
+                ClassTypeAtomicPropertyObject(property, key, references.single())
+            }
+            obj.relations.add(relation)
+        }
+        return obj
     }
 
     private fun syntaxTreeOf(example: ModelExample): KmodelParser.Kmodel_fileContext =

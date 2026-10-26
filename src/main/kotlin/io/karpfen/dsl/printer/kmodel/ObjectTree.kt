@@ -28,7 +28,9 @@ import io.karpfen.dsl.meta.AssociationType
  * which object a KModel document starts from.
  *
  * Unlike the accessors of the relation values, it tolerates references that are not resolved: an embedded
- * reference without an object is skipped, and a link falls back to the identifier it names.
+ * reference without an object is skipped, and a link falls back to the identifier it names. It rejects the trees
+ * KModel cannot write: a KModel document writes each embedded object where it is embedded and refers to a linked
+ * object by its id.
  */
 internal class ObjectTree {
 
@@ -55,6 +57,19 @@ internal class ObjectTree {
     }
 
     /**
+     * Returns [root] and every object it embeds, directly or through others: the objects a KModel document that
+     * starts from [root] writes.
+     *
+     * @throws IllegalArgumentException If an object embeds itself, or an object is embedded more than once, under
+     * two relations or twice in one list, which the text would turn into several objects.
+     */
+    fun objectsWrittenFrom(root: DataObject): Set<DataObject> {
+        val written = LinkedHashSet<DataObject>()
+        collectWritten(root, emptySet(), written)
+        return written
+    }
+
+    /**
      * Returns the objects [owner] embeds through all its `has` relations, in relation order.
      */
     fun embeddedObjectsOf(owner: DataObject): List<DataObject> =
@@ -67,10 +82,46 @@ internal class ObjectTree {
         referencesOf(relation).mapNotNull { it.obj }
 
     /**
-     * Returns the identifiers of the objects the linking [relation] refers to, skipping empty references.
+     * Returns the identifiers of the objects the linking [relation] refers to in a document that writes [written],
+     * skipping empty references.
+     *
+     * An object without an id cannot be referred to. A link to such an object among [written] is rejected; a link to
+     * one outside the document is taken as empty, since it is the default object that a
+     * [io.karpfen.dsl.dsl.functional.ModelBuilder] puts into a link nobody set.
+     *
+     * @throws IllegalArgumentException If [relation] links to an object of [written] that has no id.
      */
-    fun linkedIdsOf(relation: ClassTypePropertyObject): List<String> =
-        referencesOf(relation).map { it.obj?.id ?: it.objectId }.filter { it.isNotEmpty() }
+    fun linkedIdsOf(relation: ClassTypePropertyObject, written: Set<DataObject>): List<String> =
+        referencesOf(relation).mapNotNull { reference ->
+            val target = reference.obj
+            when {
+                target == null -> reference.objectId.takeIf { it.isNotEmpty() }
+                target.id.isNotEmpty() -> target.id
+                else -> {
+                    require(target !in written) {
+                        "The relation '${relation.key}' links to an object of class type ${target.ofType.name} that " +
+                            "has no id, but KModel refers to a linked object by its id."
+                    }
+                    null
+                }
+            }
+        }
+
+    /**
+     * Adds [obj] and the objects it embeds to [written], checking that none of them embeds itself or is already
+     * written.
+     *
+     * @param enclosing The objects that embed [obj].
+     */
+    private fun collectWritten(obj: DataObject, enclosing: Set<DataObject>, written: MutableSet<DataObject>) {
+        require(obj !in enclosing) { "The object '${obj.id}' of class type ${obj.ofType.name} embeds itself." }
+        require(written.add(obj)) {
+            "The object '${obj.id}' of class type ${obj.ofType.name} is embedded more than once, but KModel writes an " +
+                "embedded object where it is embedded, so the text would read back as several objects."
+        }
+        val inside = enclosing + obj
+        embeddedObjectsOf(obj).forEach { collectWritten(it, inside, written) }
+    }
 
     private fun ClassTypePropertyObject.isEmbedding(): Boolean =
         getPropertyType().associationType == AssociationType.EMBEDDED
