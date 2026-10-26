@@ -144,6 +144,15 @@ internal class CodeWriter private constructor(private val startLevel: Int) {
             return CodeWriter(indentLevel).also(write).fragmentText()
         }
 
+        /**
+         * Returns [text] with every line break, `\r\n`, `\n` or a lone `\r`, written as [LINE_BREAK], as the
+         * writer writes the lines of a [codeBlock].
+         */
+        fun withLineBreaks(text: String): String = text.lines().joinToString(LINE_BREAK)
+
+        /**
+         * Returns the indentation of [level].
+         */
         private fun indentationOf(level: Int): String = INDENTATION_UNIT.repeat(level)
 
         /**

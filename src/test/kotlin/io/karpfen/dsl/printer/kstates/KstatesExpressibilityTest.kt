@@ -143,6 +143,28 @@ class KstatesExpressibilityTest {
     }
 
     /**
+     * Code read from a text with `\r\n` or `\r` line breaks is checked and written with `\n` line breaks, the form
+     * that reads back. A backslash before `\r\n` escapes only the `\r`, so a literal continued that way is no
+     * string literal of KStates until the line breaks are `\n`: then its line stays as it is, printing again changes
+     * nothing, and braces inside it no longer count, so code whose braces then do not balance is rejected.
+     */
+    @Test
+    fun `code with other line breaks is checked and written with the line breaks it reads back with`() {
+        val continued = "s = \"a\\\n   b\"\nc()\nreturn s"
+        listOf("\r\n", "\r").forEach { lineBreak ->
+            val state = stateDoing(evalRule(continued.replace("\n", lineBreak)))
+            val rule = readBack(state).onDo.items.single() as ActionRule
+            val reread = (rule.rightSide as EvalActionRightSide).code
+
+            assertEquals(CodeShape.of(continued), CodeShape.of(reread), reread)
+            assertEquals(continuedLinesOf(continued), continuedLinesOf(reread), reread)
+            assertEquals(printer.printState(state, 2), printer.printState(readBack(state), 2))
+        }
+        val braceInContinuedLiteral = "d = {\"k\": \"a\\\r\n{\"}  # }\r\nreturn d"
+        assertFailsWith<IllegalArgumentException> { printer.printState(stateDoing(evalRule(braceInContinuedLiteral))) }
+    }
+
+    /**
      * A typed call names its function with an identifier, which no keyword of KStates is, and only a `RETURNS`
      * directive takes `reference(...)`; any other call is rejected.
      */

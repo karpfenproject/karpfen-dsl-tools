@@ -64,18 +64,20 @@ internal class KstatesSyntax(
      * between the braces, re-indented by [CodeWriter.codeBlock]: the lines after the first keep their indentation
      * relative to each other, and a line that continues a string literal, see [StringContinuations], stays exactly as
      * it is, so the value of the literal does not change. Whitespace at the edges of [code] is not part of the code,
-     * see [EvalCodeSyntax], so it is not written.
+     * see [EvalCodeSyntax], so it is not written. The line breaks of the code are written as [CodeWriter.LINE_BREAK],
+     * and the code is checked and its string continuations are found in that form, the form that reads back: a
+     * backslash before a `\r\n` escapes only the `\r`, so KStates reads the same code differently with other line
+     * breaks.
      *
      * @throws IllegalArgumentException If KStates cannot hold [code], see [EvalCodeCheck].
      */
     fun eval(code: String, writer: CodeWriter): String {
-        val trimmed = EvalCodeSyntax.codeOf(code)
-        evalCode.requireExpressible(trimmed)
+        val written = CodeWriter.withLineBreaks(EvalCodeSyntax.codeOf(code))
+        evalCode.requireExpressible(written)
         return when {
-            trimmed.isEmpty() -> "EVAL { }"
-            trimmed.any { it == '\n' || it == '\r' } ->
-                writer.codeBlock("EVAL", trimmed, continuations.linesIn(trimmed))
-            else -> "EVAL { $trimmed }"
+            written.isEmpty() -> "EVAL { }"
+            CodeWriter.LINE_BREAK in written -> writer.codeBlock("EVAL", written, continuations.linesIn(written))
+            else -> "EVAL { $written }"
         }
     }
 
