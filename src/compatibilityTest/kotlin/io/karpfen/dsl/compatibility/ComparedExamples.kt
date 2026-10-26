@@ -19,13 +19,13 @@ import io.karpfen.dsl.dsl.textual.JsonToModelConverter
 import io.karpfen.dsl.dsl.textual.KmetaDSLConverter
 import io.karpfen.dsl.dsl.textual.KmodelDSLConverter
 import io.karpfen.dsl.dsl.textual.KstatesDSLConverter
+import io.karpfen.dsl.fixtures.ExampleCatalog
+import io.karpfen.dsl.fixtures.MetamodelExample
+import io.karpfen.dsl.fixtures.ModelExample
 import io.karpfen.dsl.meta.Metamodel
 import io.karpfen.dsl.parser.KStatesFileParser
 import io.karpfen.dsl.parser.KmetaFileParser
 import io.karpfen.dsl.parser.KmodelFileParser
-import io.karpfen.dsl.printer.ExampleCatalog
-import io.karpfen.dsl.printer.MetamodelExample
-import io.karpfen.dsl.printer.ModelExample
 import java.io.File
 import dsl.textual.JsonToModelConverter as LegacyJsonConverter
 import dsl.textual.KmetaDSLConverter as LegacyKmetaConverter

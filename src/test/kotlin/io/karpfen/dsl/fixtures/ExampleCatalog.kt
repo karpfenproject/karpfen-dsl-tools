@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.karpfen.dsl.printer
+package io.karpfen.dsl.fixtures
 
 import io.karpfen.dsl.dsl.textual.KmetaDSLConverter
 import io.karpfen.dsl.dsl.textual.KmodelDSLConverter
@@ -25,7 +25,7 @@ import io.karpfen.dsl.states.StateMachine
 import java.io.File
 
 /**
- * The example documents the printer tests run on, found by walking [roots].
+ * The example documents that the printer, reader and compatibility tests run on, found by walking [roots].
  *
  * The roots are the examples of this repository in `example/` and the copies of the karpfen runtime examples
  * in `src/test/resources/examples`. Each folder holds at most one domain metamodel; an `EVENTS.kmeta` next to

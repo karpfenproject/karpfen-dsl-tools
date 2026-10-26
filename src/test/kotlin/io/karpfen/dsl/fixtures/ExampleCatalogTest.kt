@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.karpfen.dsl.printer
+package io.karpfen.dsl.fixtures
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Guards the printer tests against running on fewer examples than there are.
+ * Guards the tests that read the examples through [ExampleCatalog] against running on fewer examples than there are.
  */
 class ExampleCatalogTest {
 

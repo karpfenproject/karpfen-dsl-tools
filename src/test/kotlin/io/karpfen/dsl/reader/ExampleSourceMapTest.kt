@@ -16,12 +16,12 @@
 package io.karpfen.dsl.reader
 
 import io.karpfen.dsl.dsl.textual.KmodelDSLConverter
+import io.karpfen.dsl.fixtures.ExampleCatalog
 import io.karpfen.dsl.fixtures.StructureDump
 import io.karpfen.dsl.instance.ClassTypeAtomicPropertyObject
 import io.karpfen.dsl.instance.ClassTypeListPropertyObject
 import io.karpfen.dsl.instance.SimpleListPropertyObject
 import io.karpfen.dsl.meta.AssociationType
-import io.karpfen.dsl.printer.ExampleCatalog
 import io.karpfen.dsl.reader.kmeta.KmetaReader
 import io.karpfen.dsl.reader.kmodel.KmodelReader
 import io.karpfen.dsl.reader.kstates.KstatesReader

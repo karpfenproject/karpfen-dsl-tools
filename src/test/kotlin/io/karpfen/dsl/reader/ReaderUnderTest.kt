@@ -16,8 +16,8 @@
 package io.karpfen.dsl.reader
 
 import io.karpfen.dsl.dsl.textual.captureConsole
+import io.karpfen.dsl.fixtures.ExampleCatalog
 import io.karpfen.dsl.fixtures.StructureDump
-import io.karpfen.dsl.printer.ExampleCatalog
 import io.karpfen.dsl.reader.kmeta.KmetaReader
 import io.karpfen.dsl.reader.kmodel.KmodelReader
 import io.karpfen.dsl.reader.kstates.KstatesReader

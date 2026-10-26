@@ -17,11 +17,11 @@ package io.karpfen.dsl.printer.kmeta
 
 import io.karpfen.dsl.dsl.functional.MetamodelConstructorExample
 import io.karpfen.dsl.dsl.textual.KmetaDSLConverter
+import io.karpfen.dsl.fixtures.ExampleCatalog
+import io.karpfen.dsl.fixtures.MetamodelExample
 import io.karpfen.dsl.grammar.kmeta.KmetaLexer
 import io.karpfen.dsl.grammar.kmeta.KmetaParser
 import io.karpfen.dsl.printer.ElementRange
-import io.karpfen.dsl.printer.ExampleCatalog
-import io.karpfen.dsl.printer.MetamodelExample
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.junit.jupiter.api.DynamicTest

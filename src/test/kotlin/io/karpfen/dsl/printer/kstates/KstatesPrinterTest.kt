@@ -16,11 +16,11 @@
 package io.karpfen.dsl.printer.kstates
 
 import io.karpfen.dsl.dsl.textual.KstatesDSLConverter
+import io.karpfen.dsl.fixtures.ExampleCatalog
+import io.karpfen.dsl.fixtures.StateMachineExample
 import io.karpfen.dsl.grammar.kstates.KstatesLexer
 import io.karpfen.dsl.grammar.kstates.KstatesParser
 import io.karpfen.dsl.printer.ElementRange
-import io.karpfen.dsl.printer.ExampleCatalog
-import io.karpfen.dsl.printer.StateMachineExample
 import io.karpfen.dsl.states.State
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream

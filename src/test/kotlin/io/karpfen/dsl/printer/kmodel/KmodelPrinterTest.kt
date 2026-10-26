@@ -19,6 +19,8 @@ import io.karpfen.dsl.dsl.functional.MetamodelConstructorExample
 import io.karpfen.dsl.dsl.functional.ModelConstructorExample
 import io.karpfen.dsl.dsl.textual.KmetaDSLConverter
 import io.karpfen.dsl.dsl.textual.KmodelDSLConverter
+import io.karpfen.dsl.fixtures.ExampleCatalog
+import io.karpfen.dsl.fixtures.ModelExample
 import io.karpfen.dsl.grammar.kmodel.KmodelLexer
 import io.karpfen.dsl.grammar.kmodel.KmodelParser
 import io.karpfen.dsl.instance.ClassTypeAtomicPropertyObject
@@ -26,8 +28,6 @@ import io.karpfen.dsl.instance.DataObject
 import io.karpfen.dsl.instance.Model
 import io.karpfen.dsl.instance.ObjectReference
 import io.karpfen.dsl.printer.ElementRange
-import io.karpfen.dsl.printer.ExampleCatalog
-import io.karpfen.dsl.printer.ModelExample
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.junit.jupiter.api.DynamicTest

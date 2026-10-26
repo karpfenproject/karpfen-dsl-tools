@@ -3,7 +3,8 @@
 The `.kmeta`, `.kmodel` and `.kstates` files in `karpfen-runtime/` are unmodified copies of the examples of the
 karpfen runtime. The printer tests in `src/test/kotlin/io/karpfen/dsl/printer`, the reader tests in
 `src/test/kotlin/io/karpfen/dsl/reader` and the comparison with version 1.0 in `src/compatibilityTest` read them,
-together with the examples of this repository in `example/`, through `ExampleCatalog`.
+together with the examples of this repository in `example/`, through `ExampleCatalog` in
+`src/test/kotlin/io/karpfen/dsl/fixtures`.
 
 | Folder | Origin repository | Commit | Copied paths |
 |---|---|---|---|
