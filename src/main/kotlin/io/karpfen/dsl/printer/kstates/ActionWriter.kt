@@ -15,10 +15,10 @@
  */
 package io.karpfen.dsl.printer.kstates
 
+import io.karpfen.dsl.parser.ActionRuleSyntax
 import io.karpfen.dsl.printer.CodeWriter
 import io.karpfen.dsl.states.actions.ActionBlock
 import io.karpfen.dsl.states.actions.ActionItem
-import io.karpfen.dsl.states.actions.ActionOperationType
 import io.karpfen.dsl.states.actions.ActionRightSide
 import io.karpfen.dsl.states.actions.ActionRule
 import io.karpfen.dsl.states.actions.EvalActionRightSide
@@ -78,19 +78,23 @@ internal class ActionWriter(private val syntax: KstatesSyntax) {
      * Returns an action rule with the operands it has, as [ActionRule] describes them: `OP("path")`,
      * `OP("path", value)` or `OP("source", "relation", target)`.
      *
-     * @throws IllegalArgumentException If the rule has a relation but no right side, which KStates cannot
-     * express.
+     * @throws IllegalArgumentException If the rule has a relation but no right side, or another number of operands
+     * than its operation expects, which KStates cannot read back.
      */
     private fun ruleText(rule: ActionRule, writer: CodeWriter): String {
         require(rule.rightSide != null || rule.secondSide == null) {
             "The ${rule.operationType} rule on '${rule.leftSide}' has a relation but no right side."
         }
+        val stringCount = if (rule.secondSide == null) 1 else 2
+        val written = ActionRuleSyntax.writtenArity(stringCount, rule.rightSide != null)
+        val expected = ActionRuleSyntax.expectedArity(rule.operationType)
+        require(written == expected) { ActionRuleSyntax.arityMismatch(rule.operationType, expected, written) }
         val operands = listOfNotNull(
             syntax.quote(rule.leftSide),
             rule.secondSide?.let { syntax.quote(it) },
             rule.rightSide?.let { rightSideText(it, writer) }
         )
-        return "${keywordOf(rule.operationType)}(${operands.joinToString(", ")})"
+        return "${ActionRuleSyntax.keywordOf(rule.operationType)}(${operands.joinToString(", ")})"
     }
 
     /**
@@ -103,16 +107,5 @@ internal class ActionWriter(private val syntax: KstatesSyntax) {
         is MacroActionRightSide -> syntax.macroCall(rightSide.macroName, rightSide.args)
         is EvalActionRightSide -> syntax.eval(rightSide.code, writer)
         else -> throw IllegalArgumentException("Unsupported kind of right side: ${rightSide.actionValueType}")
-    }
-
-    private fun keywordOf(operation: ActionOperationType): String = when (operation) {
-        ActionOperationType.SET -> "SET"
-        ActionOperationType.APPEND -> "APPEND"
-        ActionOperationType.SETLIST -> "SETLIST"
-        ActionOperationType.DROPLIST -> "DROPLIST"
-        ActionOperationType.SETOBJ -> "SETOBJ"
-        ActionOperationType.APPENDOBJ -> "APPENDOBJ"
-        ActionOperationType.DROPOBJ -> "DROPOBJ"
-        ActionOperationType.EVENT -> "EVENT"
     }
 }

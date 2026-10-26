@@ -43,10 +43,8 @@ object KstatesDSLConverter {
         val transitions = parsed.transitions.map { convertTransition(it) }.toMutableList()
         val macros = parsed.macros.map { convertMacro(it) }.toMutableList()
 
-        val initialStates = countInitialStates(stateObjects)
-        require(initialStates == 1) {
-            "Exactly one state must be marked as INITIAL, but found $initialStates."
-        }
+        val initialStates = InitialStates.of(stateObjects).size
+        require(initialStates == 1) { InitialStates.countMessage(initialStates) }
 
         return StateMachine(parsed.attachedToClass, stateObjects, transitions, macros)
     }
@@ -115,16 +113,7 @@ object KstatesDSLConverter {
 
     private fun convertActionRule(action: ParsedActionRule): ActionRule {
         return ActionRule(
-            operationType = when (action.operationType) {
-                ParsedActionOperationType.SET -> ActionOperationType.SET
-                ParsedActionOperationType.APPEND -> ActionOperationType.APPEND
-                ParsedActionOperationType.SETLIST -> ActionOperationType.SETLIST
-                ParsedActionOperationType.DROPLIST -> ActionOperationType.DROPLIST
-                ParsedActionOperationType.SETOBJ -> ActionOperationType.SETOBJ
-                ParsedActionOperationType.APPENDOBJ -> ActionOperationType.APPENDOBJ
-                ParsedActionOperationType.DROPOBJ -> ActionOperationType.DROPOBJ
-                ParsedActionOperationType.EVENT -> ActionOperationType.EVENT
-            },
+            operationType = action.operationType.operation,
             leftSide = action.leftSide,
             secondSide = action.secondSide,
             rightSide = action.rightSide?.let { convertActionRightSide(it) }
@@ -193,19 +182,4 @@ object KstatesDSLConverter {
             definition = Definition(CodeBlock(macro.definitionCode))
         )
     }
-
-    /**
-     * Counts the states marked `INITIAL` in [states] and all their nested states.
-     */
-    private fun countInitialStates(states: List<State>): Int {
-        var initialCount = 0
-        for (state in states) {
-            if (state.isInitial) {
-                initialCount += 1
-            }
-            initialCount += countInitialStates(state.innerStates)
-        }
-        return initialCount
-    }
 }
-

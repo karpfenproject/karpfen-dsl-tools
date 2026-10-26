@@ -24,6 +24,12 @@ package io.karpfen.dsl.printer
  * an order that follows the element. Comments are not part of the elements, so a document that is read and
  * written again loses its comments.
  *
+ * Besides whole documents, the printers write fragments: single elements such as a type, an object or a state,
+ * laid out for an element whose first line stands at a given indentation level. The first line of a fragment
+ * carries no indentation, every following line carries its full indentation, and there is no line break at the end.
+ * A fragment thus replaces the text range of an existing element, which starts at its first token, without
+ * changing the layout around it.
+ *
  * @param D The element a document holds: a metamodel, a model or a state machine.
  */
 interface DocumentPrinter<in D> {

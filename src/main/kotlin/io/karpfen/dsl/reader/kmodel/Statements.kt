@@ -18,6 +18,7 @@ package io.karpfen.dsl.reader.kmodel
 import io.karpfen.dsl.instance.DataObject
 import io.karpfen.dsl.meta.ClassTypeProperty
 import io.karpfen.dsl.meta.SimpleProperty
+import io.karpfen.dsl.parser.StringLiteralSyntax
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.tree.TerminalNode
 
@@ -40,9 +41,9 @@ internal class PropStatement(
     val key: String
         get() = property.key
 
-    /** The value without quotes, the way the throwing converter unquotes it. */
+    /** The value of the quoted value token. */
     val value: String
-        get() = valueToken.text.trim('"', '\'')
+        get() = StringLiteralSyntax.KMODEL.unquote(valueToken.text)
 }
 
 /**
@@ -84,7 +85,7 @@ internal class KnowsStatement(
     val key: String
         get() = relation.key
 
-    /** The id of the object referred to, without quotes, the way the throwing converter unquotes it. */
+    /** The id of the object referred to, the value of the quoted id token. */
     val targetId: String
-        get() = targetToken.text.trim('"', '\'')
+        get() = StringLiteralSyntax.KMODEL.unquote(targetToken.text)
 }

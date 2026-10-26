@@ -74,8 +74,8 @@ class KmodelParseVisitor : KmodelBaseVisitor<KmodelFile>() {
     private fun parseObjectSignature(ctx: KmodelParser.Object_signatureContext): Pair<String, String> {
         requireLeadingString(ctx)
 
-        val key = ctx.children.first().text.removeSurrounding("\"").removeSurrounding("\'")
-        val className = ctx.children.last().text.removeSurrounding("\"").removeSurrounding("\'")
+        val key = StringLiteralSyntax.KMODEL_SIGNATURE.unquote(ctx.children.first().text)
+        val className = StringLiteralSyntax.KMODEL_SIGNATURE.unquote(ctx.children.last().text)
 
         return Pair(key, className)
     }
@@ -88,7 +88,5 @@ class KmodelParseVisitor : KmodelBaseVisitor<KmodelFile>() {
         extractStringFromQuotes(ctx.STRING(0).text)
     }
 
-    private fun extractStringFromQuotes(text: String): String {
-        return text.trim('"', '\'')
-    }
+    private fun extractStringFromQuotes(text: String): String = StringLiteralSyntax.KMODEL.unquote(text)
 }

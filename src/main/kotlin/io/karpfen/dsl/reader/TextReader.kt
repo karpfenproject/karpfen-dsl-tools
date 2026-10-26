@@ -26,8 +26,14 @@ package io.karpfen.dsl.reader
  *
  * The converters are not built on the readers: they keep the behaviour of version 1.0 down to the exceptions
  * they throw on broken text, null pointer exceptions included, which a reader that keeps going cannot reproduce.
- * Where a reader finds no error, it builds the same model as the converter, and where the converter throws, the
- * reader reports an error; the reader tests check both on thousands of mutated examples.
+ * A reader reads the text its converter reads, the KMeta and KModel readers with the common indentation trimmed,
+ * while its ranges refer to the text as written. Where a reader finds no error, it builds the same model as the
+ * converter, and where the converter throws, the reader reports an error; the reader tests check both on thousands
+ * of mutated examples.
+ *
+ * Should a reader fail nevertheless, through a defect or on nesting deeper than its parser can recurse, it reports
+ * a [io.karpfen.dsl.diagnostics.DiagnosticCode.READER_FAILURE] and logs the failure through SLF4J, below
+ * `io.karpfen.dsl.reader`: a defect as an error with its stack trace, the nesting as a warning without one.
  *
  * @param M The type of the model the reader builds.
  */

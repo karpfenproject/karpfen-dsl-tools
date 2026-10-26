@@ -18,11 +18,12 @@ package io.karpfen.dsl.reader.kstates
 import io.karpfen.dsl.diagnostics.DiagnosticCode
 import io.karpfen.dsl.reader.ReadingSession
 import io.karpfen.dsl.source.SourceRange
+import io.karpfen.dsl.states.InitialStates
 import io.karpfen.dsl.states.State
 
 /**
  * Checks that a state machine marks exactly one state, at any depth, as `INITIAL`, with the message of the
- * throwing converter.
+ * throwing converter, see [InitialStates].
  *
  * Several initial states are each reported at their name; no initial state at all is reported at the range
  * that stands for the states as a whole.
@@ -35,8 +36,8 @@ internal class InitialStateCheck(private val session: ReadingSession) {
      * Checks [states] and their nested states; [statesRange] marks a missing initial state.
      */
     fun check(states: List<State>, statesRange: SourceRange) {
-        val initialStates = initialStatesIn(states)
-        val message = "Exactly one state must be marked as INITIAL, but found ${initialStates.size}."
+        val initialStates = InitialStates.of(states)
+        val message = InitialStates.countMessage(initialStates.size)
         when (initialStates.size) {
             1 -> Unit
             0 -> session.report(DiagnosticCode.INITIAL_STATE_COUNT, statesRange, message)
@@ -45,7 +46,4 @@ internal class InitialStateCheck(private val session: ReadingSession) {
             }
         }
     }
-
-    private fun initialStatesIn(states: List<State>): List<State> =
-        states.flatMap { state -> listOfNotNull(state.takeIf { it.isInitial }) + initialStatesIn(state.innerStates) }
 }

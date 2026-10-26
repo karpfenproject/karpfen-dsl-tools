@@ -39,7 +39,7 @@ internal class CodeWriter private constructor(private val startLevel: Int) {
      * Adds [text] as a line at the current indentation level.
      *
      * Line breaks inside [text] are kept as they are, so the lines after the first one keep their own
-     * indentation; this is how verbatim code is written.
+     * indentation, such as the lines of a [verbatimBlock] or a string literal with an escaped line break.
      */
     fun line(text: String) {
         lines.add(indentation + text)
@@ -83,14 +83,23 @@ internal class CodeWriter private constructor(private val startLevel: Int) {
     }
 
     /**
-     * Returns `opening {`, then [body] verbatim on lines of its own one level deeper, then `}` at the current
-     * level, as text to embed into the line that is written next.
+     * Returns `opening {`, then [body] on lines of its own one level deeper, then `}` at the current level, as
+     * text to embed into the line that is written next.
      *
-     * Only the first line of [body] gets the deeper indentation; its other lines keep the indentation they
-     * have, which leaves code such as Python unchanged.
+     * The first line of [body] stands at the deeper level. The lines after it keep their indentation relative to
+     * each other: the indentation they all share is replaced by the deeper level, and blank lines stay empty. Code
+     * such as Python thus keeps its shape at whatever depth the block stands, wherever it was written before, and
+     * writing the text that results once more changes nothing.
      */
-    fun verbatimBlock(opening: String, body: String): String =
-        "$opening {$LINE_BREAK${indentationOf(level + 1)}$body$LINE_BREAK$indentation}"
+    fun verbatimBlock(opening: String, body: String): String {
+        val contentIndentation = indentationOf(level + 1)
+        val bodyLines = body.lines()
+        val followingLines = bodyLines.drop(1)
+        val sharedIndentation = followingLines.filter { it.isNotBlank() }.minOfOrNull { indentationWidthOf(it) } ?: 0
+        val rebasedLines = followingLines.map { if (it.isBlank()) "" else contentIndentation + it.drop(sharedIndentation) }
+        val content = (listOf(bodyLines.first()) + rebasedLines).joinToString(LINE_BREAK)
+        return "$opening {$LINE_BREAK$contentIndentation$content$LINE_BREAK$indentation}"
+    }
 
     private fun documentText(): String = lines.joinToString(LINE_BREAK, postfix = LINE_BREAK)
 
@@ -114,11 +123,8 @@ internal class CodeWriter private constructor(private val startLevel: Int) {
         fun document(write: (CodeWriter) -> Unit): String = CodeWriter(0).also(write).documentText()
 
         /**
-         * Returns the text that [write] writes as a fragment whose first line stands at [indentLevel].
-         *
-         * The first line carries no indentation, every following line carries its full indentation, and
-         * there is no line break at the end. The text thus replaces the text range of an existing element,
-         * which starts at its first token, without changing the layout around it.
+         * Returns the text that [write] writes as a fragment whose first line stands at [indentLevel], laid out
+         * as [DocumentPrinter] describes fragments.
          *
          * @throws IllegalArgumentException If [indentLevel] is negative.
          */
@@ -128,5 +134,12 @@ internal class CodeWriter private constructor(private val startLevel: Int) {
         }
 
         private fun indentationOf(level: Int): String = INDENTATION_UNIT.repeat(level)
+
+        /**
+         * Returns the number of whitespace characters [line] starts with.
+         */
+        private fun indentationWidthOf(line: String): Int = line.indexOfFirst { !it.isWhitespace() }.let {
+            if (it < 0) line.length else it
+        }
     }
 }

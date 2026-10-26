@@ -31,7 +31,7 @@ data class Variant(val index: Int, val text: String)
  *
  * The edits delete, duplicate and swap characters and lines, insert words of [vocabulary], replace the content of
  * string literals with that of others and cut the text off, which produces syntax errors as well as unknown
- * names, wrong references and wrong arities.
+ * names, wrong references and wrong arities. Every third variant or so is then written in another [TextLayout].
  *
  * @param vocabulary The words to insert, typically keywords, punctuation and snippets of the language.
  */
@@ -54,8 +54,14 @@ class Mutator(private val vocabulary: List<String>) {
             val edit = Edit.entries[random.nextInt(Edit.entries.size)]
             mutated = edit.apply(mutated, random, vocabulary)
         }
-        return mutated
+        return layoutOf(random).apply(mutated)
     }
+
+    /**
+     * Picks the layout of a variant: another one than [TextLayout.AS_WRITTEN] for about every third variant.
+     */
+    private fun layoutOf(random: Random): TextLayout =
+        if (random.nextInt(3) == 0) TextLayout.entries[random.nextInt(TextLayout.entries.size)] else TextLayout.AS_WRITTEN
 
     private fun seedOf(path: String, index: Int): Long = path.hashCode().toLong() * 1_000_003L + index
 

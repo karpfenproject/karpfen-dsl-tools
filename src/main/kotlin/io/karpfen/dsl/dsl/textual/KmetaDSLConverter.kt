@@ -21,8 +21,8 @@ import io.karpfen.dsl.meta.ClassTypeProperty
 import io.karpfen.dsl.meta.ClassTypeReference
 import io.karpfen.dsl.meta.Metamodel
 import io.karpfen.dsl.meta.SimpleProperty
-import io.karpfen.dsl.meta.SimplePropertyType
 import io.karpfen.dsl.parser.KmetaFileParser
+import io.karpfen.dsl.parser.KmetaVocabulary
 import io.karpfen.dsl.parser.ListValue
 import io.karpfen.dsl.parser.Rule
 import io.karpfen.dsl.parser.RuleValue
@@ -107,12 +107,8 @@ object KmetaDSLConverter {
     private fun toSimpleProperty(rule: Rule): SimpleProperty {
         val typeName = typeNameOf(rule.value)
         logger.debug("  prop {}: {}", rule.key, rule.value)
-        val propertyType = when (typeName) {
-            "string" -> SimplePropertyType.STRING
-            "number" -> SimplePropertyType.NUMBER
-            "boolean" -> SimplePropertyType.BOOLEAN
-            else -> throw IllegalArgumentException("Unknown rule value type for prop '${rule.key}'")
-        }
+        val propertyType = KmetaVocabulary.primitiveTypeNamed(typeName)
+            ?: throw IllegalArgumentException("Unknown rule value type for prop '${rule.key}'")
         return SimpleProperty(rule.key, propertyType, rule.value is ListValue)
     }
 

@@ -17,6 +17,7 @@ package io.karpfen.dsl.reader.kstates
 
 import io.karpfen.dsl.diagnostics.DiagnosticCode
 import io.karpfen.dsl.grammar.kstates.KstatesParser
+import io.karpfen.dsl.parser.ActionRuleSyntax
 import io.karpfen.dsl.parser.Arity
 import io.karpfen.dsl.reader.ReadingSession
 import io.karpfen.dsl.reader.containsSyntaxError
@@ -24,7 +25,6 @@ import io.karpfen.dsl.reader.presentToken
 import io.karpfen.dsl.reader.presentTokens
 import io.karpfen.dsl.states.actions.ActionBlock
 import io.karpfen.dsl.states.actions.ActionItem
-import io.karpfen.dsl.states.actions.ActionOperationType
 import io.karpfen.dsl.states.actions.ActionRightSide
 import io.karpfen.dsl.states.actions.ActionRule
 import io.karpfen.dsl.states.actions.EvalActionRightSide
@@ -82,20 +82,20 @@ internal class ActionConverter(
     }
 
     private fun convertRule(rule: KstatesParser.Action_ruleContext): ActionRule? {
-        if (rule.containsSyntaxError()) {
+        if (rule.containsSyntaxError() || rule.action_operation() == null) {
             return null
         }
-        val operation = operationOf(rule.action_operation()) ?: return null
+        val operation = ActionRuleSyntax.operationOf(rule).operation
         val operands = rule.presentTokens(KstatesParser.STRING).map { unquoted(it) }
         val rightSideContext = rule.action_right_side()
         val leftSide = operands.firstOrNull() ?: return null
-        val writtenArity = ActionArity.writtenWith(operands.size, rightSideContext != null)
-        val expectedArity = ActionArity.expectedFor(operation)
+        val writtenArity = ActionRuleSyntax.writtenArity(operands.size, rightSideContext != null)
+        val expectedArity = ActionRuleSyntax.expectedArity(operation)
         if (writtenArity != expectedArity) {
             session.report(
                 DiagnosticCode.ACTION_ARITY,
                 session.locator.rangeOf(rule),
-                "Operation $operation expects ${expectedArity.usage}, but was called as ${writtenArity.usage}."
+                ActionRuleSyntax.arityMismatch(operation, expectedArity, writtenArity)
             )
             return null
         }
@@ -108,19 +108,6 @@ internal class ActionConverter(
         session.record(actionRule, rule)
         return actionRule
     }
-
-    private fun operationOf(operation: KstatesParser.Action_operationContext?): ActionOperationType? =
-        when (operation?.start?.type) {
-            KstatesParser.SET -> ActionOperationType.SET
-            KstatesParser.APPEND -> ActionOperationType.APPEND
-            KstatesParser.SETLIST -> ActionOperationType.SETLIST
-            KstatesParser.DROPLIST -> ActionOperationType.DROPLIST
-            KstatesParser.SETOBJ -> ActionOperationType.SETOBJ
-            KstatesParser.APPENDOBJ -> ActionOperationType.APPENDOBJ
-            KstatesParser.DROPOBJ -> ActionOperationType.DROPOBJ
-            KstatesParser.EVENT -> ActionOperationType.EVENT
-            else -> null
-        }
 
     /**
      * Converts the right side of a rule: a literal value, a macro call or an `EVAL` body.

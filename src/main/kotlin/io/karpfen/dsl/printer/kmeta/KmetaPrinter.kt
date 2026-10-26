@@ -15,15 +15,14 @@
  */
 package io.karpfen.dsl.printer.kmeta
 
-import io.karpfen.dsl.meta.AssociationType
 import io.karpfen.dsl.meta.ClassType
 import io.karpfen.dsl.meta.ClassTypeProperty
 import io.karpfen.dsl.meta.Metamodel
 import io.karpfen.dsl.meta.SimpleProperty
-import io.karpfen.dsl.meta.SimplePropertyType
+import io.karpfen.dsl.parser.KmetaVocabulary
+import io.karpfen.dsl.parser.StringLiteralSyntax
 import io.karpfen.dsl.printer.CodeWriter
 import io.karpfen.dsl.printer.DocumentPrinter
-import io.karpfen.dsl.printer.StringLiteralSyntax
 
 /**
  * Writes [Metamodel]s, and single class types and rules of them, as KMeta text in the canonical layout.
@@ -33,12 +32,7 @@ import io.karpfen.dsl.printer.StringLiteralSyntax
  * because KMeta reads the last type of a file as the root. Within a type the `prop` rules come first, in the
  * order of [ClassType.simpleProperties], followed by the `has` and `knows` rules in the order of
  * [ClassType.objectProperties]. Comments are not part of a metamodel and are not written, so reading a KMeta
- * text and writing it again drops its comments.
- *
- * A fragment is laid out for an element whose first line stands at a given indentation level: its first line
- * carries no indentation, every following line carries its full indentation, and there is no line break at
- * the end. A fragment thus replaces the text range of an existing element, which starts at its first token,
- * without changing the layout around it.
+ * text and writing it again drops its comments. A single type is written as a fragment, see [DocumentPrinter].
  *
  * The printer holds no state; one instance serves any number of calls, also concurrent ones on metamodels
  * that are not changed meanwhile.
@@ -56,26 +50,27 @@ class KmetaPrinter : DocumentPrinter<Metamodel> {
     override fun print(document: Metamodel): String = print(document, emptyList())
 
     /**
-     * Returns [metamodel] as a KMeta document without the class types named in [baseTypes].
+     * Returns [metamodel] as a KMeta document without the class types in [baseTypes].
      *
      * This mirrors reading KMeta text with base types, as an event metamodel is read with the types of the
-     * domain metamodel: those types belong to the metamodel but are defined in another document. The root
-     * class type is always written, as the last type.
+     * domain metamodel: those types belong to the metamodel but are defined in another document. A base type is
+     * left out as that very object, not by its name, so a type of the document that shares its name with a base
+     * type, which reading resolves before the base type, is written. The root class type is always written, as
+     * the last type.
      *
-     * @param baseTypes Class types that are defined elsewhere; they are left out by name.
+     * @param baseTypes Class types that are defined elsewhere.
      * @throws IllegalArgumentException If a name or a description cannot be written as a KMeta string
      * literal.
      */
     fun print(metamodel: Metamodel, baseTypes: Collection<ClassType>): String {
-        val baseTypeNames = baseTypes.mapTo(HashSet()) { it.name }
         val root = metamodel.rootClass
-        val types = metamodel.types.filter { it !== root && it.name !in baseTypeNames } + root
+        val types = metamodel.types.filter { type -> type !== root && baseTypes.none { it === type } } + root
         return CodeWriter.document { writer -> writer.paragraphs(types) { writeType(it, writer) } }
     }
 
     /**
-     * Returns the type definition `type "Name" "Description" { ... }` of [type] with its rules, laid out as a
-     * fragment whose first line stands at [indentLevel].
+     * Returns the type definition `type "Name" "Description" { ... }` of [type] with its rules, as a fragment
+     * whose first line stands at [indentLevel].
      *
      * @throws IllegalArgumentException If a name or the description cannot be written as a KMeta string
      * literal, or [indentLevel] is negative.
@@ -105,14 +100,13 @@ class KmetaPrinter : DocumentPrinter<Metamodel> {
         }
     }
 
-    private fun propRule(property: SimpleProperty): String =
-        "prop(${literals.quote(property.key)}, ${typeValue(typeNameOf(property.propertyType), property.isList)})"
+    private fun propRule(property: SimpleProperty): String {
+        val type = typeValue(KmetaVocabulary.nameOf(property.propertyType), property.isList)
+        return "prop(${literals.quote(property.key)}, $type)"
+    }
 
     private fun relationRule(property: ClassTypeProperty): String {
-        val keyword = when (property.associationType) {
-            AssociationType.EMBEDDED -> "has"
-            AssociationType.LINK -> "knows"
-        }
+        val keyword = KmetaVocabulary.relationKeyword(property.associationType)
         val target = typeValue(property.reference.classTypeName, property.isList)
         return "$keyword(${literals.quote(property.key)}, $target)"
     }
@@ -123,11 +117,5 @@ class KmetaPrinter : DocumentPrinter<Metamodel> {
     private fun typeValue(typeName: String, isList: Boolean): String {
         val quoted = literals.quote(typeName)
         return if (isList) "list($quoted)" else quoted
-    }
-
-    private fun typeNameOf(type: SimplePropertyType): String = when (type) {
-        SimplePropertyType.STRING -> "string"
-        SimplePropertyType.NUMBER -> "number"
-        SimplePropertyType.BOOLEAN -> "boolean"
     }
 }

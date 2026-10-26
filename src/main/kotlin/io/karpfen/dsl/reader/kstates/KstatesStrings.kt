@@ -15,10 +15,10 @@
  */
 package io.karpfen.dsl.reader.kstates
 
+import io.karpfen.dsl.parser.StringLiteralSyntax
 import org.antlr.v4.runtime.tree.TerminalNode
 
 /**
- * Returns the text of a KStates string token without its quotes, the way the throwing converter does.
+ * Returns the value of a KStates string token.
  */
-internal fun unquoted(token: TerminalNode): String =
-    token.text.trim().removeSurrounding("\"").removeSurrounding("'")
+internal fun unquoted(token: TerminalNode): String = StringLiteralSyntax.KSTATES.unquote(token.text)

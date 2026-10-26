@@ -22,9 +22,9 @@ import io.karpfen.dsl.instance.SimpleAtomicPropertyObject
 import io.karpfen.dsl.instance.SimpleListPropertyObject
 import io.karpfen.dsl.instance.SimplePropertyObject
 import io.karpfen.dsl.meta.AssociationType
+import io.karpfen.dsl.parser.StringLiteralSyntax
 import io.karpfen.dsl.printer.CodeWriter
 import io.karpfen.dsl.printer.DocumentPrinter
-import io.karpfen.dsl.printer.StringLiteralSyntax
 
 /**
  * Writes [Model]s, and single objects with the objects they embed, as KModel text in the canonical layout.
@@ -35,12 +35,9 @@ import io.karpfen.dsl.printer.StringLiteralSyntax
  * `has` statement with its own `make object` block, a linked object as a `knows` statement with its
  * identifier. Values are written with [Any.toString], so a number reads `"1.0"` however it was written
  * before. Empty lists and empty relations are left out, as KModel has no statement for them. Comments are
- * not part of a model and are not written, so reading a KModel text and writing it again drops its comments.
- *
- * A fragment is laid out for an element whose first line stands at a given indentation level: its first line
- * carries no indentation, every following line carries its full indentation, and there is no line break at
- * the end. A fragment thus replaces the text range of an existing element, which starts at its first token,
- * without changing the layout around it.
+ * not part of a model and are not written, so reading a KModel text and writing it again drops its comments. A
+ * single object is written as a fragment, see [DocumentPrinter]. The key and the class type of an object follow the
+ * literal syntax of object signatures, every other value that of statements.
  *
  * The printer holds no state; one instance serves any number of calls, also concurrent ones on models that
  * are not changed meanwhile.
@@ -53,6 +50,8 @@ class KmodelPrinter internal constructor(private val tree: ObjectTree) : Documen
     constructor() : this(ObjectTree())
 
     private val literals = StringLiteralSyntax.KMODEL
+
+    private val signatureLiterals = StringLiteralSyntax.KMODEL_SIGNATURE
 
     /**
      * Returns [document] as a KModel document that starts from its root object.
@@ -70,8 +69,8 @@ class KmodelPrinter internal constructor(private val tree: ObjectTree) : Documen
     }
 
     /**
-     * Returns the block `make object "id":"Class" { ... }` of [obj] with the objects it embeds, laid out as a
-     * fragment whose first line stands at [indentLevel].
+     * Returns the block `make object "id":"Class" { ... }` of [obj] with the objects it embeds, as a fragment whose
+     * first line stands at [indentLevel].
      *
      * The fragment fits both as the root of a document and after the arrow of a `has` statement.
      *
@@ -89,7 +88,7 @@ class KmodelPrinter internal constructor(private val tree: ObjectTree) : Documen
     private fun writeObject(obj: DataObject, prefix: String, writer: CodeWriter, enclosing: Set<DataObject>) {
         require(obj !in enclosing) { "The object '${obj.id}' of class type ${obj.ofType.name} embeds itself." }
         val inside = enclosing + obj
-        val signature = "${literals.quote(obj.id)}:${literals.quote(obj.ofType.name)}"
+        val signature = "${signatureLiterals.quote(obj.id)}:${signatureLiterals.quote(obj.ofType.name)}"
         writer.block("${prefix}make object $signature") {
             obj.properties.forEach { writeProperty(it, writer) }
             obj.relations.forEach { writeRelation(it, writer, inside) }

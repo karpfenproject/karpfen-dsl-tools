@@ -22,6 +22,8 @@ import io.karpfen.dsl.meta.AssociationType
 import io.karpfen.dsl.meta.ClassType
 import io.karpfen.dsl.meta.ClassTypeProperty
 import io.karpfen.dsl.meta.Metamodel
+import io.karpfen.dsl.parser.KmetaVocabulary
+import io.karpfen.dsl.parser.StringLiteralSyntax
 import io.karpfen.dsl.reader.ReadingSession
 import io.karpfen.dsl.reader.presentToken
 import io.karpfen.dsl.reader.presentTokens
@@ -215,13 +217,13 @@ internal class DataObjectConverter(
         return relation
     }
 
-    private fun wrongKindMessage(relation: ClassTypeProperty, classType: ClassType): String = when (relation.associationType) {
-        AssociationType.LINK ->
-            "'${relation.key}' is a knows relation of class type '${classType.name}'; " +
-                "refer to an existing object with knows(\"${relation.key}\") -> \"id\""
-        AssociationType.EMBEDDED ->
-            "'${relation.key}' is a has relation of class type '${classType.name}'; " +
-                "embed an object with has(\"${relation.key}\") -> make object"
+    private fun wrongKindMessage(relation: ClassTypeProperty, classType: ClassType): String {
+        val keyword = KmetaVocabulary.relationKeyword(relation.associationType)
+        val usage = when (relation.associationType) {
+            AssociationType.LINK -> "refer to an existing object with $keyword(\"${relation.key}\") -> \"id\""
+            AssociationType.EMBEDDED -> "embed an object with $keyword(\"${relation.key}\") -> make object"
+        }
+        return "'${relation.key}' is a $keyword relation of class type '${classType.name}'; $usage"
     }
 
     private fun classNameRangeOf(block: KmodelParser.Make_object_blockContext): SourceRange {
@@ -229,18 +231,13 @@ internal class DataObjectConverter(
         return classToken?.let { session.locator.problemRangeOf(it) } ?: session.locator.rangeOf(block)
     }
 
-    private companion object {
+    /**
+     * Returns the value of a string token of an object signature.
+     */
+    private fun signatureText(token: TerminalNode): String = StringLiteralSyntax.KMODEL_SIGNATURE.unquote(token.text)
 
-        /**
-         * Returns the text of a string token of an object signature without its quotes, the way the throwing
-         * converter does.
-         */
-        fun signatureText(token: TerminalNode): String = token.text.removeSurrounding("\"").removeSurrounding("'")
-
-        /**
-         * Returns the text of a string token of a statement without its quotes, the way the throwing converter
-         * does.
-         */
-        fun statementText(token: TerminalNode): String = token.text.trim('"', '\'')
-    }
+    /**
+     * Returns the value of a string token of a statement.
+     */
+    private fun statementText(token: TerminalNode): String = StringLiteralSyntax.KMODEL.unquote(token.text)
 }

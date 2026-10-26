@@ -110,30 +110,6 @@ class LocationChecker(private val text: String, private val sourceMap: SourceMap
     }
 
     private fun checkPositions(range: SourceRange, what: String) {
-        for (position in listOf(range.start, range.end)) {
-            val (line, column) = lineAndColumnOf(position.offset)
-            if (position.line != line || position.column != column) {
-                deviations.add("$what: offset ${position.offset} is at $line:$column, not ${position.line}:${position.column}")
-            }
-        }
-    }
-
-    /**
-     * Counts the one-based line and column of [offset] by walking the text; `\r\n` counts as one line break.
-     */
-    private fun lineAndColumnOf(offset: Int): Pair<Int, Int> {
-        var line = 1
-        var lineStart = 0
-        var index = 0
-        while (index < offset) {
-            val char = text[index]
-            val isCrBeforeLf = char == '\r' && index + 1 < text.length && text[index + 1] == '\n'
-            if ((char == '\n' || char == '\r') && !isCrBeforeLf) {
-                line += 1
-                lineStart = index + 1
-            }
-            index += 1
-        }
-        return line to offset - lineStart + 1
+        TextPositions.deviationOf(text, range)?.let { deviations.add("$what: $it") }
     }
 }

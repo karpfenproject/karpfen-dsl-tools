@@ -25,7 +25,7 @@ All code lives below the package `io.karpfen.dsl`; the KDoc on the declarations 
 | Package | Content |
 | --- | --- |
 | `io.karpfen.dsl.grammar.kmeta`, `.kmodel`, `.kstates` | Lexers, parsers and visitors that the build generates from the grammars in `src/main/antlr` |
-| `io.karpfen.dsl.parser` | File parsers that turn text into a syntax-level form (`KmetaFile`, `KmodelFile`, `KstatesFile`), and `LoggingSyntaxErrorListener` |
+| `io.karpfen.dsl.parser` | File parsers that turn text into a syntax-level form (`KmetaFile`, `KmodelFile`, `KstatesFile`), `LoggingSyntaxErrorListener`, and the syntax rules the converters, readers and printers share, such as `StringLiteralSyntax` |
 | `io.karpfen.dsl.dsl.textual` | The converters `KmetaDSLConverter`, `KmodelDSLConverter`, `KstatesDSLConverter` and `JsonToModelConverter`, the usual entry points |
 | `io.karpfen.dsl.reader`, `.kmeta`, `.kmodel`, `.kstates` | The readers `KmetaReader`, `KmodelReader` and `KstatesReader`, which read text without throwing, behind the interface `TextReader`, and their `ParseResult` |
 | `io.karpfen.dsl.diagnostics` | `Diagnostic`, the problem a reader reports, with its `Severity` and its stable `DiagnosticCode` |
@@ -35,7 +35,7 @@ All code lives below the package `io.karpfen.dsl`; the KDoc on the declarations 
 | `io.karpfen.dsl.meta` | The metamodel: `Metamodel`, class types and their properties |
 | `io.karpfen.dsl.instance` | The model: `Model`, `DataObject` and its property and relation values |
 | `io.karpfen.dsl.states` | The state machine: `StateMachine`, states, transitions, and the sub-packages for actions, conditions and macros |
-| `io.karpfen.dsl.examples` | Two small programs that show the syntax-level parsers |
+| `io.karpfen.dsl.examples` | Two small programs that show the syntax-level parsers and print what they parsed |
 
 The tests mirror these packages; the example documents they read are in `example/`, and the printer and reader tests
 also read the karpfen runtime examples copied to `src/test/resources/examples` (their origin is in the `NOTICE.md` there),
@@ -48,6 +48,7 @@ The library logs through the SLF4J API and ships no logging backend; the applica
 The converters log the types and objects they convert at debug level.
 Syntax errors are logged as warnings by `LoggingSyntaxErrorListener` while the parsers recover and continue,
 nothing is printed to the console. The file parsers accept another ANTLR error listener in their constructor.
+A reader that fails logs the failure besides reporting it, see `TextReader`.
 
 ## Reading text with diagnostics
 
@@ -56,21 +57,25 @@ written, the readers never throw: `read` returns a `ParseResult` with the model,
 Each diagnostic marks the offending part of the text with a `SourceRange` of offsets, lines and columns, and carries a
 severity, a stable `DiagnosticCode` and a message. The reader keeps going after a problem, so that a text in the middle
 of an edit still yields a partial model; the KDoc of each reader says what it reports and what a partial model leaves
-out. Without errors, the model is the one the converter builds. The `SourceMap` is a side table keyed by identity that
+out. A reader reads the text the way its converter reads it, and leaves out the checks that a syntax error may have
+misled. Without errors, the model is the one the converter builds. The `SourceMap` is a side table keyed by identity that
 locates the elements of the model at their construct, their name and the code of their `EVAL` bodies; its KDoc lists
 the elements it covers. The model classes know nothing of their text.
 
 The reader tests check the source maps on every example, report the problems of broken texts where they occur, and
-read thousands of mutated examples and every prefix of an example without throwing and in agreement with the
-converters.
+read thousands of mutated examples, every example in other layouts such as other line breaks and indentation, and
+every prefix of an example without throwing, with proper ranges and in agreement with the converters; `TextLayout` and
+`Mutator` make these texts for the reader tests and the comparison with version 1.0 alike.
 
 ## Printing
 
 The printers turn a metamodel, a model or a state machine back into text: a whole document, or a fragment for a single
 element such as a type, a rule, an object, a state, a transition or a macro, laid out to replace that element's text
 in an existing document. The `convertTo...String` functions of the converters delegate to them. All output uses one
-canonical layout, keeps `EVAL` code verbatim and drops comments; the KDoc of the printers describes the layout and
-the values they reject. The printer tests parse every example, print it and parse the text again.
+canonical layout, keeps the text of `EVAL` code with the indentation of its lines relative to each other, and drops
+comments; the KDoc of the printers describes the layout, and the printers reject what their language cannot read back,
+such as a value no string literal carries or `EVAL` code whose braces do not balance. The printer tests parse every
+example, print it and parse the text again.
 
 ## Building
 

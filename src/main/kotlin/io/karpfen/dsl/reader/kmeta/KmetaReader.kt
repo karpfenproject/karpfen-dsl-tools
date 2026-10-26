@@ -20,19 +20,23 @@ import io.karpfen.dsl.grammar.kmeta.KmetaLexer
 import io.karpfen.dsl.grammar.kmeta.KmetaParser
 import io.karpfen.dsl.meta.ClassType
 import io.karpfen.dsl.meta.Metamodel
+import io.karpfen.dsl.reader.LexerInput
 import io.karpfen.dsl.reader.ParseResult
 import io.karpfen.dsl.reader.ReadingSession
 import io.karpfen.dsl.reader.TextReader
 import org.antlr.v4.runtime.CommonTokenStream
+import org.slf4j.LoggerFactory
 
 /**
  * Reads KMeta text into a [Metamodel] without throwing, see [TextReader].
  *
  * A text without errors yields the metamodel that
  * [io.karpfen.dsl.dsl.textual.KmetaDSLConverter.parseKmetaString] builds from it: the types of the text
- * followed by the base types, with the last type of the text as root. The reader reports syntax errors, a
+ * followed by the base types, with the last type of the text as root. Like the converter, the reader reads the text
+ * with its common indentation trimmed, see [LexerInput.withIndentTrimmed]. The reader reports syntax errors, a
  * `prop` of a type other than `string`, `number` and `boolean` at that type, a relation to an unknown class
- * type at the type name, and a text without any type, which yields no model.
+ * type at the type name, and a text without any type, which yields no model. A text with a syntax error gets no
+ * report of unknown class types, since the parser may have lost the definition of a type while it recovered.
  *
  * In a partial metamodel, a type without a name, a rule without key or type, and a `prop` of an unknown type
  * are left out. A relation to an unknown class type stays in, with a [io.karpfen.dsl.meta.ClassTypeReference]
@@ -46,11 +50,15 @@ class KmetaReader(baseTypes: List<ClassType> = emptyList()) : TextReader<Metamod
 
     private val baseTypes = baseTypes.toList()
 
-    override fun read(text: String): ParseResult<Metamodel> = ReadingSession.read(text) { session ->
-        val classTypes = ClassTypeConverter(session).convert(parse(session).type_definition())
-        TargetTypeResolver(session).resolve(classTypes, classTypes + baseTypes)
-        metamodelOf(classTypes, session)
-    }
+    private val logger = LoggerFactory.getLogger(KmetaReader::class.java)
+
+    override fun read(text: String): ParseResult<Metamodel> =
+        ReadingSession.read(LexerInput.withIndentTrimmed(text), logger) { session ->
+            val classTypes = ClassTypeConverter(session).convert(parse(session).type_definition())
+            val resolver = TargetTypeResolver(session, reportsUnknownTypes = !session.hasSyntaxErrors())
+            resolver.resolve(classTypes, classTypes + baseTypes)
+            metamodelOf(classTypes, session)
+        }
 
     private fun parse(session: ReadingSession): KmetaParser.Kmeta_fileContext {
         val lexer = session.reportingSyntaxErrors(KmetaLexer(session.charStream()))

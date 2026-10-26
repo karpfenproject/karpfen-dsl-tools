@@ -16,8 +16,9 @@
 package io.karpfen.dsl.reader.kmeta
 
 import io.karpfen.dsl.diagnostics.DiagnosticCode
-import io.karpfen.dsl.meta.AssociationType
 import io.karpfen.dsl.meta.ClassType
+import io.karpfen.dsl.meta.ClassTypeProperty
+import io.karpfen.dsl.parser.KmetaVocabulary
 import io.karpfen.dsl.reader.ReadingSession
 
 /**
@@ -25,8 +26,13 @@ import io.karpfen.dsl.reader.ReadingSession
  * target type name.
  *
  * @param session The read the resolution belongs to; it holds the locations of the references.
+ * @param reportsUnknownTypes False to resolve without reporting, for a text whose syntax errors may have cost the
+ * definition of a type that a reference names.
  */
-internal class TargetTypeResolver(private val session: ReadingSession) {
+internal class TargetTypeResolver(
+    private val session: ReadingSession,
+    private val reportsUnknownTypes: Boolean
+) {
 
     /**
      * Resolves the relations of [classTypes] against [resolvableTypes], taking the first type of a name; an
@@ -39,20 +45,20 @@ internal class TargetTypeResolver(private val session: ReadingSession) {
                 val target = resolvableTypes.find { it.name == reference.classTypeName }
                 if (target != null) {
                     reference.classType = target
-                } else {
-                    session.report(
-                        DiagnosticCode.UNKNOWN_TARGET_TYPE,
-                        session.problemRangeOf(reference),
-                        "Unknown class type '${reference.classTypeName}' of ${keywordOf(relation.associationType)} " +
-                            "'${relation.key}' in type '${classType.name}'"
-                    )
+                } else if (reportsUnknownTypes) {
+                    reportUnknownType(classType, relation)
                 }
             }
         }
     }
 
-    private fun keywordOf(associationType: AssociationType): String = when (associationType) {
-        AssociationType.EMBEDDED -> "has"
-        AssociationType.LINK -> "knows"
+    private fun reportUnknownType(classType: ClassType, relation: ClassTypeProperty) {
+        val keyword = KmetaVocabulary.relationKeyword(relation.associationType)
+        session.report(
+            DiagnosticCode.UNKNOWN_TARGET_TYPE,
+            session.problemRangeOf(relation.reference),
+            "Unknown class type '${relation.reference.classTypeName}' of $keyword '${relation.key}' " +
+                "in type '${classType.name}'"
+        )
     }
 }

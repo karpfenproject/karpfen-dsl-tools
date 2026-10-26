@@ -22,7 +22,8 @@ import io.karpfen.dsl.meta.ClassType
 import io.karpfen.dsl.meta.ClassTypeProperty
 import io.karpfen.dsl.meta.ClassTypeReference
 import io.karpfen.dsl.meta.SimpleProperty
-import io.karpfen.dsl.meta.SimplePropertyType
+import io.karpfen.dsl.parser.KmetaVocabulary
+import io.karpfen.dsl.parser.StringLiteralSyntax
 import io.karpfen.dsl.reader.ReadingSession
 import io.karpfen.dsl.reader.presentToken
 import io.karpfen.dsl.reader.presentTokens
@@ -65,13 +66,13 @@ internal class ClassTypeConverter(private val session: ReadingSession) {
     private fun convertProperty(rule: KmetaParser.Prop_ruleContext): SimpleProperty? {
         val typedKey = TypedKey.of(rule) ?: return null
         val typeName = unquote(typedKey.typeToken)
-        val propertyType = PRIMITIVE_TYPES[typeName]
+        val propertyType = KmetaVocabulary.primitiveTypeNamed(typeName)
         if (propertyType == null) {
             session.report(
                 DiagnosticCode.UNKNOWN_PROPERTY_TYPE,
                 session.locator.problemRangeOf(typedKey.typeToken),
                 "Unknown type '$typeName' of prop '${unquote(typedKey.keyToken)}'; " +
-                    "a prop is of type ${PRIMITIVE_TYPES.keys.joinToString(", ") { "'$it'" }}"
+                    "a prop is of type ${KmetaVocabulary.primitiveTypeNames.joinToString(", ") { "'$it'" }}"
             )
             return null
         }
@@ -122,18 +123,8 @@ internal class ClassTypeConverter(private val session: ReadingSession) {
         }
     }
 
-    private companion object {
-
-        /** The primitive types a `prop` may have, by their KMeta name. */
-        val PRIMITIVE_TYPES = linkedMapOf(
-            "string" to SimplePropertyType.STRING,
-            "number" to SimplePropertyType.NUMBER,
-            "boolean" to SimplePropertyType.BOOLEAN
-        )
-
-        /**
-         * Returns the text of a KMeta string token without its quotes, the way the throwing converter does.
-         */
-        fun unquote(token: TerminalNode): String = token.text.trim('"')
-    }
+    /**
+     * Returns the value of a KMeta string token.
+     */
+    private fun unquote(token: TerminalNode): String = StringLiteralSyntax.KMETA.unquote(token.text)
 }

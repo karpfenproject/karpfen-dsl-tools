@@ -29,8 +29,13 @@ import io.karpfen.dsl.reader.ReadingSession
  * pointing to no object.
  *
  * @param session The read the references belong to.
+ * @param reportsMissingObjects False to leave out the report of a reference to a missing object, for a text whose
+ * syntax errors may have cost the object; the reference is left unresolved all the same.
  */
-internal class KnowsResolver(private val session: ReadingSession) {
+internal class KnowsResolver(
+    private val session: ReadingSession,
+    private val reportsMissingObjects: Boolean
+) {
 
     /**
      * Resolves [links] against [objects]; of several objects with the same id, the last one wins, and objects
@@ -43,7 +48,7 @@ internal class KnowsResolver(private val session: ReadingSession) {
             when {
                 target == null -> drop(
                     link,
-                    DiagnosticCode.UNRESOLVED_REFERENCE,
+                    DiagnosticCode.UNRESOLVED_REFERENCE.takeIf { reportsMissingObjects },
                     "No object has the id '${link.reference.objectId}' that knows '${link.relation.key}' " +
                         "of object '${link.ownerKey}' refers to"
                 )
@@ -62,10 +67,10 @@ internal class KnowsResolver(private val session: ReadingSession) {
     }
 
     /**
-     * Reports why [link] cannot be resolved and takes its reference out of a list relation.
+     * Reports why [link] cannot be resolved, unless [code] is null, and takes its reference out of a list relation.
      */
-    private fun drop(link: PendingLink, code: DiagnosticCode, message: String) {
-        session.report(code, link.targetRange, message)
+    private fun drop(link: PendingLink, code: DiagnosticCode?, message: String) {
+        code?.let { session.report(it, link.targetRange, message) }
         val relation = link.relation
         if (relation is ClassTypeListPropertyObject) {
             relation.removeById(link.reference.objectId)

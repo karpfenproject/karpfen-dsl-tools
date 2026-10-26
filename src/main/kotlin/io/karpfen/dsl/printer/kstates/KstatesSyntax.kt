@@ -15,16 +15,23 @@
  */
 package io.karpfen.dsl.printer.kstates
 
+import io.karpfen.dsl.grammar.kstates.KstatesLexer
+import io.karpfen.dsl.parser.MacroTypeSyntax
+import io.karpfen.dsl.parser.StringLiteralSyntax
 import io.karpfen.dsl.printer.CodeWriter
-import io.karpfen.dsl.printer.StringLiteralSyntax
+import org.antlr.v4.runtime.CharStreams
 
 /**
  * Writes the small pieces of KStates that every part of a state machine shares: string literals, macro
  * calls, `EVAL` blocks and the type expressions of macros.
  *
  * @param literals The string literal syntax of KStates.
+ * @param evalCode Decides which code an `EVAL` block can hold.
  */
-internal class KstatesSyntax(private val literals: StringLiteralSyntax = StringLiteralSyntax.KSTATES) {
+internal class KstatesSyntax(
+    private val literals: StringLiteralSyntax = StringLiteralSyntax.KSTATES,
+    private val evalCode: EvalCodeCheck = EvalCodeCheck()
+) {
 
     /**
      * Returns [value] as a string literal.
@@ -48,38 +55,66 @@ internal class KstatesSyntax(private val literals: StringLiteralSyntax = StringL
     fun macroCall(macroName: String, arguments: List<String>): String = "MACRO(${quoteAll(listOf(macroName) + arguments)})"
 
     /**
-     * Returns the block `EVAL { code }` with [code] verbatim, to embed into the line [writer] writes next.
+     * Returns the block `EVAL { code }` with [code], to embed into the line [writer] writes next.
      *
-     * Code on a single line stays on the line of the block. Code with several lines, and code that contains
-     * `//`, goes onto lines of its own between the braces: KStates reads `//` as the start of a comment even
-     * inside `EVAL` blocks, which would otherwise swallow the closing brace. Only the first line of the code is
-     * indented, the other lines keep the indentation they have, which leaves Python code unchanged. The parser
-     * reads the code back trimmed, so code that came from a parser reads back unchanged.
+     * Code on a single line stays on the line of the block. Code with several lines goes onto lines of its own
+     * between the braces, laid out by [CodeWriter.verbatimBlock], which keeps the indentation of its lines relative
+     * to each other. The parser reads the code back trimmed, so whitespace at its edges is not written.
+     *
+     * @throws IllegalArgumentException If KStates cannot hold [code], see [EvalCodeCheck].
      */
-    fun eval(code: String, writer: CodeWriter): String = when {
-        code.isEmpty() -> "EVAL { }"
-        code.any { it == '\n' || it == '\r' } || code.contains("//") -> writer.verbatimBlock("EVAL", code)
-        else -> "EVAL { $code }"
+    fun eval(code: String, writer: CodeWriter): String {
+        val trimmed = code.trim()
+        evalCode.requireExpressible(trimmed)
+        return when {
+            trimmed.isEmpty() -> "EVAL { }"
+            trimmed.any { it == '\n' || it == '\r' } -> writer.verbatimBlock("EVAL", trimmed)
+            else -> "EVAL { $trimmed }"
+        }
     }
 
     /**
-     * Returns a type expression of a `TAKES` or `RETURNS` directive.
+     * Returns the type expression of a `TAKES` directive, see [typeExpression]; `reference(...)` is not one.
+     *
+     * @throws IllegalArgumentException If [type] cannot be written in a `TAKES` directive.
+     */
+    fun takesType(type: String): String = typeExpression(type, allowsReference = false)
+
+    /**
+     * Returns the type expression of a `RETURNS` directive, see [typeExpression], which may also be
+     * `reference(...)`.
+     *
+     * @throws IllegalArgumentException If [type] cannot be written in a `RETURNS` directive.
+     */
+    fun returnsType(type: String): String = typeExpression(type, allowsReference = true)
+
+    /**
+     * Returns a type expression of a macro directive.
      *
      * A type that the parser read from a typed call such as `list("Obstacle")` or `reference("Obstacle")` is
-     * written as that call again; any other type is written as a string literal such as `"number"`.
+     * written as that call again; any other type is written as a string literal such as `"number"`. A typed call
+     * names its function with an identifier, which no keyword of KStates may be, except for `reference`, which only
+     * a `RETURNS` directive takes.
      *
-     * @throws IllegalArgumentException If the type, or the type name of the call, cannot be written as a
-     * string literal.
+     * @param allowsReference True if the directive takes `reference(...)`.
+     * @throws IllegalArgumentException If the type is a call that the directive cannot hold, or the type, or the
+     * type name of the call, cannot be written as a string literal.
      */
-    fun typeExpression(type: String): String {
-        val call = TYPED_CALL.matchEntire(type) ?: return quote(type)
-        val (functionName, typeName) = call.destructured
+    private fun typeExpression(type: String, allowsReference: Boolean): String {
+        val (functionName, typeName) = MacroTypeSyntax.typedCallOf(type) ?: return quote(type)
+        val isReference = functionName == MacroTypeSyntax.REFERENCE_FUNCTION
+        require(if (isReference) allowsReference else isIdentifier(functionName)) {
+            "KStates cannot write the type <$type> here: a typed call names its function with an identifier that is " +
+                "no keyword, and only RETURNS takes ${MacroTypeSyntax.REFERENCE_FUNCTION}(...)."
+        }
         return "$functionName(${quote(typeName)})"
     }
 
-    private companion object {
-
-        /** A call such as `list("Obstacle")`: a name followed by one string literal in parentheses. */
-        val TYPED_CALL = Regex("""([A-Za-z_][A-Za-z0-9_]*)\("((?:\\.|[^"\\])*)"\)""")
+    /**
+     * Returns true if the KStates lexer reads all of [name] as one identifier, not as a keyword.
+     */
+    private fun isIdentifier(name: String): Boolean {
+        val lexer = KstatesLexer(CharStreams.fromString(name)).apply { removeErrorListeners() }
+        return lexer.allTokens.singleOrNull()?.type == KstatesLexer.IDENT
     }
 }

@@ -145,7 +145,7 @@ class KmetaPrinterTest {
     }
 
     /**
-     * Base types are left out by name, and the root type is written last wherever the metamodel lists it.
+     * Base types are left out, and the root type is written last wherever the metamodel lists it.
      */
     @Test
     fun `base types are left out and the root type comes last`() {
@@ -164,6 +164,27 @@ class KmetaPrinterTest {
         assertFalse(withoutBase.contains("Vector\" \"A vector"))
         assertEquals(listOf("start", "teleport"), KmetaDSLConverter.parseKmetaString(withoutBase, domain.types).types.take(2).map { it.name })
         assertEquals(listOf("start", "Vector", "teleport"), KmetaDSLConverter.parseKmetaString(withBase).types.map { it.name })
+    }
+
+    /**
+     * A type of the document that shares its name with a base type is not a base type: it is written, so that its
+     * relations resolve to it again when the text is read back with the base types.
+     */
+    @Test
+    fun `a type sharing the name of a base type is written`() {
+        val domain = KmetaDSLConverter.parseKmetaString("""type "Vector" "domain" { prop("x", "number") }""")
+        val events = KmetaDSLConverter.parseKmetaString(
+            """
+            type "Vector" "event local" { prop("y", "number") }
+            type "teleport" "event" { has("to", "Vector") }
+            """,
+            domain.types
+        )
+
+        val reread = KmetaDSLConverter.parseKmetaString(printer.print(events, domain.types), domain.types)
+
+        val target = reread.types.first { it.name == "teleport" }.objectProperties.single().reference.classType!!
+        assertEquals(listOf("y"), target.simpleProperties.map { it.key })
     }
 
     /**

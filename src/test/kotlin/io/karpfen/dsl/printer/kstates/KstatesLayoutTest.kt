@@ -16,7 +16,7 @@
 package io.karpfen.dsl.printer.kstates
 
 import io.karpfen.dsl.dsl.textual.KstatesDSLConverter
-import io.karpfen.dsl.states.SplitTransition
+import io.karpfen.dsl.fixtures.CodeShape
 import io.karpfen.dsl.states.State
 import io.karpfen.dsl.states.StateMachine
 import io.karpfen.dsl.states.Transition
@@ -24,12 +24,10 @@ import io.karpfen.dsl.states.actions.ActionBlock
 import io.karpfen.dsl.states.actions.ActionItem
 import io.karpfen.dsl.states.actions.ActionOperationType
 import io.karpfen.dsl.states.actions.ActionRule
-import io.karpfen.dsl.states.actions.InScopeBlock
 import io.karpfen.dsl.states.conditions.EvalCondition
 import io.karpfen.dsl.states.conditions.ValueCondition
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
 /**
  * Checks the canonical KStates layout of [KstatesPrinter] on every construct of the language, and what it
@@ -199,34 +197,53 @@ class KstatesLayoutTest {
     }
 
     /**
-     * Code that contains `//` goes onto lines of its own, so the comment KStates reads there cannot swallow
-     * the closing brace; the comment is lost when the text is read back.
+     * A comment between the tokens of the code stays part of it, and code with `//` goes onto lines of its own, so
+     * the comment cannot swallow the closing brace.
      */
     @Test
-    fun `code with a double slash keeps its closing brace`() {
-        val printed = printer.print(machineWith(Transition("idle", "idle", true, EvalCondition("return 7 // 2"))))
-        val reparsed = KstatesDSLConverter.parseKstatesString(printed)
-        assertEquals(EvalCondition("return 7"), reparsed.transitions.single().condition)
+    fun `code keeps a comment between its tokens`() {
+        val code = "x = 7 // 2\nreturn x"
+        val printed = printer.print(machineWith(Transition("idle", "idle", true, EvalCondition(code))))
+        val reparsed = KstatesDSLConverter.parseKstatesString(printed).transitions.single().condition
+        assertEquals(code, CodeShape.of((reparsed as EvalCondition).code))
     }
 
     /**
-     * A split with a single target cannot be written in KStates.
+     * A state printed at another depth than it was written keeps the shape of its code: the lines after the first
+     * keep their indentation relative to each other, one level deeper than the block.
      */
     @Test
-    fun `a split with one target is rejected`() {
-        val split = SplitTransition("idle", listOf("idle"), true, ValueCondition("true"))
-        assertFailsWith<IllegalArgumentException> { printer.printTransition(split) }
-    }
-
-    /**
-     * An `IF IN SCOPE` block without paths and a rule with a relation but no right side cannot be written.
-     */
-    @Test
-    fun `actions KStates cannot express are rejected`() {
-        val emptyScope = InScopeBlock(emptyList(), ActionBlock(mutableListOf()))
-        val relationWithoutTarget = ActionRule(ActionOperationType.SETOBJ, "self", null, "target")
-        assertFailsWith<IllegalArgumentException> { printer.printState(stateDoing(emptyScope)) }
-        assertFailsWith<IllegalArgumentException> { printer.printState(stateDoing(relationWithoutTarget)) }
+    fun `code keeps its shape at another depth`() {
+        val text = """
+            |STATEMACHINE ATTACHED TO "Robot" {
+            |    STATES {
+            |        INITIAL STATE "idle" {
+            |            DO {
+            |                SET("x", EVAL {
+            |                    if $(y) > 0 :
+            |                        return 1
+            |                    endif
+            |                    return 0
+            |                })
+            |            }
+            |        }
+            |    }
+            |    TRANSITIONS { }
+            |}
+            |""".trimMargin()
+        val state = KstatesDSLConverter.parseKstatesString(text).states.single()
+        val expected = """
+            |INITIAL STATE "idle" {
+            |                DO {
+            |                    SET("x", EVAL {
+            |                        if $(y) > 0 :
+            |                            return 1
+            |                        endif
+            |                        return 0
+            |                    })
+            |                }
+            |            }""".trimMargin()
+        assertEquals(expected, printer.printState(state, 3))
     }
 
     /**

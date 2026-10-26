@@ -15,6 +15,7 @@
  */
 package io.karpfen.dsl.printer.kstates
 
+import io.karpfen.dsl.fixtures.CodeShape
 import io.karpfen.dsl.states.JoinTransition
 import io.karpfen.dsl.states.Macro
 import io.karpfen.dsl.states.SplitTransition
@@ -23,18 +24,27 @@ import io.karpfen.dsl.states.StateMachine
 import io.karpfen.dsl.states.Transition
 import io.karpfen.dsl.states.TransitionLike
 import io.karpfen.dsl.states.actions.ActionBlock
+import io.karpfen.dsl.states.actions.ActionItem
+import io.karpfen.dsl.states.actions.ActionRightSide
+import io.karpfen.dsl.states.actions.ActionRule
+import io.karpfen.dsl.states.actions.EvalActionRightSide
+import io.karpfen.dsl.states.actions.InScopeBlock
+import io.karpfen.dsl.states.actions.WithBlock
 import io.karpfen.dsl.states.conditions.CompositeCondition
 import io.karpfen.dsl.states.conditions.Condition
 import io.karpfen.dsl.states.conditions.ConditionType
 import io.karpfen.dsl.states.conditions.EvalCondition
 import io.karpfen.dsl.states.conditions.EventCondition
 import io.karpfen.dsl.states.conditions.ValueCondition
+import io.karpfen.dsl.states.macros.CodeBlock
+import io.karpfen.dsl.states.macros.Definition
 
 /**
  * The structure of a [StateMachine] as plain values, so that two state machines compare with `equals`.
  *
  * States do not serve for that, as a nested state refers to its outer state and comparing them would never
- * end, and some conditions compare by identity. Action blocks and macros compare by value already.
+ * end, and some conditions compare by identity. Action blocks and macros compare by value already. The code of
+ * every `EVAL` body is held as its [CodeShape], which a round trip through the printer keeps.
  *
  * @property attachedTo The class type the state machine is attached to.
  * @property states The top-level states in order.
@@ -96,14 +106,39 @@ data class ConditionStructure(val type: ConditionType, val operands: List<String
 /**
  * Returns the structure of this state machine.
  */
-fun StateMachine.structure(): StateMachineStructure =
-    StateMachineStructure(attachedToClass, states.map { it.structure() }, transitions.map { it.structure() }, macros.toList())
+fun StateMachine.structure(): StateMachineStructure = StateMachineStructure(
+    attachedToClass,
+    states.map { it.structure() },
+    transitions.map { it.structure() },
+    macros.map { it.copy(definition = Definition(CodeBlock(CodeShape.of(it.definition.codeBlock.code)))) }
+)
 
 /**
  * Returns the structure of this state and its inner states.
  */
-fun State.structure(): StateStructure =
-    StateStructure(name, isInitial, outerState?.name, onEntry, onDo, innerStates.map { it.structure() })
+fun State.structure(): StateStructure = StateStructure(
+    name,
+    isInitial,
+    outerState?.name,
+    onEntry.shaped(),
+    onDo.shaped(),
+    innerStates.map { it.structure() }
+)
+
+/**
+ * Returns a copy of this action block whose `EVAL` code is held as its [CodeShape].
+ */
+fun ActionBlock.shaped(): ActionBlock = ActionBlock(items.map { it.shaped() }.toMutableList())
+
+private fun ActionItem.shaped(): ActionItem = when (this) {
+    is ActionRule -> copy(rightSide = rightSide?.shaped())
+    is InScopeBlock -> copy(body = body.shaped())
+    is WithBlock -> copy(body = body.shaped())
+    else -> this
+}
+
+private fun ActionRightSide.shaped(): ActionRightSide =
+    if (this is EvalActionRightSide) EvalActionRightSide(CodeShape.of(code)) else this
 
 /**
  * Returns the structure of this transition.
@@ -119,7 +154,7 @@ fun TransitionLike.structure(): TransitionStructure = when (this) {
  */
 fun Condition.structure(): ConditionStructure = when (this) {
     is EventCondition -> ConditionStructure(conditionType, listOf(eventDomain, eventValue), emptyList())
-    is EvalCondition -> ConditionStructure(conditionType, listOf(code), emptyList())
+    is EvalCondition -> ConditionStructure(conditionType, listOf(CodeShape.of(code)), emptyList())
     is ValueCondition -> ConditionStructure(conditionType, listOf(boolVariable), emptyList())
     is CompositeCondition -> ConditionStructure(conditionType, emptyList(), clauses.map { it.structure() })
     else -> error("Unknown kind of condition $this")

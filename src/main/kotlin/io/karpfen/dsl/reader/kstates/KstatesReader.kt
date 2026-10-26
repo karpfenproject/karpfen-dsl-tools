@@ -17,21 +17,26 @@ package io.karpfen.dsl.reader.kstates
 
 import io.karpfen.dsl.grammar.kstates.KstatesLexer
 import io.karpfen.dsl.grammar.kstates.KstatesParser
+import io.karpfen.dsl.reader.LexerInput
 import io.karpfen.dsl.reader.ParseResult
 import io.karpfen.dsl.reader.ReadingSession
 import io.karpfen.dsl.reader.TextReader
+import io.karpfen.dsl.reader.containsSyntaxError
 import io.karpfen.dsl.reader.presentToken
-import io.karpfen.dsl.source.SourceRange
+import io.karpfen.dsl.states.State
 import io.karpfen.dsl.states.StateMachine
 import org.antlr.v4.runtime.CommonTokenStream
+import org.slf4j.LoggerFactory
 
 /**
  * Reads KStates text into a [StateMachine] without throwing, see [TextReader].
  *
  * A text without errors yields the state machine that
- * [io.karpfen.dsl.dsl.textual.KstatesDSLConverter.parseKstatesString] builds from it. The reader reports
- * syntax errors, action rules written with another number of operands than their operation expects, and a
- * state machine that does not mark exactly one state as `INITIAL`.
+ * [io.karpfen.dsl.dsl.textual.KstatesDSLConverter.parseKstatesString] builds from it; like the converter, the
+ * reader reads the text as written. The reader reports syntax errors, action rules written with another number of
+ * operands than their operation expects, and a state machine that does not mark exactly one state as `INITIAL`.
+ * The count of initial states is left out when the `STATES` block is missing or contains a syntax error, since
+ * the parser may have lost a state or its `INITIAL` while it recovered.
  *
  * A partial state machine leaves out states, macros and `WITH` blocks without a name, transitions without
  * their states, and every action rule, condition clause and takes or returns directive that contains a syntax
@@ -40,35 +45,37 @@ import org.antlr.v4.runtime.CommonTokenStream
  */
 class KstatesReader : TextReader<StateMachine> {
 
-    override fun read(text: String): ParseResult<StateMachine> = ReadingSession.read(text) { session ->
-        val machine = parse(session).statemachine()
-        val evalBodies = EvalBodies(session)
-        val states = StateConverter(session, ActionConverter(session, evalBodies))
-            .convert(machine?.states_block()?.state_definition().orEmpty(), null)
-        val transitions = TransitionConverter(session, ConditionConverter(session, evalBodies))
-            .convert(machine?.transitions_block()?.transition_definition().orEmpty())
-        val macros = MacroConverter(session, evalBodies).convert(machine?.macros_block()?.macro_definition().orEmpty())
-        InitialStateCheck(session).check(states, statesRangeOf(machine, session))
-        val classToken = machine?.presentToken(KstatesParser.STRING)
-        val stateMachine = StateMachine(classToken?.let { unquoted(it) } ?: "", states, transitions, macros)
-        machine?.let { session.record(stateMachine, it, classToken) }
-        stateMachine
+    private val logger = LoggerFactory.getLogger(KstatesReader::class.java)
+
+    override fun read(text: String): ParseResult<StateMachine> =
+        ReadingSession.read(LexerInput.asWritten(text), logger) { session ->
+            val machine = parse(session).statemachine()
+            val evalBodies = EvalBodies(session)
+            val states = StateConverter(session, ActionConverter(session, evalBodies))
+                .convert(machine?.states_block()?.state_definition().orEmpty(), null)
+            val transitions = TransitionConverter(session, ConditionConverter(session, evalBodies))
+                .convert(machine?.transitions_block()?.transition_definition().orEmpty())
+            val macros = MacroConverter(session, evalBodies).convert(machine?.macros_block()?.macro_definition().orEmpty())
+            checkInitialStates(machine?.states_block(), states, session)
+            val classToken = machine?.presentToken(KstatesParser.STRING)
+            val stateMachine = StateMachine(classToken?.let { unquoted(it) } ?: "", states, transitions, macros)
+            machine?.let { session.record(stateMachine, it, classToken) }
+            stateMachine
+        }
+
+    /**
+     * Checks the count of initial states among [states], read from [statesBlock], unless the block is missing or
+     * contains a syntax error; a missing initial state is marked at the `STATES` keyword.
+     */
+    private fun checkInitialStates(statesBlock: KstatesParser.States_blockContext?, states: List<State>, session: ReadingSession) {
+        if (statesBlock != null && !statesBlock.containsSyntaxError()) {
+            InitialStateCheck(session).check(states, session.locator.rangeOf(statesBlock.STATES()))
+        }
     }
 
     private fun parse(session: ReadingSession): KstatesParser.Kstates_fileContext {
         val lexer = session.reportingSyntaxErrors(KstatesLexer(session.charStream()))
         val parser = session.reportingSyntaxErrors(KstatesParser(CommonTokenStream(lexer)))
         return parser.kstates_file()
-    }
-
-    /**
-     * Returns where a problem with the states as a whole is marked: the `STATES` keyword, or the state machine
-     * if that is missing.
-     */
-    private fun statesRangeOf(machine: KstatesParser.StatemachineContext?, session: ReadingSession): SourceRange {
-        val keyword = machine?.states_block()?.presentToken(KstatesParser.STATES)
-        return keyword?.let { session.locator.rangeOf(it) }
-            ?: machine?.let { session.locator.rangeOf(it) }
-            ?: session.locator.startOfText()
     }
 }

@@ -17,7 +17,9 @@ package io.karpfen.dsl.reader
 
 import io.karpfen.dsl.diagnostics.DiagnosticCode
 import io.karpfen.dsl.fixtures.Mutator
+import io.karpfen.dsl.fixtures.ReachableObjects
 import io.karpfen.dsl.fixtures.StructureDump
+import io.karpfen.dsl.fixtures.TextLayout
 import io.karpfen.dsl.fixtures.Vocabularies
 import io.karpfen.dsl.reader.kstates.KstatesReader
 import kotlin.test.Test
@@ -29,10 +31,11 @@ import kotlin.test.fail
 /**
  * Tests that the readers never throw, whatever the text, and agree with the throwing converters.
  *
- * Thousands of deterministic mutations of the example files and every prefix of a KStates example stand in for
- * text in the middle of being typed. On each, the reader must neither throw nor fail internally. Where the
- * reader finds no error, the throwing converter must build a model of the same structure; where the converter
- * throws, the reader must report an error.
+ * Thousands of deterministic mutations of the example files, every example in every [TextLayout] and every prefix of
+ * an example stand in for text in the middle of being typed. On each, the reader must neither throw nor fail
+ * internally, and every range it reports or records must be a proper range of the text. Where the reader finds no
+ * error, the throwing converter must build a model of the same structure; where the converter throws, the reader
+ * must report an error.
  */
 class ReaderRobustnessTest {
 
@@ -58,6 +61,21 @@ class ReaderRobustnessTest {
     @Test
     fun `the kstates reader never throws and agrees with the converter`() {
         checkMutations(ReaderUnderTest.kstates(), Mutator(Vocabularies.KSTATES))
+    }
+
+    /**
+     * Every example in every layout, and texts without any content, which the converters of KMeta and KModel read
+     * with their common indentation trimmed and their line breaks made uniform.
+     */
+    @Test
+    fun `the readers read every example in every layout as the converters do`() {
+        val problems = ReaderUnderTest.all().flatMap { subject ->
+            val layouts = TextLayout.entries.map { "$subject in $it" to it.apply(subject.text) }
+            val degenerate = TextLayout.DEGENERATE_TEXTS.map { "<${StructureDump.of(it)}> as $subject" to it }
+            (layouts + degenerate).mapNotNull { (case, text) -> readingOf(subject, text).problem?.let { "$case: $it" } }
+        }
+
+        assertTrue(problems.isEmpty(), problems.take(3).joinToString("\n"))
     }
 
     /**
@@ -116,13 +134,11 @@ class ReaderRobustnessTest {
         for (subject in examples) {
             for (variant in mutator.variantsOf(subject.path, subject.text, MUTATIONS_PER_FILE)) {
                 total += 1
-                var result: ParseResult<Any>? = null
-                val readProblem = problemOf(variant.text) { subject.reader.read(variant.text).also { result = it } }
-                val disagreement = result?.let { disagreementOf(it, subject.convertedStructureOf(variant.text)) }
-                if (result?.hasErrors == true) {
+                val reading = readingOf(subject, variant.text)
+                if (reading.result?.hasErrors == true) {
                     readerErrors += 1
                 }
-                (readProblem ?: disagreement)?.let {
+                reading.problem?.let {
                     problems.add("$subject, variant ${variant.index}: $it\n--- text ---\n${variant.text}")
                 }
             }
@@ -132,6 +148,24 @@ class ReaderRobustnessTest {
         }
         assertTrue(readerErrors in 1 until total, "The mutations must yield texts with and without errors")
     }
+
+    /**
+     * Reads [text] with the reader of [subject] and finds why that is a problem, see [problemOf], or how it
+     * disagrees with the converter, see [disagreementOf].
+     */
+    private fun readingOf(subject: ReaderUnderTest, text: String): Reading {
+        var result: ParseResult<Any>? = null
+        val readProblem = problemOf(text) { subject.reader.read(text).also { result = it } }
+        return Reading(result, readProblem ?: result?.let { disagreementOf(it, subject.convertedStructureOf(text)) })
+    }
+
+    /**
+     * One read of a text.
+     *
+     * @property result What the reader read, null if it threw.
+     * @property problem Why the read is a problem or disagrees with the converter, null if it is fine.
+     */
+    private class Reading(val result: ParseResult<Any>?, val problem: String?)
 
     /**
      * Describes how the reader result and the structure the converter built, null if the converter threw,
@@ -145,8 +179,9 @@ class ReaderRobustnessTest {
     }
 
     /**
-     * Describes why reading [text] with [read] is a problem: it throws, fails internally or yields ranges that
-     * leave the text; null if reading is fine.
+     * Describes why reading [text] with [read] is a problem: it throws, fails internally, or a range of a diagnostic
+     * or of a location in the source map is no proper range of the text, see [TextPositions]; null if reading is
+     * fine.
      */
     private fun problemOf(text: String, read: () -> ParseResult<Any>): String? {
         val result = try {
@@ -155,8 +190,10 @@ class ReaderRobustnessTest {
             return "the reader throws $failure"
         }
         result.diagnostics.firstOrNull { it.code == DiagnosticCode.READER_FAILURE }?.let { return it.message }
-        val outside = result.diagnostics.map { it.range }.firstOrNull { it.end.offset > text.length }
-        return outside?.let { "a diagnostic range $it leaves the text" }
+        val locations = ReachableObjects.from(result.model).flatMap { result.sourceMap.locationsOf(it) }
+        val locatedRanges = locations.flatMap { listOfNotNull(it.range, it.nameRange, it.codeRange) }
+        val ranges = result.diagnostics.map { it.range } + locatedRanges
+        return ranges.firstNotNullOfOrNull { TextPositions.deviationOf(text, it) }
     }
 
     private companion object {

@@ -15,6 +15,8 @@
  */
 package io.karpfen.dsl.parser
 
+import io.karpfen.dsl.states.actions.ActionOperationType
+
 /**
  * The syntax-level content of a KStates file, before it is converted into a state machine.
  *
@@ -113,31 +115,33 @@ data class ParsedActionRule(
 
 /**
  * The operation keyword of an action rule; lowercase aliases map to the same operation.
+ *
+ * @property operation The operation of the state machine model the keyword stands for.
  */
-enum class ParsedActionOperationType {
+enum class ParsedActionOperationType(val operation: ActionOperationType) {
     /** `SET`, overwrites a scalar property. */
-    SET,
+    SET(ActionOperationType.SET),
 
     /** `APPEND`, appends to a simple list property. */
-    APPEND,
+    APPEND(ActionOperationType.APPEND),
 
     /** `SETLIST`, overwrites a simple list property. */
-    SETLIST,
+    SETLIST(ActionOperationType.SETLIST),
 
     /** `DROPLIST`, clears a simple list property. */
-    DROPLIST,
+    DROPLIST(ActionOperationType.DROPLIST),
 
     /** `SETOBJ`, replaces the target of a single-object relation. */
-    SETOBJ,
+    SETOBJ(ActionOperationType.SETOBJ),
 
     /** `APPENDOBJ`, adds an object to a list relation. */
-    APPENDOBJ,
+    APPENDOBJ(ActionOperationType.APPENDOBJ),
 
     /** `DROPOBJ`, removes an object from the model. */
-    DROPOBJ,
+    DROPOBJ(ActionOperationType.DROPOBJ),
 
     /** `EVENT`, sends an event. */
-    EVENT
+    EVENT(ActionOperationType.EVENT)
 }
 
 /**

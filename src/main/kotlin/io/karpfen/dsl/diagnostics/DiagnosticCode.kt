@@ -74,7 +74,7 @@ enum class DiagnosticCode(val id: String, val severity: Severity) {
 
     /**
      * The reader failed and could not build a model: on nesting deeper than the parser can recurse, or through a
-     * defect of the reader.
+     * defect of the reader. The reader also logs the failure, see [io.karpfen.dsl.reader.TextReader].
      */
     READER_FAILURE("reader.failure", Severity.ERROR)
 }

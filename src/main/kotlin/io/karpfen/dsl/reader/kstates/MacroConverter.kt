@@ -16,6 +16,7 @@
 package io.karpfen.dsl.reader.kstates
 
 import io.karpfen.dsl.grammar.kstates.KstatesParser
+import io.karpfen.dsl.parser.MacroTypeSyntax
 import io.karpfen.dsl.reader.ReadingSession
 import io.karpfen.dsl.reader.containsSyntaxError
 import io.karpfen.dsl.reader.presentToken
@@ -74,7 +75,7 @@ internal class MacroConverter(
         val expression = directive.return_expression() ?: return null
         val reference = expression.reference_expression()
         val type = if (reference != null) {
-            reference.presentToken(KstatesParser.STRING)?.let { "reference(\"${unquoted(it)}\")" }
+            reference.presentToken(KstatesParser.STRING)?.let { MacroTypeSyntax.reference(unquoted(it)) }
         } else {
             expression.type_expression()?.let { typeOf(it) }
         }
@@ -89,7 +90,7 @@ internal class MacroConverter(
         val call = expression.typed_call_expression() ?: return null
         val function = call.presentToken(KstatesParser.IDENT) ?: return null
         val typeName = call.presentToken(KstatesParser.STRING) ?: return null
-        return "${function.text}(\"${unquoted(typeName)}\")"
+        return MacroTypeSyntax.typedCall(function.text, unquoted(typeName))
     }
 
     private fun convertDefinition(block: KstatesParser.Definition_blockContext): Definition? {

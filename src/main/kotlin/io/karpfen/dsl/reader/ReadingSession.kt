@@ -26,6 +26,7 @@ import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.Recognizer
 import org.antlr.v4.runtime.tree.TerminalNode
+import org.slf4j.Logger
 
 /**
  * The state of one read of one text: the locator of its tokens, the diagnostics found so far and the source
@@ -34,12 +35,12 @@ import org.antlr.v4.runtime.tree.TerminalNode
  * The converters of a reader share one session, which their constructors receive. A session belongs to a
  * single read and is not thread-safe; [read] creates one per call.
  *
- * @param text The text being read.
+ * @param input The text being read and the text its lexer reads.
  */
-internal class ReadingSession private constructor(private val text: String) {
+internal class ReadingSession private constructor(private val input: LexerInput) {
 
-    /** Turns tokens and contexts of the parse of [text] into ranges. */
-    val locator = TokenLocator(SourceText(text))
+    /** Turns tokens and contexts of the parse of [input] into ranges of the text being read. */
+    val locator = TokenLocator(SourceText(input.source), input)
 
     private val diagnostics = DiagnosticCollector()
 
@@ -48,9 +49,14 @@ internal class ReadingSession private constructor(private val text: String) {
     private val syntaxErrorListener = SyntaxDiagnosticListener(locator, diagnostics)
 
     /**
-     * Returns a fresh ANTLR stream of [text].
+     * Returns a fresh ANTLR stream of the text the lexer reads.
      */
-    fun charStream(): CharStream = CharStreams.fromString(text)
+    fun charStream(): CharStream = CharStreams.fromString(input.lexed)
+
+    /**
+     * Returns true if the lexer or the parser has reported a syntax error so far.
+     */
+    fun hasSyntaxErrors(): Boolean = diagnostics.diagnostics.any { it.code in SYNTAX_CODES }
 
     /**
      * Makes [recognizer] report its syntax errors as diagnostics of this session, instead of to the console.
@@ -116,21 +122,28 @@ internal class ReadingSession private constructor(private val text: String) {
     /** Runs reads. */
     companion object {
 
+        /** The kinds of diagnostics the lexer and the parser report. */
+        private val SYNTAX_CODES = setOf(DiagnosticCode.UNRECOGNIZED_INPUT, DiagnosticCode.SYNTAX_ERROR)
+
         /**
-         * Reads [text] with a new session that [conversion] fills, and returns what it read.
+         * Reads the text of [input] with a new session that [conversion] fills, and returns what it read.
          *
-         * Should the conversion fail nevertheless, on nesting deeper than the parser can recurse or through a
-         * defect of the reader, the failure becomes a [DiagnosticCode.READER_FAILURE] and the result holds no
-         * model, so that a reader never throws.
+         * Should the conversion fail nevertheless, the failure becomes a [DiagnosticCode.READER_FAILURE], the
+         * result holds no model, and [logger] receives the failure, so that a reader never throws and its failures
+         * still leave a trace. A [StackOverflowError] stems from nesting deeper than the parser can recurse, a limit
+         * rather than a defect, and is logged as a warning without its stack trace; any other failure is a defect
+         * of the reader and is logged as an error with its stack trace.
          */
-        fun <M> read(text: String, conversion: (ReadingSession) -> M?): ParseResult<M> {
-            val session = ReadingSession(text)
+        fun <M> read(input: LexerInput, logger: Logger, conversion: (ReadingSession) -> M?): ParseResult<M> {
+            val session = ReadingSession(input)
             val model = try {
                 conversion(session)
             } catch (failure: RuntimeException) {
+                logger.error("Reading a text failed through a defect of the reader", failure)
                 session.reportFailure(failure)
                 null
             } catch (failure: StackOverflowError) {
+                logger.warn("Reading a text failed, it nests deeper than the parser can recurse: {}", failure.toString())
                 session.reportFailure(failure)
                 null
             }

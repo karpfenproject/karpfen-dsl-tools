@@ -29,14 +29,15 @@ internal class MacroWriter(private val syntax: KstatesSyntax) {
     /**
      * Writes [macro] as `MACRO "name" { ... }`.
      *
-     * @throws IllegalArgumentException If a name or a type cannot be written as a string literal.
+     * @throws IllegalArgumentException If a name or a type cannot be written, or KStates cannot hold the code of
+     * the definition.
      */
     fun write(macro: Macro, writer: CodeWriter) {
         writer.block("MACRO ${syntax.quote(macro.name)}") {
             macro.takes.forEach {
-                writer.line("TAKES(${syntax.quote(it.paramName)}, ${syntax.typeExpression(it.paramType)})")
+                writer.line("TAKES(${syntax.quote(it.paramName)}, ${syntax.takesType(it.paramType)})")
             }
-            writer.line("RETURNS(${syntax.typeExpression(macro.returns.returnType)})")
+            writer.line("RETURNS(${syntax.returnsType(macro.returns.returnType)})")
             writer.block("DEFINITION") { writer.line(syntax.eval(macro.definition.codeBlock.code, writer)) }
         }
     }

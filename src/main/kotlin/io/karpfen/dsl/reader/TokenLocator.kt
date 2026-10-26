@@ -22,25 +22,27 @@ import org.antlr.v4.runtime.Token
 import org.antlr.v4.runtime.tree.TerminalNode
 
 /**
- * Turns the tokens and contexts of an ANTLR parse of [sourceText] into [SourceRange]s of that text.
+ * Turns the tokens and contexts of an ANTLR parse of the lexed text of [input] into [SourceRange]s of [sourceText],
+ * the text being read.
  *
- * ANTLR counts code points, a [SourceRange] counts UTF-16 chars; the locator converts with
- * [CodePointOffsets]. Indices outside the text, such as those of tokens the parser conjured up while
- * recovering from an error, are clamped to the text, so the locator never fails.
+ * ANTLR counts the code points of the lexed text, a [SourceRange] counts the UTF-16 chars of the text being read;
+ * the locator converts with [CodePointOffsets] and [LexerInput]. Indices outside the text, such as those of tokens
+ * the parser conjured up while recovering from an error, are clamped to the text, so the locator never fails.
  *
- * @param sourceText The text the parse was made from.
+ * @param sourceText The text being read.
+ * @param input The text the lexer read, made from [sourceText].
  */
-internal class TokenLocator(private val sourceText: SourceText) {
+internal class TokenLocator(private val sourceText: SourceText, private val input: LexerInput) {
 
-    private val offsets = CodePointOffsets(sourceText.text)
+    private val offsets = CodePointOffsets(input.lexed)
 
     /**
-     * Returns the range from the code point [startIndex] inclusive to [endIndex] exclusive.
+     * Returns the range from the code point [startIndex] inclusive to [endIndex] exclusive of the lexed text.
      */
     fun rangeOfCodePoints(startIndex: Int, endIndex: Int): SourceRange {
         val start = offsets.charOffsetOf(startIndex)
         val end = offsets.charOffsetOf(endIndex).coerceAtLeast(start)
-        return sourceText.rangeOf(start, end)
+        return sourceText.rangeOf(input.sourceStartOf(start), input.sourceEndOf(start, end))
     }
 
     /**
@@ -83,12 +85,6 @@ internal class TokenLocator(private val sourceText: SourceText) {
      */
     fun problemRangeOf(quoted: TerminalNode): SourceRange =
         innerRangeOf(quoted).takeIf { it.length > 0 } ?: rangeOf(quoted)
-
-    /**
-     * Returns the range from the start of [first] to the end of [last].
-     */
-    fun rangeBetween(first: SourceRange, last: SourceRange): SourceRange =
-        sourceText.rangeOf(first.start.offset, last.end.offset.coerceAtLeast(first.start.offset))
 
     /**
      * Returns the part of [range] that remains when whitespace is trimmed from both of its ends, the way

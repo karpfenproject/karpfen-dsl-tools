@@ -30,15 +30,11 @@ import io.karpfen.dsl.states.TransitionLike
  * `TRANSITIONS` and `MACROS` sections by a blank line. States, transitions, macros and actions follow the
  * order of the state machine; the `MACROS` section is left out when there are no macros, and so are empty
  * `ENTRY` and `DO` blocks and the `CONDITION` block of an unconditional transition. The code of an `EVAL` block
- * is written verbatim: code on one line stays on the line of the block, other code goes onto lines of its own
- * between the braces, where only its first line is indented and the others keep their indentation. Comments
- * outside `EVAL` blocks are not part of a state machine and are not written, so reading a KStates text and
- * writing it again drops them.
- *
- * A fragment is laid out for an element whose first line stands at a given indentation level: its first line
- * carries no indentation, every following line carries its full indentation, and there is no line break at
- * the end. A fragment thus replaces the text range of an existing element, which starts at its first token,
- * without changing the layout around it.
+ * keeps its text: code on one line stays on the line of the block, other code goes onto lines of its own between
+ * the braces, indented one level deeper than the block with the indentation of its lines kept relative to each
+ * other. Comments outside `EVAL` blocks are not part of a state machine and are not written, so reading a KStates
+ * text and writing it again drops them. A single state, transition or macro is written as a fragment, see
+ * [DocumentPrinter].
  *
  * The printer holds no state; one instance serves any number of calls, also concurrent ones on state
  * machines that are not changed meanwhile.
@@ -72,7 +68,8 @@ class KstatesPrinter internal constructor(
      *
      * @throws IllegalArgumentException If a name, path or value cannot be written as a KStates string
      * literal, or the state machine holds something KStates cannot express, such as a split with a single
-     * target.
+     * target, an action rule with another number of operands than its operation expects, `EVAL` code whose braces
+     * do not balance, or a typed call that a macro directive cannot hold.
      */
     override fun print(document: StateMachine): String = CodeWriter.document { writer ->
         writer.block("STATEMACHINE ATTACHED TO ${syntax.quote(document.attachedToClass)}") {
@@ -87,8 +84,8 @@ class KstatesPrinter internal constructor(
     }
 
     /**
-     * Returns [state] with its `ENTRY` and `DO` blocks and its inner states, laid out as a fragment whose
-     * first line stands at [indentLevel].
+     * Returns [state] with its `ENTRY` and `DO` blocks and its inner states, as a fragment whose first line stands
+     * at [indentLevel].
      *
      * @throws IllegalArgumentException If the state cannot be written, see [print], or [indentLevel] is
      * negative.
@@ -97,8 +94,8 @@ class KstatesPrinter internal constructor(
         CodeWriter.fragment(indentLevel) { states.write(state, it) }
 
     /**
-     * Returns [transition], a `TRANSITION`, `SPLIT` or `JOIN` with its condition, laid out as a fragment whose
-     * first line stands at [indentLevel].
+     * Returns [transition], a `TRANSITION`, `SPLIT` or `JOIN` with its condition, as a fragment whose first line
+     * stands at [indentLevel].
      *
      * @throws IllegalArgumentException If the transition cannot be written, see [print], or [indentLevel] is
      * negative.
@@ -107,8 +104,8 @@ class KstatesPrinter internal constructor(
         CodeWriter.fragment(indentLevel) { transitions.write(transition, it) }
 
     /**
-     * Returns [macro] with its directives and its definition, laid out as a fragment whose first line stands
-     * at [indentLevel].
+     * Returns [macro] with its directives and its definition, as a fragment whose first line stands at
+     * [indentLevel].
      *
      * @throws IllegalArgumentException If the macro cannot be written, see [print], or [indentLevel] is
      * negative.

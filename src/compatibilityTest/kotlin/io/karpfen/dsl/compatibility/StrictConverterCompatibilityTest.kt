@@ -20,35 +20,33 @@ import io.karpfen.dsl.fixtures.Vocabularies
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import kotlin.test.fail
 
 /**
  * Compares the throwing converters with those of version 1.0, which the build compiles from the history of this
  * repository into the `reference` source set; its classes live in the old root packages.
  *
- * Both versions convert the example files and thousands of deterministic mutations of them. They must agree on
- * every text: on the structure of the model if both convert it, on the exception type and message, apart from
- * the package names, if both fail.
- *
- * Many of these exceptions are null pointer exceptions the JVM raises itself, whose messages it would drop once
- * the throwing code is compiled as hot; the `compatibilityTest` task therefore runs with
- * `-XX:-OmitStackTraceInFastThrow`, which keeps them.
+ * Both versions convert the example files, in every layout of the tests, and thousands of deterministic mutations of
+ * them, see [Comparison]. Many of the exceptions both versions must agree on are null pointer exceptions the JVM
+ * raises itself, whose messages it would drop once the throwing code is compiled as hot; the `compatibilityTest`
+ * task therefore runs with `-XX:-OmitStackTraceInFastThrow`, which keeps them.
  */
 class StrictConverterCompatibilityTest {
 
+    private val examples = ComparedExamples()
+
+    private val comparison = Comparison()
+
     /**
-     * Every example file converts to the same model with both versions.
+     * Every example file converts with version 1.0, and to the same model with both versions in every layout.
      */
     @Test
     fun `the examples convert as in version 1_0`() {
-        val examples = ComparedExample.kmeta() + ComparedExample.kmodel() + ComparedExample.kstates()
-        val outcomes = examples.map { it to it.outcomesOf(it.text) }
+        val all = examples.kmetaConversions() + examples.kmodelConversions() + examples.kstatesConversions()
+        val asWritten = comparison.assertAgree(all.map { Comparison.Case(it.path, it, it.text) })
 
-        assertNoMismatches(outcomes.mapNotNull { (example, outcome) -> mismatchOf(example.path, example.text, outcome) }, examples.size)
-        outcomes.forEach { (example, outcome) ->
-            assertTrue(outcome.first is Outcome.Converted, "$example does not convert with version 1.0: ${outcome.first}")
-        }
-        assertEquals(21, examples.size)
+        assertTrue(asWritten.all { it is Outcome.Converted }, "An example does not convert")
+        assertEquals(21, all.size)
+        comparison.inEveryLayout(all)
     }
 
     /**
@@ -56,7 +54,7 @@ class StrictConverterCompatibilityTest {
      */
     @Test
     fun `mutated kmeta texts convert or fail as in version 1_0`() {
-        compareMutations(ComparedExample.kmeta(), Mutator(Vocabularies.KMETA))
+        comparison.onMutations(examples.kmetaConversions(), Mutator(Vocabularies.KMETA), MUTATIONS_PER_FILE)
     }
 
     /**
@@ -64,7 +62,7 @@ class StrictConverterCompatibilityTest {
      */
     @Test
     fun `mutated kmodel texts convert or fail as in version 1_0`() {
-        compareMutations(ComparedExample.kmodel(), Mutator(Vocabularies.KMODEL))
+        comparison.onMutations(examples.kmodelConversions(), Mutator(Vocabularies.KMODEL), MUTATIONS_PER_FILE)
     }
 
     /**
@@ -72,40 +70,7 @@ class StrictConverterCompatibilityTest {
      */
     @Test
     fun `mutated kstates texts convert or fail as in version 1_0`() {
-        compareMutations(ComparedExample.kstates(), Mutator(Vocabularies.KSTATES))
-    }
-
-    private fun compareMutations(examples: List<ComparedExample>, mutator: Mutator) {
-        val outcomes = mutableListOf<Outcome>()
-        val mismatches = mutableListOf<String>()
-        for (example in examples) {
-            for (variant in mutator.variantsOf(example.path, example.text, MUTATIONS_PER_FILE)) {
-                val outcome = example.outcomesOf(variant.text)
-                outcomes.add(outcome.second)
-                mismatchOf("$example, variant ${variant.index}", variant.text, outcome)?.let { mismatches.add(it) }
-            }
-        }
-        assertNoMismatches(mismatches, outcomes.size)
-        assertTrue(outcomes.any { it is Outcome.Converted }, "No mutation converted, the comparison is one-sided")
-        assertTrue(outcomes.any { it is Outcome.Failed }, "No mutation failed, the comparison is one-sided")
-    }
-
-    /**
-     * Describes how the [outcome] of both versions on [text] differs, or returns null if it does not.
-     */
-    private fun mismatchOf(case: String, text: String, outcome: Pair<Outcome, Outcome>): String? {
-        val (legacy, current) = outcome
-        return if (legacy == current) {
-            null
-        } else {
-            "$case\n--- text ---\n$text\n--- version 1.0 ---\n$legacy\n--- current version ---\n$current"
-        }
-    }
-
-    private fun assertNoMismatches(mismatches: List<String>, total: Int) {
-        if (mismatches.isNotEmpty()) {
-            fail("${mismatches.size} of $total texts differ, the first ones:\n\n" + mismatches.take(3).joinToString("\n\n"))
-        }
+        comparison.onMutations(examples.kstatesConversions(), Mutator(Vocabularies.KSTATES), MUTATIONS_PER_FILE)
     }
 
     private companion object {

@@ -23,7 +23,7 @@ import org.antlr.v4.runtime.misc.Interval
  * Turns a KStates parse tree into a [KstatesFile].
  *
  * Besides reading the tree, the visitor checks that every action rule is written with the number of
- * operands its operation expects, see [Arity].
+ * operands its operation expects, see [ActionRuleSyntax].
  */
 class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
 
@@ -81,47 +81,23 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
 
     /**
      * Reads an action rule and checks that the arity actually written, `OP("a")`, `OP("a", rhs)` or
-     * `OP("a", "b", rhs)`, is the one its operation expects.
+     * `OP("a", "b", rhs)`, is the one its operation expects, see [ActionRuleSyntax].
      */
     private fun parseActionRule(ctx: KstatesParser.Action_ruleContext): ParsedActionRule {
-        val operation = operationOf(ctx)
+        val operation = ActionRuleSyntax.operationOf(ctx)
         val strings = ctx.STRING().map { unquote(it.text) }
         val rightSide = ctx.action_right_side()?.let { parseActionRightSide(it) }
 
-        val actualArity = when {
-            rightSide == null -> Arity.UNARY
-            strings.size == 1 -> Arity.BINARY
-            else -> Arity.TERNARY
-        }
-        val expectedArity = expectedArity(operation)
+        val actualArity = ActionRuleSyntax.writtenArity(strings.size, rightSide != null)
+        val expectedArity = ActionRuleSyntax.expectedArity(operation.operation)
         require(actualArity == expectedArity) {
-            "Operation $operation expects ${expectedArity.usage}, but was called as ${actualArity.usage}."
+            ActionRuleSyntax.arityMismatch(operation.operation, expectedArity, actualArity)
         }
 
         return when (actualArity) {
             Arity.UNARY -> ParsedActionRule(operation, strings[0], null, null)
             Arity.BINARY -> ParsedActionRule(operation, strings[0], null, rightSide)
             Arity.TERNARY -> ParsedActionRule(operation, strings[0], strings[1], rightSide)
-        }
-    }
-
-    /**
-     * Reads the operation of [rule].
-     *
-     * The operation context stays in the local `op`: a rule the parser had to recover from may lack it, and
-     * the resulting [NullPointerException] then names `op`, exactly as in version 1.0.
-     */
-    private fun operationOf(rule: KstatesParser.Action_ruleContext): ParsedActionOperationType {
-        val op = rule.action_operation()
-        return when {
-            op.SET() != null -> ParsedActionOperationType.SET
-            op.APPEND() != null -> ParsedActionOperationType.APPEND
-            op.SETLIST() != null -> ParsedActionOperationType.SETLIST
-            op.DROPLIST() != null -> ParsedActionOperationType.DROPLIST
-            op.SETOBJ() != null -> ParsedActionOperationType.SETOBJ
-            op.APPENDOBJ() != null -> ParsedActionOperationType.APPENDOBJ
-            op.DROPOBJ() != null -> ParsedActionOperationType.DROPOBJ
-            else -> ParsedActionOperationType.EVENT
         }
     }
 
@@ -136,14 +112,6 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
             }
             else -> ParsedEvalActionRightSide(extractInnerBlockText(ctx.eval_statement().eval_code_block()))
         }
-    }
-
-    private fun expectedArity(op: ParsedActionOperationType): Arity = when (op) {
-        ParsedActionOperationType.DROPLIST,
-        ParsedActionOperationType.DROPOBJ -> Arity.UNARY
-        ParsedActionOperationType.SETOBJ,
-        ParsedActionOperationType.APPENDOBJ -> Arity.TERNARY
-        else -> Arity.BINARY
     }
 
     private fun parseTransition(ctx: KstatesParser.Transition_definitionContext): ParsedTransitionLike {
@@ -223,7 +191,7 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
     private fun parseReturnExpression(ctx: KstatesParser.Return_expressionContext): String {
         return if (ctx.reference_expression() != null) {
             val typeName = unquote(ctx.reference_expression().STRING().text)
-            "reference(\"$typeName\")"
+            MacroTypeSyntax.reference(typeName)
         } else {
             parseTypeExpression(ctx.type_expression())
         }
@@ -237,12 +205,10 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         val typedCall = ctx.typed_call_expression()
         val functionName = typedCall.IDENT().text
         val typeName = unquote(typedCall.STRING().text)
-        return "$functionName(\"$typeName\")"
+        return MacroTypeSyntax.typedCall(functionName, typeName)
     }
 
-    private fun unquote(text: String): String {
-        return text.trim().removeSurrounding("\"").removeSurrounding("'")
-    }
+    private fun unquote(text: String): String = StringLiteralSyntax.KSTATES.unquote(text)
 
     /**
      * Returns the source text between the braces of an `EVAL { ... }` block, trimmed, exactly as written,

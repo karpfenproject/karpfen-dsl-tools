@@ -24,6 +24,9 @@ import io.karpfen.dsl.grammar.kmeta.KmetaParser
  * The visitor collects the type definitions it has visited; use a new visitor for every parse tree.
  */
 class KmetaParseVisitor : KmetaBaseVisitor<KmetaFile>() {
+
+    private val literals = StringLiteralSyntax.KMETA
+
     private val typeDefinitions = mutableListOf<TypeDefinition>()
 
     /**
@@ -37,8 +40,8 @@ class KmetaParseVisitor : KmetaBaseVisitor<KmetaFile>() {
     }
 
     private fun visitTypeDefinition(ctx: KmetaParser.Type_definitionContext): TypeDefinition {
-        val typeName = ctx.STRING(0).text.trim('"')
-        val typeDescription = ctx.STRING(1).text.trim('"')
+        val typeName = literals.unquote(ctx.STRING(0).text)
+        val typeDescription = literals.unquote(ctx.STRING(1).text)
         val typeDef = TypeDefinition(typeName, typeDescription)
 
         val ruleListCtx = ctx.rule_list()
@@ -47,19 +50,19 @@ class KmetaParseVisitor : KmetaBaseVisitor<KmetaFile>() {
                 when {
                     ruleCtx.prop_rule() != null -> {
                         val propCtx = ruleCtx.prop_rule()
-                        val key = propCtx.STRING().text.trim('"')
+                        val key = literals.unquote(propCtx.STRING().text)
                         val value = parseRuleValue(propCtx.rule_value())
                         typeDef.addProp(key, value)
                     }
                     ruleCtx.has_rule() != null -> {
                         val hasCtx = ruleCtx.has_rule()
-                        val key = hasCtx.STRING().text.trim('"')
+                        val key = literals.unquote(hasCtx.STRING().text)
                         val value = parseRuleValue(hasCtx.rule_value())
                         typeDef.addHas(key, value)
                     }
                     ruleCtx.knows_rule() != null -> {
                         val knowsCtx = ruleCtx.knows_rule()
-                        val key = knowsCtx.STRING().text.trim('"')
+                        val key = literals.unquote(knowsCtx.STRING().text)
                         val value = parseRuleValue(knowsCtx.rule_value())
                         typeDef.addKnows(key, value)
                     }
@@ -76,11 +79,11 @@ class KmetaParseVisitor : KmetaBaseVisitor<KmetaFile>() {
     private fun parseRuleValue(ctx: KmetaParser.Rule_valueContext): RuleValue {
         return when {
             ctx.LIST() != null -> {
-                val listValue = ctx.STRING().text.trim('"')
+                val listValue = literals.unquote(ctx.STRING().text)
                 ListValue(listValue)
             }
             ctx.STRING() != null -> {
-                val stringValue = ctx.STRING().text.trim('"')
+                val stringValue = literals.unquote(ctx.STRING().text)
                 StringValue(stringValue)
             }
             else -> StringValue("")
