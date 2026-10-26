@@ -84,18 +84,19 @@ The lexers and parsers are not checked in: the build generates them from the gra
 and the package of each grammar comes from the `@header` in its `.g4` file.
 The build is configuration-cache compatible and can also be included as a subproject or as a composite build of another Gradle build.
 The workflow in `.github/workflows/build.yml` builds and tests every push and pull request on JDK 21.
+The doc blocks in `build.gradle` explain how the build is put together.
 
-The task `compatibilityTest` holds the converters to the behaviour of version 1.0: it converts the examples and
-thousands of mutations of them with the converters of version 1.0, the artifact `io.karpfen:karpfen-dsl-tools:1.0-SNAPSHOT`
-from the local Maven repository, and with the current ones, and requires the same models and the same exceptions.
-`check`, and therefore `build`, runs it whenever that artifact is in `~/.m2`, and leaves it out where it is missing,
-as in the workflow.
+The task `compatibilityTest`, part of `check` and therefore of `build`, holds the converters to the behaviour of
+version 1.0: it converts the examples and thousands of variants of them with the converters of version 1.0 and with the
+current ones, and requires the same models and the same exceptions. The build compiles version 1.0 from the history of
+this repository, so a shallow clone has to fetch the full history first (`git fetch --unshallow`).
 
 ## Using the library
 
 The library is published as `io.karpfen:karpfen-dsl-tools`, currently in version `2.0.0-SNAPSHOT`.
-Its API dependencies are the ANTLR runtime 4.13.1, because the generated lexers and parsers are public, and `org.json`,
-because `JsonToModelConverter` accepts JSON objects; the ANTLR tool stays inside the build.
+Its API dependencies are the ANTLR runtime 4.13.1, because the generated lexers and parsers are public, `org.json`,
+because `JsonToModelConverter` accepts JSON objects, and the SLF4J API, because `LoggingSyntaxErrorListener` takes a
+logger; the ANTLR tool stays inside the build.
 
 To publish the jar, the sources jar and the POM to the local Maven repository (`~/.m2`):
 
@@ -103,9 +104,11 @@ To publish the jar, the sources jar and the POM to the local Maven repository (`
 ./gradlew publishToMavenLocal
 ```
 
-The build also defines the repository `GitHubPackages` (`https://maven.pkg.github.com/<owner>/<repository>`).
-It takes the repository from the environment variable `GITHUB_REPOSITORY` (default `karpfenproject/karpfen-dsl-tools`)
-and the credentials from `GITHUB_ACTOR` and `GITHUB_TOKEN`; `./gradlew publish` publishes there.
+`./gradlew publish` publishes to the repository `GitHubPackages` (`https://maven.pkg.github.com/<owner>/<repository>`),
+named by the environment variable `GITHUB_REPOSITORY` (default `karpfenproject/karpfen-dsl-tools`). The credentials are
+the Gradle properties `GitHubPackagesUsername` and `GitHubPackagesPassword`, for example as the environment variables
+`ORG_GRADLE_PROJECT_GitHubPackagesUsername` and `ORG_GRADLE_PROJECT_GitHubPackagesPassword`, set from `GITHUB_ACTOR`
+and `GITHUB_TOKEN` in a GitHub workflow.
 
 Version 2.0.0 moved every package below `io.karpfen.dsl`: a package `P` of version 1.0 is now `io.karpfen.dsl.P`,
 and the generated packages `kmeta`, `kmodel` and `kstates` are now `io.karpfen.dsl.grammar.kmeta`, `.kmodel` and `.kstates`.

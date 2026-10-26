@@ -23,8 +23,8 @@ import kotlin.test.assertTrue
 import kotlin.test.fail
 
 /**
- * Compares the throwing converters with those of version 1.0, the artifact `io.karpfen:karpfen-dsl-tools:1.0-SNAPSHOT`
- * from the local Maven repository, whose classes live in the old root packages.
+ * Compares the throwing converters with those of version 1.0, which the build compiles from the history of this
+ * repository into the `reference` source set; its classes live in the old root packages.
  *
  * Both versions convert the example files and thousands of deterministic mutations of them. They must agree on
  * every text: on the structure of the model if both convert it, on the exception type and message, apart from

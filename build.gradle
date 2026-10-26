@@ -24,33 +24,42 @@ group = 'io.karpfen'
 version = '2.0.0-SNAPSHOT'
 
 def antlrVersion = '4.13.1'
+def jsonVersion = '20240303'
 def slf4jVersion = '2.0.20'
 def projectUrl = 'https://github.com/karpfenproject/karpfen-dsl-tools'
 def gitHubRepository = providers.environmentVariable('GITHUB_REPOSITORY')
         .orElse('karpfenproject/karpfen-dsl-tools')
-def legacyArtifact = 'io.karpfen:karpfen-dsl-tools:1.0-SNAPSHOT'
-def legacyJar = new File(
-        providers.systemProperty('user.home').get(),
-        '.m2/repository/io/karpfen/karpfen-dsl-tools/1.0-SNAPSHOT/karpfen-dsl-tools-1.0-SNAPSHOT.jar')
+
+/**
+ * The commit of version 1.0 in the history of this repository: the upstream main that karpfen-runtime pins, whose
+ * converters the compatibility tests hold the current ones to. Version 1.0 committed the parsers ANTLR generated
+ * for it, in the root packages `kmeta`, `kmodel` and `kstates`, next to its Kotlin sources.
+ */
+def referenceCommit = '859a95d'
 
 repositories {
     mavenCentral()
-    mavenLocal {
-        content {
-            includeVersion 'io.karpfen', 'karpfen-dsl-tools', '1.0-SNAPSHOT'
-        }
-    }
 }
 
+/**
+ * The ANTLR tool only generates the parsers during the build. The runtime is part of the API, because the generated
+ * lexers and parsers are public, and so are `org.json`, which `JsonToModelConverter` accepts, and the SLF4J API,
+ * whose `Logger` `LoggingSyntaxErrorListener` takes. The library ships no logging backend; the tests log through
+ * slf4j-simple.
+ */
 dependencies {
     antlr "org.antlr:antlr4:$antlrVersion"
     api "org.antlr:antlr4-runtime:$antlrVersion"
-    api 'org.json:json:20240303'
-    implementation "org.slf4j:slf4j-api:$slf4jVersion"
+    api "org.json:json:$jsonVersion"
+    api "org.slf4j:slf4j-api:$slf4jVersion"
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
     testRuntimeOnly "org.slf4j:slf4j-simple:$slf4jVersion"
 }
 
+/**
+ * The ANTLR plugin puts the ANTLR tool on the `api` configuration, which would make every consumer depend on it;
+ * the tool stays inside the build.
+ */
 configurations.named('api') {
     def withoutAntlrTool = extendsFrom.findAll { it != configurations.antlr }
     setExtendsFrom(withoutAntlrTool)
@@ -64,20 +73,79 @@ java {
     withSourcesJar()
 }
 
+/**
+ * The lexers and parsers are generated with visitors and without listeners; the package of each grammar comes from
+ * the `@header` of its `.g4` file in `src/main/antlr`.
+ */
 tasks.named('generateGrammarSource') {
     maxHeapSize = '64m'
     arguments += ['-visitor', '-no-listener']
 }
 
+/**
+ * Every source set compiles the parsers generated from its grammars next to its own Java sources. The generated
+ * directory is given as the output of the generation task, so that every task that reads the Java sources, the
+ * Kotlin compilation among them, runs after the generation.
+ */
 sourceSets.configureEach { sourceSet ->
     def generatedGrammarSources = tasks.named(sourceSet.getTaskName('generate', 'GrammarSource')).map { it.outputDirectory }
     sourceSet.java.srcDirs = ["src/${sourceSet.name}/java", generatedGrammarSources]
 }
 
+/**
+ * Writes the Kotlin sources and the generated parsers of version 1.0 from the history of this repository into an
+ * archive. A clone without that commit, such as a shallow one, fails with a message that says how to fetch it.
+ */
+def archiveReferenceSources = tasks.register('archiveReferenceSources', Exec) {
+    def archive = layout.buildDirectory.file('reference/sources.tar')
+    def missingCommit = "The commit ${referenceCommit} of version 1.0 is not in the history of this clone, so the " +
+            'compatibility tests have nothing to compare with. Fetch the full history, for example with ' +
+            "'git fetch --unshallow', or check the repository out with 'fetch-depth: 0' in GitHub Actions."
+    description = "Archives the sources of version 1.0, commit ${referenceCommit}, from the history of this repository."
+    inputs.property('commit', referenceCommit)
+    outputs.file(archive)
+    workingDir = layout.projectDirectory.asFile
+    commandLine 'git', 'archive', '--format=tar', "--output=${archive.get().asFile.absolutePath}", referenceCommit,
+            'src/main/kotlin', 'src/main/java'
+    ignoreExitValue = true
+    doLast {
+        if (executionResult.get().exitValue != 0) {
+            throw new GradleException(missingCommit)
+        }
+    }
+}
+
+/**
+ * Unpacks the sources of version 1.0, the input of the `reference` source set.
+ */
+def unpackReferenceSources = tasks.register('unpackReferenceSources', Sync) {
+    description = 'Unpacks the sources of version 1.0 for the reference source set.'
+    dependsOn archiveReferenceSources
+    from(tarTree(layout.buildDirectory.file('reference/sources.tar')))
+    into(layout.buildDirectory.dir('reference/sources'))
+}
+
+/**
+ * Two source sets beyond `main` and `test`: `reference` compiles version 1.0 from the unpacked sources, with the
+ * libraries it was built with, and `compatibilityTest` compares the converters of both versions. The classes of
+ * version 1.0 live in their old root packages, so both versions share one classpath; no module coordinate names
+ * version 1.0, so no dependency substitution of a composite build can replace it. The Kotlin compilation of
+ * `reference` reads the generated parsers of version 1.0 from its own source directories, because it does not follow
+ * a Java source directory that is set after the source set was created.
+ */
 sourceSets {
-    compatibilityTest {
-        compileClasspath += sourceSets.main.output + sourceSets.test.output
-        runtimeClasspath += sourceSets.main.output + sourceSets.test.output
+    reference { sourceSet ->
+        sourceSet.java.srcDirs = [unpackReferenceSources.map { new File(it.destinationDir, 'src/main/java') }]
+    }
+    compatibilityTest { sourceSet ->
+        sourceSet.compileClasspath += sourceSets.main.output + sourceSets.test.output + sourceSets.reference.output
+        sourceSet.runtimeClasspath += sourceSets.main.output + sourceSets.test.output + sourceSets.reference.output
+    }
+}
+
+kotlin.sourceSets.named('reference') { sourceSet ->
+    sourceSet.kotlin.srcDirs = ['src/main/kotlin', 'src/main/java'].collect { directory ->
+        unpackReferenceSources.map { new File(it.destinationDir, directory) }
     }
 }
 
@@ -86,20 +154,28 @@ configurations {
     compatibilityTestRuntimeOnly.extendsFrom testRuntimeOnly
 }
 
-def legacyClasses = configurations.detachedConfiguration(dependencies.create(legacyArtifact))
-
 dependencies {
-    compatibilityTestImplementation files(legacyClasses)
+    referenceImplementation "org.antlr:antlr4-runtime:$antlrVersion"
+    referenceImplementation "org.json:json:$jsonVersion"
+    referenceImplementation 'org.jetbrains.kotlin:kotlin-stdlib'
 }
 
+/**
+ * Time-budget tests are tagged `budget` and never run, here or in the compatibility tests.
+ */
 tasks.named('test', Test) {
     useJUnitPlatform {
         excludeTags 'budget'
     }
 }
 
+/**
+ * Compares the converters with those of version 1.0, see the `reference` source set; `check`, and so `build`,
+ * runs it. Many of the exceptions both versions must agree on are null pointer exceptions the JVM raises itself,
+ * whose messages it drops once the throwing code is compiled as hot, unless `OmitStackTraceInFastThrow` is off.
+ */
 def compatibilityTest = tasks.register('compatibilityTest', Test) {
-    description = "Compares the converters with those of version 1.0, ${legacyArtifact} from the local Maven repository."
+    description = "Compares the converters with those of version 1.0, built from commit ${referenceCommit}."
     group = 'verification'
     testClassesDirs = sourceSets.compatibilityTest.output.classesDirs
     classpath = sourceSets.compatibilityTest.runtimeClasspath
@@ -111,11 +187,16 @@ def compatibilityTest = tasks.register('compatibilityTest', Test) {
 }
 
 tasks.named('check') {
-    if (legacyJar.exists()) {
-        dependsOn compatibilityTest
-    }
+    dependsOn compatibilityTest
 }
 
+/**
+ * The publication of the library jar, its sources jar and its POM, to the local Maven repository with
+ * `publishToMavenLocal`, or to GitHub Packages with `publish`. The repository on GitHub Packages comes from the
+ * environment variable `GITHUB_REPOSITORY`, as GitHub Actions sets it, and the credentials from the Gradle
+ * properties `GitHubPackagesUsername` and `GitHubPackagesPassword`, which Gradle reads lazily, so that publishing
+ * keeps the configuration cache.
+ */
 publishing {
     publications {
         mavenJava(MavenPublication) {
@@ -149,10 +230,7 @@ publishing {
         maven {
             name = 'GitHubPackages'
             url = uri("https://maven.pkg.github.com/${gitHubRepository.get()}")
-            credentials {
-                username = providers.environmentVariable('GITHUB_ACTOR').orNull
-                password = providers.environmentVariable('GITHUB_TOKEN').orNull
-            }
+            credentials(PasswordCredentials)
         }
     }
 }

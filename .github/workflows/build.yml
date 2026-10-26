@@ -13,8 +13,10 @@ jobs:
     name: Build and test on JDK 21
     runs-on: ubuntu-latest
     steps:
-      - name: Check out the sources
+      - name: Check out the sources with their full history, which holds version 1.0 for the compatibility tests
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
