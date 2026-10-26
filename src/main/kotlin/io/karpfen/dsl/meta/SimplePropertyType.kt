@@ -17,14 +17,16 @@ package io.karpfen.dsl.meta
 
 /**
  * The primitive types a simple property of a metamodel can have.
+ *
+ * @property keyword the name by which KMeta writes the type in a `prop`, such as `number`.
  */
-enum class SimplePropertyType {
+enum class SimplePropertyType(val keyword: String) {
     /** A boolean value, true or false. */
-    BOOLEAN,
+    BOOLEAN("boolean"),
 
     /** A numeric value, stored as a double. */
-    NUMBER,
+    NUMBER("number"),
 
     /** A text value. */
-    STRING
+    STRING("string")
 }

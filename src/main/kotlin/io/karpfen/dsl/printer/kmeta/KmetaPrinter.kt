@@ -101,7 +101,7 @@ class KmetaPrinter : DocumentPrinter<Metamodel> {
     }
 
     private fun propRule(property: SimpleProperty): String {
-        val type = typeValue(KmetaVocabulary.nameOf(property.propertyType), property.isList)
+        val type = typeValue(property.propertyType.keyword, property.isList)
         return "prop(${literals.quote(property.key)}, $type)"
     }
 

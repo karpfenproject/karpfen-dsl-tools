@@ -20,18 +20,17 @@ import io.karpfen.dsl.meta.SimplePropertyType
 
 /**
  * The words of KMeta that the converter, the readers and the printers share: the keyword of each kind of relation,
- * which KModel uses as well, and the name of each primitive property type.
+ * which KModel uses as well, and the primitive property types by their names, which [SimplePropertyType.keyword]
+ * holds.
  */
 internal object KmetaVocabulary {
 
-    private val primitiveTypesByName = linkedMapOf(
-        "string" to SimplePropertyType.STRING,
-        "number" to SimplePropertyType.NUMBER,
-        "boolean" to SimplePropertyType.BOOLEAN
-    )
+    /** The primitive property types in the order the documentation lists them. */
+    private val primitiveTypesInDocumentedOrder =
+        listOf(SimplePropertyType.STRING, SimplePropertyType.NUMBER, SimplePropertyType.BOOLEAN)
 
     /** The names of the primitive property types, in the order the documentation lists them. */
-    val primitiveTypeNames: List<String> = primitiveTypesByName.keys.toList()
+    val primitiveTypeNames: List<String> = primitiveTypesInDocumentedOrder.map { it.keyword }
 
     /**
      * Returns the keyword of a relation of [associationType]: `has` for an embedding, `knows` for a link.
@@ -44,10 +43,5 @@ internal object KmetaVocabulary {
     /**
      * Returns the primitive property type called [name], or null if no primitive type has that name.
      */
-    fun primitiveTypeNamed(name: String): SimplePropertyType? = primitiveTypesByName[name]
-
-    /**
-     * Returns the name of the primitive property type [type].
-     */
-    fun nameOf(type: SimplePropertyType): String = primitiveTypesByName.entries.first { it.value == type }.key
+    fun primitiveTypeNamed(name: String): SimplePropertyType? = SimplePropertyType.entries.firstOrNull { it.keyword == name }
 }
