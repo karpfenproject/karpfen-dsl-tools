@@ -28,8 +28,11 @@ internal object MacroTypeSyntax {
     /** The function of a reference type, which the grammar spells as a keyword of its own. */
     const val REFERENCE_FUNCTION = "reference"
 
-    /** A call such as `list("Obstacle")`: a name followed by one string value in double quotes in parentheses. */
-    private val TYPED_CALL = Regex("""([A-Za-z_][A-Za-z0-9_]*)\("((?:\\.|[^"\\])*)"\)""")
+    /**
+     * A typed call as [typedCall] builds it: an identifier, `("`, the type name and `")`. The type name is taken as it
+     * stands between them, whatever chars it holds, line breaks and backslashes included.
+     */
+    private val TYPED_CALL = Regex("""([A-Za-z_][A-Za-z0-9_]*)\("([\s\S]*)"\)""")
 
     /**
      * Returns the type of a typed call of [function] on the type [typeName].

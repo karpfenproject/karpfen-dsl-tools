@@ -151,6 +151,35 @@ class KstatesExpressibilityTest {
         assertEquals(macro, result.model!!.macros.single())
     }
 
+    /**
+     * The type name of a typed call may hold a line break that a backslash escapes, as a literal continued on the
+     * next line, or end in a backslash, as `'X\'` reads; such a call reads without errors and prints, and the printed
+     * text reads back to the same macro.
+     */
+    @Test
+    fun `typed calls whose type name holds an escaped line break or a trailing backslash print`() {
+        val takenAndReturnedTypes = listOf(
+            "list(\"a\\\nb\")" to "\"number\"",
+            "list(\"O\\\n      bstacle\")" to "\"number\"",
+            "list(\"'X\\'\")" to "\"number\"",
+            "\"number\"" to "reference(\"'T\\'\")"
+        )
+        takenAndReturnedTypes.forEach { (taken, returned) ->
+            val text = documentWith(
+                "MACRO \"m\" {\n            TAKES(\"p\", $taken)\n            RETURNS($returned)\n" +
+                    "            DEFINITION { EVAL { return 1 } }\n        }"
+            )
+            val read = KstatesReader().read(text)
+            assertEquals(emptyList(), read.diagnostics, text)
+
+            val printed = printer.print(read.model!!)
+            val reread = KstatesReader().read(printed)
+
+            assertEquals(emptyList(), reread.diagnostics, printed)
+            assertEquals(read.model!!.macros.single(), reread.model!!.macros.single(), printed)
+        }
+    }
+
     private fun evalRule(code: String): ActionRule = ActionRule(SET, "x", EvalActionRightSide(code))
 
     private fun macro(takes: List<TakesDirective>, returns: String): Macro =
