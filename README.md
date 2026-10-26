@@ -40,6 +40,7 @@ All code lives below the package `io.karpfen.dsl`; the KDoc on the declarations 
 The tests mirror these packages; the example documents they read are in `example/`, and the printer and reader tests
 also read the karpfen runtime examples copied to `src/test/resources/examples` (their origin is in the `NOTICE.md` there),
 all of them through `ExampleCatalog`. The comparison with version 1.0 has a source set of its own, `src/compatibilityTest`.
+Every Kotlin source, both Gradle scripts and the grammars start with the Apache 2.0 license header, which `LicenseHeaderTest` requires.
 
 ## Logging
 
