@@ -114,17 +114,16 @@ Its API dependencies are the ANTLR runtime 4.13.1, because the generated lexers 
 because `JsonToModelConverter` accepts JSON objects, and the SLF4J API, because `LoggingSyntaxErrorListener` takes a
 logger; the ANTLR tool stays inside the build.
 
-To publish the jar, the sources jar and the POM to the local Maven repository (`~/.m2`):
-
-```
-./gradlew publishToMavenLocal
-```
-
-`./gradlew publish` publishes to the repository `GitHubPackages` (`https://maven.pkg.github.com/<owner>/<repository>`),
-named by the environment variable `GITHUB_REPOSITORY` (default `karpfenproject/karpfen-dsl-tools`). The credentials are
-the Gradle properties `GitHubPackagesUsername` and `GitHubPackagesPassword`, for example as the environment variables
+Versions are published with `./gradlew publish`: the jar, the sources jar and the POM go to the repository
+`GitHubPackages` (`https://maven.pkg.github.com/<owner>/<repository>`), named by the environment variable
+`GITHUB_REPOSITORY` (default `karpfenproject/karpfen-dsl-tools`). The credentials are the Gradle properties
+`GitHubPackagesUsername` and `GitHubPackagesPassword`, for example as the environment variables
 `ORG_GRADLE_PROJECT_GitHubPackagesUsername` and `ORG_GRADLE_PROJECT_GitHubPackagesPassword`, set from `GITHUB_ACTOR`
-and `GITHUB_TOKEN` in a GitHub workflow.
+and `GITHUB_TOKEN` in a GitHub workflow. Consumers read published versions from there with the same credentials.
+
+`./gradlew publishToMavenLocal` publishes the same files to the local Maven repository (`~/.m2`) for a build on the
+same machine that reads it. The karpfen IDE does not: it builds with this repository as a git submodule, or reads a
+published version from GitHub Packages.
 
 Version 2.0.0 moved every package below `io.karpfen.dsl`: a package `P` of version 1.0 is now `io.karpfen.dsl.P`,
 and the generated packages `kmeta`, `kmodel` and `kstates` are now `io.karpfen.dsl.grammar.kmeta`, `.kmodel` and `.kstates`.
