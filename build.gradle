@@ -102,24 +102,56 @@ tasks.named('test', Test) {
 
 /**
  * The files of the project folder that the tests read from disk rather than from their classpath: the example
- * documents, and the sources, scripts and grammars whose license headers and comments the tests check.
+ * documents, and every Kotlin source, Gradle script, grammar, markdown document and CI workflow, whose license
+ * headers, comments and wording the convention tests check, wherever it stands. The build output, the output folders
+ * that git ignores and the hidden folders are left out, except for the folder of the CI workflows.
  */
 def filesTheTestsRead = files(
         'example',
-        'build.gradle',
-        'settings.gradle',
-        fileTree('gradle') { include '**/*.gradle' },
-        fileTree('src') { include '**/*.kt', '**/*.kts', '**/*.g4', '**/*.kmeta', '**/*.kmodel', '**/*.kstates' }
+        fileTree('.') {
+            include '**/*.kt', '**/*.kts', '**/*.gradle', '**/*.g4', '**/*.md', '**/*.kmeta', '**/*.kmodel', '**/*.kstates'
+            exclude 'build/**', 'bin/**', '**/.*/**'
+        },
+        fileTree('.github') { include 'workflows/*.yml' }
 )
 
 /**
- * The files the tests read are inputs of every test task, so that a change of one of them runs the tests again instead
- * of taking their results as up to date or from the build cache.
+ * Hands the files the tests read from disk to a test task, as its inputs and as the system property
+ * `karpfen.dsl.filesTheTestsRead`: their paths relative to the project folder, with '/' separators, joined by the
+ * path separator of the platform. A change of one of the files runs the tests again instead of taking their results
+ * as up to date or from the build cache, and the convention tests check exactly these files, so that what they check
+ * and what the build declares cannot differ.
+ */
+abstract class FilesTheTestsRead implements CommandLineArgumentProvider {
+
+    /** The files the tests read. */
+    @InputFiles
+    @PathSensitive(PathSensitivity.RELATIVE)
+    abstract ConfigurableFileCollection getFiles()
+
+    /** The project folder, which the paths are relative to. */
+    @Internal
+    abstract DirectoryProperty getProjectFolder()
+
+    /**
+     * Returns the system property with the paths of the files.
+     */
+    @Override
+    Iterable<String> asArguments() {
+        def folder = projectFolder.get().asFile.toPath()
+        def paths = files.files.collect { folder.relativize(it.toPath()).toString().replace(File.separator, '/') }
+        return ["-Dkarpfen.dsl.filesTheTestsRead=${paths.sort().join(File.pathSeparator)}".toString()]
+    }
+}
+
+/**
+ * Every test task reads the files the tests read through [FilesTheTestsRead].
  */
 tasks.withType(Test).configureEach {
-    inputs.files(filesTheTestsRead)
-            .withPathSensitivity(PathSensitivity.RELATIVE)
-            .withPropertyName('filesTheTestsRead')
+    def filesProvider = objects.newInstance(FilesTheTestsRead)
+    filesProvider.files.from(filesTheTestsRead)
+    filesProvider.projectFolder = layout.projectDirectory
+    jvmArgumentProviders.add(filesProvider)
 }
 
 /**
