@@ -17,9 +17,6 @@ package io.karpfen.dsl.examples
 
 import io.karpfen.dsl.parser.KmodelFileParser
 import io.karpfen.dsl.parser.ModelObject
-import org.slf4j.LoggerFactory
-
-private val logger = LoggerFactory.getLogger("io.karpfen.dsl.examples.KmodelParserExample")
 
 private const val EXAMPLE_KMODEL = """
     make object "APB 2101":"Room" {
@@ -66,8 +63,8 @@ private const val EXAMPLE_KMODEL = """
 """
 
 /**
- * Minimal KModel parser example: parses a small KModel text with [KmodelFileParser] and logs the parsed
- * objects at info level, which is the output of this example.
+ * Minimal KModel parser example: parses a small KModel text with [KmodelFileParser] and prints the parsed
+ * objects to standard output, which is the output of this program; the library itself logs and never prints.
  *
  * The example works on the syntax level only, without a metamodel or any type checking. Real applications
  * convert KModel with [io.karpfen.dsl.dsl.textual.KmodelDSLConverter] against a metamodel and work with
@@ -75,29 +72,29 @@ private const val EXAMPLE_KMODEL = """
  */
 fun main() {
     val kmodelFile = KmodelFileParser().parseString(EXAMPLE_KMODEL.trimIndent())
-    logger.info("Parsed {} object(s)", kmodelFile.objects.size)
+    println("Parsed ${kmodelFile.objects.size} object(s)")
     for (obj in kmodelFile.objects) {
         printObject(obj, indent = 0)
     }
 }
 
 /**
- * Logs [obj] at info level as a block with headed sections for its properties, its embedded objects
+ * Prints [obj] to standard output as a block with headed sections for its properties, its embedded objects
  * (rendered recursively) and its references.
  *
  * @param indent The nesting depth the block starts at, two spaces per level.
  */
 fun printObject(obj: ModelObject, indent: Int = 0) {
-    logger.info("\n{}", renderObject(obj, indent))
+    print(renderObject(obj, indent))
 }
 
 /**
- * Logs [obj] at info level in the compact form used for nested objects, without section headings.
+ * Prints [obj] to standard output in the compact form used for nested objects, without section headings.
  *
  * @param indent The nesting depth the object starts at, two spaces per level.
  */
 fun printObjectInline(obj: ModelObject, indent: Int = 0) {
-    logger.info("\n{}", renderObjectInline(obj, indent))
+    print(renderObjectInline(obj, indent))
 }
 
 private fun renderObject(obj: ModelObject, indent: Int): String = buildString {

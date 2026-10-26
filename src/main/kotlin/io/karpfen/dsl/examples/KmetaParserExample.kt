@@ -20,9 +20,6 @@ import io.karpfen.dsl.parser.KmetaFileParser
 import io.karpfen.dsl.parser.ListValue
 import io.karpfen.dsl.parser.Rule
 import io.karpfen.dsl.parser.StringValue
-import org.slf4j.LoggerFactory
-
-private val logger = LoggerFactory.getLogger("io.karpfen.dsl.examples.KmetaParserExample")
 
 private const val EXAMPLE_KMETA = """
     type "Person" "A person entity" {
@@ -40,15 +37,16 @@ private const val EXAMPLE_KMETA = """
 """
 
 /**
- * Minimal KMeta parser example: parses a small KMeta text with [KmetaFileParser] and logs the parsed types
- * at info level, which is the output of this example.
+ * Minimal KMeta parser example: parses a small KMeta text with [KmetaFileParser] and prints the parsed types to
+ * standard output, which is the output of this program; the library itself logs and never prints.
  *
  * The example works on the syntax level only, without a metamodel or any type checking. Real applications
  * convert KMeta with [io.karpfen.dsl.dsl.textual.KmetaDSLConverter] into a metamodel and work with that.
  */
 fun main() {
     val kmetaFile = KmetaFileParser().parseString(EXAMPLE_KMETA.trimIndent())
-    logger.info("Parsed {} type(s):\n{}", kmetaFile.types.size, renderTypes(kmetaFile))
+    println("Parsed ${kmetaFile.types.size} type(s):")
+    print(renderTypes(kmetaFile))
 }
 
 /**

@@ -25,7 +25,8 @@ import org.slf4j.Logger
  * the console.
  *
  * Error recovery stays with ANTLR: the lexer and the parser keep going after an error, exactly as they do
- * with the console listener this one replaces. Install it with [reportSyntaxErrorsTo].
+ * with the console listener this one replaces. The file parsers [KmetaFileParser], [KmodelFileParser] and
+ * [KStatesFileParser] use it unless another listener is passed to their constructor.
  *
  * @param logger The logger the warnings go to.
  * @param languageName The name of the language being parsed, which starts every warning.
