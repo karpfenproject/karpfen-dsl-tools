@@ -58,6 +58,10 @@ internal class ActionConverter(
         return actionBlock
     }
 
+    /**
+     * Converts one item of an action block: a rule, a `WITH` block or an `IF IN SCOPE` block; null for an item the
+     * parser could not make out.
+     */
     private fun convertItem(item: KstatesParser.Action_itemContext): ActionItem? {
         item.action_rule()?.let { return convertRule(it) }
         item.with_block()?.let { return convertWithBlock(it) }
@@ -65,6 +69,7 @@ internal class ActionConverter(
         return null
     }
 
+    /** Converts `IF IN SCOPE("path", ...) { ... }`; null without its block. */
     private fun convertInScopeBlock(block: KstatesParser.In_scope_blockContext): InScopeBlock? {
         val body = block.action_block() ?: return null
         val inScope = InScopeBlock(block.presentTokens(KstatesParser.STRING).map { unquoted(it) }, convertBlock(body))
@@ -72,6 +77,7 @@ internal class ActionConverter(
         return inScope
     }
 
+    /** Converts `WITH MACRO(...) AS "name" { ... }`; null without its name, its macro call or its block. */
     private fun convertWithBlock(block: KstatesParser.With_blockContext): WithBlock? {
         val nameToken = block.presentToken(KstatesParser.STRING) ?: return null
         val macroCall = block.macro_call()?.let { convertMacroCall(it) } ?: return null
@@ -81,6 +87,10 @@ internal class ActionConverter(
         return withBlock
     }
 
+    /**
+     * Converts an action rule and checks its arity; null for a rule that contains a syntax error, lacks its
+     * operation or its path, or has another number of operands than its operation expects, which is reported.
+     */
     private fun convertRule(rule: KstatesParser.Action_ruleContext): ActionRule? {
         if (rule.containsSyntaxError() || rule.action_operation() == null) {
             return null

@@ -54,9 +54,11 @@ internal object ConditionClauses {
     fun clausesOf(condition: Condition): List<Condition> =
         if (isAlwaysTrue(condition)) emptyList() else flattened(condition)
 
+    /** Returns true for the condition of a transition without a `CONDITION` block. */
     private fun isAlwaysTrue(condition: Condition): Boolean =
         condition is ValueCondition && condition.boolVariable == ALWAYS_TRUE_VARIABLE
 
+    /** Returns the clauses of [condition], those of nested composite conditions in their place. */
     private fun flattened(condition: Condition): List<Condition> =
         if (condition is CompositeCondition) condition.clauses.flatMap { flattened(it) } else listOf(condition)
 }

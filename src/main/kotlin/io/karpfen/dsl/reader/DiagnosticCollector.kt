@@ -26,6 +26,7 @@ import io.karpfen.dsl.source.SourceRange
  */
 internal class DiagnosticCollector {
 
+    /** The diagnostics reported so far, in reporting order. */
     private val collected = mutableListOf<Diagnostic>()
 
     /** The diagnostics reported so far, in reporting order. */

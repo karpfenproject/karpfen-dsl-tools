@@ -42,6 +42,10 @@ internal class StateConverter(
     fun convert(definitions: List<KstatesParser.State_definitionContext>, outerState: State?): MutableList<State> =
         definitions.mapNotNull { convertState(it, outerState) }.toMutableList()
 
+    /**
+     * Converts a state definition with its `ENTRY` and `DO` blocks and its nested states, inside [outerState]; null
+     * without a name.
+     */
     private fun convertState(definition: KstatesParser.State_definitionContext, outerState: State?): State? {
         val nameToken = definition.presentToken(KstatesParser.STRING) ?: return null
         val state = State(
@@ -65,5 +69,6 @@ internal class StateConverter(
         section: ParserRuleContext
     ): ActionBlock = block?.let { actions.convertBlock(it, section) } ?: emptyBlock()
 
+    /** Returns the empty action block of a state without an `ENTRY` or `DO` block, which has no location. */
     private fun emptyBlock(): ActionBlock = ActionBlock(mutableListOf())
 }

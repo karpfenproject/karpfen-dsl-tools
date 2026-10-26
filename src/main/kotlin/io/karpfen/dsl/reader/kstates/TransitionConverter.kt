@@ -44,6 +44,7 @@ internal class TransitionConverter(
     fun convert(definitions: List<KstatesParser.Transition_definitionContext>): MutableList<TransitionLike> =
         definitions.mapNotNull { convertDefinition(it) }.toMutableList()
 
+    /** Converts a transition definition of any of the three kinds; null if it holds none the parser made out. */
     private fun convertDefinition(definition: KstatesParser.Transition_definitionContext): TransitionLike? {
         definition.normal_transition()?.let { return convertNormal(it) }
         definition.split_transition()?.let { return convertSplit(it) }
@@ -51,6 +52,7 @@ internal class TransitionConverter(
         return null
     }
 
+    /** Converts `TRANSITION "from" -> "to"`; null without both states. */
     private fun convertNormal(transition: KstatesParser.Normal_transitionContext): Transition? {
         val states = stateNamesOf(transition) ?: return null
         return recorded(
@@ -64,6 +66,7 @@ internal class TransitionConverter(
         )
     }
 
+    /** Converts `SPLIT "from" -> "to", ...`, whose first state is the source; null with fewer than two states. */
     private fun convertSplit(transition: KstatesParser.Split_transitionContext): SplitTransition? {
         val states = stateNamesOf(transition) ?: return null
         return recorded(
@@ -77,6 +80,7 @@ internal class TransitionConverter(
         )
     }
 
+    /** Converts `JOIN "from", ... -> "to"`, whose last state is the target; null with fewer than two states. */
     private fun convertJoin(transition: KstatesParser.Join_transitionContext): JoinTransition? {
         val states = stateNamesOf(transition) ?: return null
         return recorded(
@@ -96,6 +100,7 @@ internal class TransitionConverter(
     private fun stateNamesOf(transition: ParserRuleContext): List<String>? =
         transition.presentTokens(KstatesParser.STRING).map { unquoted(it) }.takeIf { it.size >= 2 }
 
+    /** Records [transition] at [construct] and returns it. */
     private fun <T : TransitionLike> recorded(transition: T, construct: ParserRuleContext): T {
         session.record(transition, construct)
         return transition

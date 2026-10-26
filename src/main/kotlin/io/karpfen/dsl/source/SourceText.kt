@@ -26,6 +26,7 @@ package io.karpfen.dsl.source
  */
 class SourceText(val text: String) {
 
+    /** The offset of the first char of every line. */
     private val lineStarts: IntArray = lineStartsOf(text)
 
     /** The number of lines; an empty text and a text without a line break have one line. */
@@ -79,6 +80,7 @@ class SourceText(val text: String) {
         return low
     }
 
+    /** Indexes texts. */
     private companion object {
 
         /**

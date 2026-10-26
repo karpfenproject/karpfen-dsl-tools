@@ -26,8 +26,10 @@ package io.karpfen.dsl.reader
  */
 internal class CodePointOffsets(text: String) {
 
+    /** The length of the text in chars. */
     private val textLength = text.length
 
+    /** The char offset of every code point and the length of the text last; null if every code point is one char. */
     private val charOffsets: IntArray? = if (text.any { it.isSurrogate() }) charOffsetTable(text) else null
 
     /** The number of code points of the text. */
@@ -42,6 +44,7 @@ internal class CodePointOffsets(text: String) {
         return charOffsets?.get(clamped) ?: clamped
     }
 
+    /** Builds the table of char offsets. */
     private companion object {
 
         /**

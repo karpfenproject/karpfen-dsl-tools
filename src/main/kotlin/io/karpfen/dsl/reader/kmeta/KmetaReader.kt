@@ -51,11 +51,13 @@ import org.slf4j.LoggerFactory
  */
 class KmetaReader(baseTypes: List<ClassType> = emptyList()) : TextReader<Metamodel> {
 
+    /** The class types defined elsewhere, which every read adds to its metamodel. */
     private val baseTypes = baseTypes.toList()
 
     /** Receives the failures of reads, see [TextReader]. */
     private val logger = LoggerFactory.getLogger(KmetaReader::class.java)
 
+    /** Reads [text] into a metamodel, as described for the class. */
     override fun read(text: String): ParseResult<Metamodel> =
         ReadingSession.read(LexerInput.withIndentTrimmed(text), StringLiteralSyntax.KMETA, logger) { session ->
             val classTypes = ClassTypeConverter(session).convert(parse(session).type_definition())

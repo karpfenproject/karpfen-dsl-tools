@@ -58,6 +58,7 @@ class KmodelReader(private val metamodel: Metamodel) : TextReader<Model> {
     /** Receives the failures of reads, see [TextReader]. */
     private val logger = LoggerFactory.getLogger(KmodelReader::class.java)
 
+    /** Reads [text] into a model of the metamodel, as described for the class. */
     override fun read(text: String): ParseResult<Model> =
         ReadingSession.read(LexerInput.withIndentTrimmed(text), StringLiteralSyntax.KMODEL, logger) { session ->
             val file = parse(session)

@@ -46,8 +46,10 @@ import org.slf4j.LoggerFactory
  */
 class KstatesReader : TextReader<StateMachine> {
 
+    /** Receives the failures of reads, see [TextReader]. */
     private val logger = LoggerFactory.getLogger(KstatesReader::class.java)
 
+    /** Reads [text] into a state machine, as described for the class. */
     override fun read(text: String): ParseResult<StateMachine> =
         ReadingSession.read(LexerInput.asWritten(text), StringLiteralSyntax.KSTATES, logger) { session ->
             val machine = parse(session).statemachine()
@@ -74,6 +76,7 @@ class KstatesReader : TextReader<StateMachine> {
         }
     }
 
+    /** Parses the text of [session], whose lexer and parser report their syntax errors to it. */
     private fun parse(session: ReadingSession): KstatesParser.Kstates_fileContext {
         val lexer = session.reportingSyntaxErrors(KstatesLexer(session.charStream()))
         val parser = session.reportingSyntaxErrors(KstatesParser(CommonTokenStream(lexer)))

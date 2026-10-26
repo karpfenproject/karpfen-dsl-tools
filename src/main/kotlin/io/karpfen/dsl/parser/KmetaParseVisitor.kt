@@ -25,8 +25,10 @@ import io.karpfen.dsl.grammar.kmeta.KmetaParser
  */
 class KmetaParseVisitor : KmetaBaseVisitor<KmetaFile>() {
 
+    /** The string literal syntax of KMeta. */
     private val literals = StringLiteralSyntax.KMETA
 
+    /** The type definitions read so far, in definition order. */
     private val typeDefinitions = mutableListOf<TypeDefinition>()
 
     /**
@@ -39,6 +41,7 @@ class KmetaParseVisitor : KmetaBaseVisitor<KmetaFile>() {
         return KmetaFile(typeDefinitions)
     }
 
+    /** Reads a type definition with its `prop`, `has` and `knows` rules. */
     private fun visitTypeDefinition(ctx: KmetaParser.Type_definitionContext): TypeDefinition {
         val typeName = literals.unquote(ctx.STRING(0).text)
         val typeDescription = literals.unquote(ctx.STRING(1).text)

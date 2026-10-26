@@ -52,6 +52,7 @@ internal class TargetTypeResolver(
         }
     }
 
+    /** Reports that the target type of [relation] of [classType] is unknown, at the target type name. */
     private fun reportUnknownType(classType: ClassType, relation: ClassTypeProperty) {
         val keyword = KmetaVocabulary.relationKeyword(relation.associationType)
         session.report(

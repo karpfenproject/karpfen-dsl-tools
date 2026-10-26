@@ -47,6 +47,7 @@ internal class MacroConverter(
     fun convert(definitions: List<KstatesParser.Macro_definitionContext>): MutableList<Macro> =
         definitions.mapNotNull { convertMacro(it) }.toMutableList()
 
+    /** Converts a macro definition with its directives and its definition; null without a name. */
     private fun convertMacro(definition: KstatesParser.Macro_definitionContext): Macro? {
         val nameToken = definition.presentToken(KstatesParser.STRING) ?: return null
         val macro = Macro(
@@ -59,6 +60,7 @@ internal class MacroConverter(
         return macro
     }
 
+    /** Converts a `TAKES` directive; null if it contains a syntax error or lacks its name or type. */
     private fun convertTakes(directive: KstatesParser.Takes_directiveContext): TakesDirective? {
         if (directive.containsSyntaxError()) {
             return null
@@ -68,6 +70,10 @@ internal class MacroConverter(
         return TakesDirective(unquoted(nameToken), type).also { session.record(it, directive, nameToken) }
     }
 
+    /**
+     * Converts a `RETURNS` directive with a type or a `reference(...)`; null if it contains a syntax error or lacks
+     * its type.
+     */
     private fun convertReturns(directive: KstatesParser.Returns_directiveContext): ReturnsDirective? {
         if (directive.containsSyntaxError()) {
             return null
@@ -93,6 +99,7 @@ internal class MacroConverter(
         return MacroTypeSyntax.typedCall(function.text, unquoted(typeName))
     }
 
+    /** Converts a `DEFINITION` block into the code of its `EVAL` statement; null without the statement. */
     private fun convertDefinition(block: KstatesParser.Definition_blockContext): Definition? {
         val statement = block.eval_statement() ?: return null
         val body = evalBodies.read(statement)

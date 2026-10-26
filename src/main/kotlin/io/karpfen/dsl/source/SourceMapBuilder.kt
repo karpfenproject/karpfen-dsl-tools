@@ -25,6 +25,7 @@ import java.util.IdentityHashMap
  */
 internal class SourceMapBuilder {
 
+    /** The locations recorded so far, keyed by identity. */
     private val locations = IdentityHashMap<Any, MutableList<SourceLocation>>()
 
     /**

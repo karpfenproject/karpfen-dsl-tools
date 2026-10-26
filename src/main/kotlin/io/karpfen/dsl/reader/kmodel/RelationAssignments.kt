@@ -52,6 +52,10 @@ internal class RelationAssignments(
     fun link(statements: List<KnowsStatement>, ownerKey: String): List<ClassTypePropertyObject> =
         statements.groupBy { it.key }.map { (key, group) -> linkKey(key, group, ownerKey) }
 
+    /**
+     * Turns the `has` statements of one [key], [group], into a relation object whose references hold the embedded
+     * objects, and records each statement and reference.
+     */
     private fun embedKey(key: String, group: List<HasStatement>): ClassTypePropertyObject {
         val references = group.map { ObjectReference(it.child.id, it.child) }
         val relationObject = relationObjectOf(group.first().relation, key, references)
@@ -63,6 +67,11 @@ internal class RelationAssignments(
         return relationObject
     }
 
+    /**
+     * Turns the `knows` statements of one [key], [group], of the object [ownerKey] into a relation object whose
+     * references name their objects by id, records each statement and reference, and hands the references to the
+     * [pendingLinks].
+     */
     private fun linkKey(key: String, group: List<KnowsStatement>, ownerKey: String): ClassTypePropertyObject {
         val references = group.map { ObjectReference(it.targetId, null) }
         val relationObject = relationObjectOf(group.first().relation, key, references)
@@ -75,6 +84,10 @@ internal class RelationAssignments(
         return relationObject
     }
 
+    /**
+     * Returns the relation object of [relation] under [key] with [references]: a list or a single reference, see
+     * [KmodelSemantics.formsList].
+     */
     private fun relationObjectOf(
         relation: ClassTypeProperty,
         key: String,

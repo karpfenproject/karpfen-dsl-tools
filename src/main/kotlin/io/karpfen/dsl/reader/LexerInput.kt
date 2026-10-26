@@ -82,12 +82,16 @@ internal class LexerInput private constructor(
      */
     private class IndentTrimming(private val text: String) {
 
+        /** The lines of the text. */
         private val lines = SourceLine.linesOf(text)
 
+        /** The trimmed text built so far. */
         private val lexed = StringBuilder(text.length)
 
+        /** For every char of [lexed], the offset of the char of the text it stems from. */
         private val starts = IntArray(text.length)
 
+        /** For every char of [lexed], the offset behind the chars of the text it stems from. */
         private val ends = IntArray(text.length)
 
         /**
@@ -114,6 +118,9 @@ internal class LexerInput private constructor(
          */
         private fun isBlankEdge(index: Int): Boolean = (index == 0 || index == lines.lastIndex) && lines[index].isBlank(text)
 
+        /**
+         * Appends [char] to the trimmed text, made from the chars of the text from [sourceStart] to [sourceEnd].
+         */
         private fun append(char: Char, sourceStart: Int, sourceEnd: Int) {
             starts[lexed.length] = sourceStart
             ends[lexed.length] = sourceEnd

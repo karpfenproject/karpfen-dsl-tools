@@ -42,6 +42,7 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         return KstatesFile(attachedToClass, states, transitions, macros)
     }
 
+    /** Reads a state definition with its `ENTRY` and `DO` blocks and its nested states. */
     private fun parseState(ctx: KstatesParser.State_definitionContext): ParsedState {
         val name = unquote(ctx.STRING().text)
         val isInitial = ctx.INITIAL() != null
@@ -53,23 +54,27 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         return ParsedState(name, isInitial, onEntry, onDo, innerStates)
     }
 
+    /** Reads the items of an action block. */
     private fun parseActionBlock(ctx: KstatesParser.Action_blockContext): ParsedActionBlock {
         val items = ctx.action_item().map { parseActionItem(it) }
         return ParsedActionBlock(items)
     }
 
+    /** Reads an action rule, a `WITH` block or an `IF IN SCOPE` block. */
     private fun parseActionItem(ctx: KstatesParser.Action_itemContext): ParsedActionItem {
         ctx.action_rule()?.let { return ParsedActionRuleItem(parseActionRule(it)) }
         ctx.with_block()?.let { return parseWithBlock(it) }
         return parseInScopeBlock(ctx.in_scope_block())
     }
 
+    /** Reads `IF IN SCOPE("path", ...) { ... }`. */
     private fun parseInScopeBlock(ctx: KstatesParser.In_scope_blockContext): ParsedInScopeBlock {
         val paths = ctx.STRING().map { unquote(it.text) }
         val body = parseActionBlock(ctx.action_block())
         return ParsedInScopeBlock(paths, body)
     }
 
+    /** Reads `WITH MACRO("name", ...) AS "name" { ... }`. */
     private fun parseWithBlock(ctx: KstatesParser.With_blockContext): ParsedWithBlock {
         val strings = ctx.macro_call().STRING().map { unquote(it.text) }
         val macroName = strings.firstOrNull() ?: ""
@@ -101,6 +106,7 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         }
     }
 
+    /** Reads the right side of a rule: a literal value, a macro call or the code of an `EVAL` block. */
     private fun parseActionRightSide(ctx: KstatesParser.Action_right_sideContext): ParsedActionRightSide {
         return when {
             ctx.STRING() != null -> ParsedValueActionRightSide(unquote(ctx.STRING().text))
@@ -114,12 +120,14 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         }
     }
 
+    /** Reads a transition definition of any of the three kinds. */
     private fun parseTransition(ctx: KstatesParser.Transition_definitionContext): ParsedTransitionLike {
         ctx.normal_transition()?.let { return parseNormalTransition(it) }
         ctx.split_transition()?.let { return parseSplitTransition(it) }
         return parseJoinTransition(ctx.join_transition())
     }
 
+    /** Reads `TRANSITION "from" -> "to"` with its condition. */
     private fun parseNormalTransition(ctx: KstatesParser.Normal_transitionContext): ParsedTransition {
         val fromState = unquote(ctx.STRING(0).text)
         val toState = unquote(ctx.STRING(1).text)
@@ -129,6 +137,7 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         return ParsedTransition(fromState, toState, allowLoops, condition)
     }
 
+    /** Reads `SPLIT "from" -> "to", ...` with its condition; the first state is the source. */
     private fun parseSplitTransition(ctx: KstatesParser.Split_transitionContext): ParsedSplitTransition {
         val strings = ctx.STRING().map { unquote(it.text) }
         val fromState = strings.first()
@@ -139,6 +148,7 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         return ParsedSplitTransition(fromState, toStates, allowLoops, condition)
     }
 
+    /** Reads `JOIN "from", ... -> "to"` with its condition; the last state is the target. */
     private fun parseJoinTransition(ctx: KstatesParser.Join_transitionContext): ParsedJoinTransition {
         val strings = ctx.STRING().map { unquote(it.text) }
         val toState = strings.last()
@@ -160,6 +170,7 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         return ctx.condition_clause().map { parseConditionClause(it) }
     }
 
+    /** Reads one clause of a `CONDITION` block: an `EVAL` block, an `EVENT` or a `VALUE`. */
     private fun parseConditionClause(ctx: KstatesParser.Condition_clauseContext): ParsedCondition {
         if (ctx.eval_statement() != null) {
             val code = extractInnerBlockText(ctx.eval_statement().eval_code_block())
@@ -177,6 +188,7 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         return ParsedValueCondition(unquote(valueCtx.STRING().text))
     }
 
+    /** Reads a macro definition with its directives and the code of its definition. */
     private fun parseMacro(ctx: KstatesParser.Macro_definitionContext): ParsedMacro {
         val name = unquote(ctx.STRING().text)
         val takes = ctx.takes_directive().map {
@@ -188,6 +200,7 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         return ParsedMacro(name, takes, ParsedReturnsDirective(returnType), code)
     }
 
+    /** Reads the type of a `RETURNS` directive, which may also be `reference("T")`. */
     private fun parseReturnExpression(ctx: KstatesParser.Return_expressionContext): String {
         return if (ctx.reference_expression() != null) {
             val typeName = unquote(ctx.reference_expression().STRING().text)
@@ -197,6 +210,7 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         }
     }
 
+    /** Reads a type expression, `"T"` as `T` and a typed call such as `list("T")` as written, see [MacroTypeSyntax]. */
     private fun parseTypeExpression(ctx: KstatesParser.Type_expressionContext): String {
         if (ctx.STRING() != null) {
             return unquote(ctx.STRING().text)
@@ -208,6 +222,7 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         return MacroTypeSyntax.typedCall(functionName, typeName)
     }
 
+    /** Returns the value of a KStates string token. */
     private fun unquote(text: String): String = StringLiteralSyntax.KSTATES.unquote(text)
 
     /**

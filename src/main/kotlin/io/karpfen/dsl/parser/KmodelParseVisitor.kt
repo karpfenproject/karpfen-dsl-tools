@@ -31,6 +31,7 @@ class KmodelParseVisitor : KmodelBaseVisitor<KmodelFile>() {
         return KmodelFile(listOf(rootObject))
     }
 
+    /** Reads a `make object` block with its statements and the objects it embeds. */
     private fun visitMakeObjectBlock(ctx: KmodelParser.Make_object_blockContext): ModelObject {
         val signature = ctx.object_signature()
         val keyAndClassName = parseObjectSignature(signature)
@@ -88,5 +89,6 @@ class KmodelParseVisitor : KmodelBaseVisitor<KmodelFile>() {
         extractStringFromQuotes(ctx.STRING(0).text)
     }
 
+    /** Returns the value of a string token of a statement. */
     private fun extractStringFromQuotes(text: String): String = StringLiteralSyntax.KMODEL.unquote(text)
 }

@@ -44,6 +44,7 @@ internal class ClassTypeConverter(private val session: ReadingSession) {
     fun convert(definitions: List<KmetaParser.Type_definitionContext>): List<ClassType> =
         definitions.mapNotNull { convertType(it) }
 
+    /** Converts a type definition with its `prop`, `has` and `knows` rules; null for a definition without a name. */
     private fun convertType(definition: KmetaParser.Type_definitionContext): ClassType? {
         val strings = definition.presentTokens(KmetaParser.STRING)
         val nameToken = strings.firstOrNull() ?: return null

@@ -52,6 +52,10 @@ internal class ConditionConverter(
         return ConditionClauses.conditionOf(clauses).also { if (it is CompositeCondition) session.record(it, block) }
     }
 
+    /**
+     * Converts one clause, an `EVAL` block, an `EVENT` or a `VALUE`; null for a clause that contains a syntax error or
+     * lacks a string.
+     */
     private fun convertClause(clause: KstatesParser.Condition_clauseContext): Condition? {
         if (clause.containsSyntaxError()) {
             return null

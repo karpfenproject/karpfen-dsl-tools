@@ -53,6 +53,7 @@ import java.util.IdentityHashMap
  */
 class SourceMap internal constructor(locations: IdentityHashMap<Any, List<SourceLocation>>) {
 
+    /** The locations of every element, keyed by identity. */
     private val locations = IdentityHashMap(locations)
 
     /** The number of elements that have a location. */
