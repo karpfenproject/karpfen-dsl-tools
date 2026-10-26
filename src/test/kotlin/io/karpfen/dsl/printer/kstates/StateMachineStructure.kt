@@ -134,7 +134,6 @@ private fun ActionItem.shaped(): ActionItem = when (this) {
     is ActionRule -> copy(rightSide = rightSide?.shaped())
     is InScopeBlock -> copy(body = body.shaped())
     is WithBlock -> copy(body = body.shaped())
-    else -> this
 }
 
 private fun ActionRightSide.shaped(): ActionRightSide =

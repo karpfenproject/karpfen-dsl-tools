@@ -69,6 +69,7 @@ class DataObject(
      *
      * @throws IllegalArgumentException If a value does not match the primitive type of its property.
      */
+    @Suppress("UNCHECKED_CAST")
     fun assignProps(props: Map<String, Any>) {
         for (incomingProp in props) {
             val incomingKey = incomingProp.key
@@ -94,6 +95,7 @@ class DataObject(
      *
      * @throws IllegalArgumentException If an object is not of the class type its relation expects.
      */
+    @Suppress("UNCHECKED_CAST")
     fun assignRels(rels: Map<String, Any>) {
         for (incomingRel in rels) {
             val incomingKey = incomingRel.key

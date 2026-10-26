@@ -69,7 +69,7 @@ class KmetaReaderDiagnosticsTest {
         val relations = result.model!!.rootClass.objectProperties
         assertEquals(listOf("corner", "others"), relations.map { it.key })
         assertNull(relations[0].reference.classType)
-        assertSame(result.model!!.types[0], relations[1].reference.classType)
+        assertSame(result.model.types[0], relations[1].reference.classType)
     }
 
     /**
@@ -85,7 +85,7 @@ class KmetaReaderDiagnosticsTest {
 
         assertEquals(emptyList(), withBaseTypes.diagnostics)
         assertSame(domain.types.single(), withBaseTypes.model!!.rootClass.objectProperties.single().reference.classType)
-        assertEquals(listOf("teleport", "Vector"), withBaseTypes.model!!.types.map { it.name })
+        assertEquals(listOf("teleport", "Vector"), withBaseTypes.model.types.map { it.name })
         assertEquals(listOf(DiagnosticCode.UNKNOWN_TARGET_TYPE), withoutBaseTypes.diagnostics.map { it.code })
     }
 
@@ -117,7 +117,7 @@ class KmetaReaderDiagnosticsTest {
 
         assertDiagnostic(DiagnosticCode.SYNTAX_ERROR, ")", 1, 40, result.diagnostics.single(), text)
         assertEquals(listOf("A", "B"), result.model!!.types.map { it.name })
-        assertEquals("B", result.model!!.rootClass.name)
+        assertEquals("B", result.model.rootClass.name)
     }
 
     /**

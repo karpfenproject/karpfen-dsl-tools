@@ -219,7 +219,7 @@ class KstatesExpressibilityTest {
             val reread = KstatesReader().read(printed)
 
             assertEquals(emptyList(), reread.diagnostics, printed)
-            assertEquals(read.model!!.macros.single(), reread.model!!.macros.single(), printed)
+            assertEquals(read.model.macros.single(), reread.model!!.macros.single(), printed)
         }
     }
 

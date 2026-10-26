@@ -158,7 +158,7 @@ class StringLiteralSyntaxTest {
 
         assertEquals(emptyList(), reread.diagnostics, printed)
         assertEquals("p\"1\\", reread.model!!.objects.single().id)
-        assertEquals(printed, KmodelPrinter().print(reread.model!!))
+        assertEquals(printed, KmodelPrinter().print(reread.model))
     }
 
     /**

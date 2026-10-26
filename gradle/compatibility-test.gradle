@@ -161,6 +161,16 @@ kotlin.sourceSets.named('reference') { sourceSet ->
 }
 
 /**
+ * The sources of version 1.0 are frozen, so the warnings of their compiler concern nobody who can act on them, and
+ * they are not printed.
+ */
+tasks.named('compileReferenceKotlin') {
+    compilerOptions {
+        suppressWarnings = true
+    }
+}
+
+/**
  * The compatibility tests use the test libraries and the fixtures of the tests.
  */
 configurations {

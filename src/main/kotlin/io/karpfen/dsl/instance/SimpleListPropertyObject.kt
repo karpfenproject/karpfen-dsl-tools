@@ -38,6 +38,7 @@ class SimpleListPropertyObject(
     /**
      * Returns the values as booleans, unchecked.
      */
+    @Suppress("UNCHECKED_CAST")
     fun getAsBooleanList(): List<Boolean> {
         return values as List<Boolean>
     }
@@ -45,6 +46,7 @@ class SimpleListPropertyObject(
     /**
      * Returns the values as strings, unchecked.
      */
+    @Suppress("UNCHECKED_CAST")
     fun getAsStringList(): List<String> {
         return values as List<String>
     }
@@ -52,6 +54,7 @@ class SimpleListPropertyObject(
     /**
      * Returns the values as numbers, unchecked.
      */
+    @Suppress("UNCHECKED_CAST")
     fun getAsNumberList(): List<Number> {
         return values as List<Number>
     }

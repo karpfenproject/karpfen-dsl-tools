@@ -50,6 +50,7 @@ data class Model(val objects: MutableList<DataObject>, val metamodel: Metamodel?
          * For a list property, [propValue] must be a list with the same size whose elements all occur in the
          * property's values.
          */
+        @Suppress("UNCHECKED_CAST")
         fun findBySimplePropValue(objects: List<DataObject>, propKey: String, propValue: Any): List<DataObject> {
             return objects.filter { obj ->
                 obj.properties.any { prop ->

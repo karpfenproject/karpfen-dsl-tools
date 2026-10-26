@@ -178,14 +178,34 @@ publishing {
 apply from: 'gradle/published-dependencies.gradle'
 
 /**
- * The checks of what this repository delivers beyond its tests, `compatibilityTest` and `checkPublishedDependencies`,
- * are part of `check`, and so of `build`, only in the build of this repository itself. Builds that include it as a
- * subproject, as karpfen-runtime does, or as an included build, as the karpfen IDE does, only consume the library;
- * there `check` runs its tests, and the comparison with version 1.0 would need git and the full history of this
- * repository.
+ * True in the build of this repository itself, false in a build that includes it as a subproject, as karpfen-runtime
+ * does, or as an included build, as the karpfen IDE does. Those builds only consume the library.
  */
-if (project == rootProject && gradle.parent == null) {
+def isOwnBuild = project == rootProject && gradle.parent == null
+
+/**
+ * The checks of what this repository delivers beyond its tests, `compatibilityTest` and `checkPublishedDependencies`,
+ * are part of `check`, and so of `build`, only in the build of this repository itself. In the builds that consume
+ * the library, `check` runs its tests, and the comparison with version 1.0 would need git and the full history of
+ * this repository.
+ */
+if (isOwnBuild) {
     tasks.named('check') {
         dependsOn 'compatibilityTest', 'checkPublishedDependencies'
+    }
+}
+
+/**
+ * In the build of this repository itself, a warning of the Kotlin compiler fails the compilation of the sources, the
+ * tests and the compatibility tests, so that a new warning cannot go unnoticed among others. The builds that consume
+ * the library may compile it with another version of Kotlin, whose new warnings must not break them.
+ */
+if (isOwnBuild) {
+    ['compileKotlin', 'compileTestKotlin', 'compileCompatibilityTestKotlin'].each { compilation ->
+        tasks.named(compilation) {
+            compilerOptions {
+                allWarningsAsErrors = true
+            }
+        }
     }
 }
