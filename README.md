@@ -67,7 +67,7 @@ the elements it covers. The model classes know nothing of their text.
 The reader tests check the source maps on every example, report the problems of broken texts where they occur, and
 read thousands of mutated examples, every example in other layouts such as other line breaks and indentation, and
 every prefix of an example without throwing, with proper ranges and in agreement with the converters; `TextLayout` and
-`Mutator` make these texts for the reader tests and the comparison with version 1.0 alike.
+`Mutator` make these texts for the reader tests, the printer tests and the comparison with version 1.0 alike.
 
 ## Printing
 
@@ -75,10 +75,12 @@ The printers turn a metamodel, a model or a state machine back into text: a whol
 element such as a type, a rule, an object, a state, a transition or a macro, laid out to replace that element's text
 in an existing document. The `convertTo...String` functions of the converters delegate to them. All output uses one
 canonical layout, re-indents `EVAL` code while it keeps its tokens, its comments and the indentation of the lines
-after the first relative to each other, and drops the comments outside `EVAL` code; the KDoc of the printers
-describes the layout, and the printers reject what their language cannot read back,
-such as a value no string literal carries, an object embedded twice or `EVAL` code whose braces do not balance. The printer tests parse every
-example, print it and parse the text again.
+after the first relative to each other, and drops the comments outside `EVAL` code; the KDoc of the printers describes
+the layout, and the printers reject what their language cannot read back, such as a value no string literal carries,
+an object embedded twice or `EVAL` code whose braces do not balance. The printer tests parse every example, print it
+and parse the text again; they also print every model that a reader reads without errors from an example in another
+layout or from a mutated variant of it, and check for every short string literal that the value it reads back can be
+written again.
 
 ## Building
 
