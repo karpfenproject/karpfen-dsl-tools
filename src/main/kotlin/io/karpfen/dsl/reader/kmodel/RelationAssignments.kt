@@ -69,7 +69,7 @@ internal class RelationAssignments(
         for ((statement, reference) in group.zip(references)) {
             session.record(relationObject, statement.context, statement.keyToken)
             session.record(reference, statement.context, statement.targetToken)
-            val targetRange = session.locator.problemRangeOf(statement.targetToken)
+            val targetRange = session.valueProblemRangeOf(statement.targetToken)
             pendingLinks.add(PendingLink(reference, relationObject, ownerKey, targetRange, statement.belongsToObject))
         }
         return relationObject

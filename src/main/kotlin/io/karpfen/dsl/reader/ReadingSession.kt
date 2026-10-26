@@ -16,6 +16,7 @@
 package io.karpfen.dsl.reader
 
 import io.karpfen.dsl.diagnostics.DiagnosticCode
+import io.karpfen.dsl.parser.StringLiteralSyntax
 import io.karpfen.dsl.parser.reportSyntaxErrorsTo
 import io.karpfen.dsl.source.SourceLocation
 import io.karpfen.dsl.source.SourceMapBuilder
@@ -36,16 +37,24 @@ import org.slf4j.Logger
  * single read and is not thread-safe; [read] creates one per call.
  *
  * @param input The text being read and the text its lexer reads.
+ * @param literals The string literal syntax of the language being read, which says what a string token holds as its
+ * value; the tokens of KModel object signatures follow another one.
  */
-internal class ReadingSession private constructor(private val input: LexerInput) {
+internal class ReadingSession private constructor(
+    private val input: LexerInput,
+    private val literals: StringLiteralSyntax
+) {
 
     /** Turns tokens and contexts of the parse of [input] into ranges of the text being read. */
     val locator = TokenLocator(SourceText(input.source), input)
 
+    /** The problems found so far. */
     private val diagnostics = DiagnosticCollector()
 
+    /** The locations of the elements recorded so far. */
     private val sourceMap = SourceMapBuilder()
 
+    /** Turns the syntax errors of the lexer and the parser into [diagnostics]. */
     private val syntaxErrorListener = SyntaxDiagnosticListener(locator, diagnostics)
 
     /**
@@ -72,11 +81,20 @@ internal class ReadingSession private constructor(private val input: LexerInput)
     }
 
     /**
-     * Records that [element] is defined by [construct], named by the quoted string [name] and, for an `EVAL`
-     * body, holds the code at [codeRange].
+     * Records that [element] is defined by [construct], named by the value of the string token [name] and, for an
+     * `EVAL` body, holds the code at [codeRange].
+     *
+     * @param nameLiterals The string literal syntax of [name], by default that of the language.
      */
-    fun record(element: Any, construct: ParserRuleContext, name: TerminalNode? = null, codeRange: SourceRange? = null) {
-        record(element, SourceLocation(locator.rangeOf(construct), name?.let { locator.innerRangeOf(it) }, codeRange))
+    fun record(
+        element: Any,
+        construct: ParserRuleContext,
+        name: TerminalNode? = null,
+        codeRange: SourceRange? = null,
+        nameLiterals: StringLiteralSyntax = literals
+    ) {
+        val nameRange = name?.let { locator.valueRangeOf(it, nameLiterals) }
+        record(element, SourceLocation(locator.rangeOf(construct), nameRange, codeRange))
     }
 
     /**
@@ -90,6 +108,15 @@ internal class ReadingSession private constructor(private val input: LexerInput)
      * Returns the first location recorded for [element], or null.
      */
     fun locationOf(element: Any): SourceLocation? = sourceMap.locationOf(element)
+
+    /**
+     * Returns the range to mark when the value of the string token [quoted] is at fault, see
+     * [TokenLocator.problemRangeOf].
+     *
+     * @param valueLiterals The string literal syntax of [quoted], by default that of the language.
+     */
+    fun valueProblemRangeOf(quoted: TerminalNode, valueLiterals: StringLiteralSyntax = literals): SourceRange =
+        locator.problemRangeOf(quoted, valueLiterals)
 
     /**
      * Returns the range to mark when [element] is at fault: its name if it has a non-empty one, otherwise its
@@ -126,7 +153,8 @@ internal class ReadingSession private constructor(private val input: LexerInput)
         private val SYNTAX_CODES = setOf(DiagnosticCode.UNRECOGNIZED_INPUT, DiagnosticCode.SYNTAX_ERROR)
 
         /**
-         * Reads the text of [input] with a new session that [conversion] fills, and returns what it read.
+         * Reads the text of [input], whose string tokens follow [literals], with a new session that [conversion]
+         * fills, and returns what it read.
          *
          * Should the conversion fail nevertheless, the failure becomes a [DiagnosticCode.READER_FAILURE], the
          * result holds no model, and [logger] receives the failure, so that a reader never throws and its failures
@@ -134,8 +162,13 @@ internal class ReadingSession private constructor(private val input: LexerInput)
          * rather than a defect, and is logged as a warning without its stack trace; any other failure is a defect
          * of the reader and is logged as an error with its stack trace.
          */
-        fun <M> read(input: LexerInput, logger: Logger, conversion: (ReadingSession) -> M?): ParseResult<M> {
-            val session = ReadingSession(input)
+        fun <M> read(
+            input: LexerInput,
+            literals: StringLiteralSyntax,
+            logger: Logger,
+            conversion: (ReadingSession) -> M?
+        ): ParseResult<M> {
+            val session = ReadingSession(input, literals)
             val model = try {
                 conversion(session)
             } catch (failure: RuntimeException) {

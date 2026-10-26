@@ -21,6 +21,7 @@ import io.karpfen.dsl.grammar.kmodel.KmodelParser
 import io.karpfen.dsl.instance.DataObject
 import io.karpfen.dsl.instance.Model
 import io.karpfen.dsl.meta.Metamodel
+import io.karpfen.dsl.parser.StringLiteralSyntax
 import io.karpfen.dsl.reader.LexerInput
 import io.karpfen.dsl.reader.ParseResult
 import io.karpfen.dsl.reader.ReadingSession
@@ -58,7 +59,7 @@ class KmodelReader(private val metamodel: Metamodel) : TextReader<Model> {
     private val logger = LoggerFactory.getLogger(KmodelReader::class.java)
 
     override fun read(text: String): ParseResult<Model> =
-        ReadingSession.read(LexerInput.withIndentTrimmed(text), logger) { session ->
+        ReadingSession.read(LexerInput.withIndentTrimmed(text), StringLiteralSyntax.KMODEL, logger) { session ->
             val file = parse(session)
             val pendingLinks = PendingLinks()
             val converter = DataObjectConverter(session, metamodel, pendingLinks, StatementOwnership.of(file))

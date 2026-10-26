@@ -70,7 +70,7 @@ internal class ClassTypeConverter(private val session: ReadingSession) {
         if (propertyType == null) {
             session.report(
                 DiagnosticCode.UNKNOWN_PROPERTY_TYPE,
-                session.locator.problemRangeOf(typedKey.typeToken),
+                session.valueProblemRangeOf(typedKey.typeToken),
                 "Unknown type '$typeName' of prop '${unquote(typedKey.keyToken)}'; " +
                     "a prop is of type ${KmetaVocabulary.primitiveTypeNames.joinToString(", ") { "'$it'" }}"
             )

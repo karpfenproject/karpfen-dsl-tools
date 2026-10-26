@@ -17,6 +17,7 @@ package io.karpfen.dsl.reader
 
 import io.karpfen.dsl.diagnostics.DiagnosticCode
 import io.karpfen.dsl.parser.RecordingLogger
+import io.karpfen.dsl.parser.StringLiteralSyntax
 import org.slf4j.event.Level
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -34,7 +35,7 @@ class ReaderFailureLoggingTest {
     fun `a defect of the reader is logged once as an error`() {
         val logger = RecordingLogger()
 
-        val result = ReadingSession.read<Any>(LexerInput.asWritten("text"), logger) { throw IllegalStateException("defect") }
+        val result = ReadingSession.read<Any>(LexerInput.asWritten("text"), StringLiteralSyntax.KSTATES, logger) { throw IllegalStateException("defect") }
 
         assertEquals(listOf(Level.ERROR), logger.records.map { it.level })
         assertEquals(listOf(DiagnosticCode.READER_FAILURE), result.diagnostics.map { it.code })
@@ -48,7 +49,7 @@ class ReaderFailureLoggingTest {
     fun `nesting beyond the parser's reach is logged once as a warning`() {
         val logger = RecordingLogger()
 
-        val result = ReadingSession.read<Any>(LexerInput.asWritten("text"), logger) { throw StackOverflowError() }
+        val result = ReadingSession.read<Any>(LexerInput.asWritten("text"), StringLiteralSyntax.KSTATES, logger) { throw StackOverflowError() }
 
         assertEquals(listOf(Level.WARN), logger.records.map { it.level })
         assertEquals(listOf(DiagnosticCode.READER_FAILURE), result.diagnostics.map { it.code })
@@ -61,7 +62,7 @@ class ReaderFailureLoggingTest {
     fun `a successful read logs nothing`() {
         val logger = RecordingLogger()
 
-        ReadingSession.read(LexerInput.asWritten("text"), logger) { "model" }
+        ReadingSession.read(LexerInput.asWritten("text"), StringLiteralSyntax.KSTATES, logger) { "model" }
 
         assertEquals(emptyList(), logger.records)
     }

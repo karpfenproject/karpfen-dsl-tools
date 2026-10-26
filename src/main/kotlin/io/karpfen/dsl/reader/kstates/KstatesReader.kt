@@ -17,6 +17,7 @@ package io.karpfen.dsl.reader.kstates
 
 import io.karpfen.dsl.grammar.kstates.KstatesLexer
 import io.karpfen.dsl.grammar.kstates.KstatesParser
+import io.karpfen.dsl.parser.StringLiteralSyntax
 import io.karpfen.dsl.reader.LexerInput
 import io.karpfen.dsl.reader.ParseResult
 import io.karpfen.dsl.reader.ReadingSession
@@ -48,7 +49,7 @@ class KstatesReader : TextReader<StateMachine> {
     private val logger = LoggerFactory.getLogger(KstatesReader::class.java)
 
     override fun read(text: String): ParseResult<StateMachine> =
-        ReadingSession.read(LexerInput.asWritten(text), logger) { session ->
+        ReadingSession.read(LexerInput.asWritten(text), StringLiteralSyntax.KSTATES, logger) { session ->
             val machine = parse(session).statemachine()
             val evalBodies = EvalBodies(session)
             val states = StateConverter(session, ActionConverter(session, evalBodies))

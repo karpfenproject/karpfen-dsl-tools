@@ -101,7 +101,7 @@ internal class DataObjectConverter(
         }
         val relations = relationAssignments.embed(embeddings) + relationAssignments.link(links, key)
         val dataObject = DataObject(classType, key, propertyAssignments.assign(props), relations.toMutableList())
-        session.record(dataObject, block, keyToken)
+        session.record(dataObject, block, keyToken, nameLiterals = StringLiteralSyntax.KMODEL_SIGNATURE)
         return dataObject
     }
 
@@ -115,7 +115,7 @@ internal class DataObjectConverter(
         if (classType == null) {
             session.report(
                 DiagnosticCode.UNKNOWN_CLASS_TYPE,
-                session.locator.problemRangeOf(classToken),
+                session.valueProblemRangeOf(classToken, StringLiteralSyntax.KMODEL_SIGNATURE),
                 "Unknown class type '$className' of object '$key'"
             )
         }

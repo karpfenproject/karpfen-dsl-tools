@@ -73,7 +73,7 @@ internal class PropertyAssignments(private val session: ReadingSession) {
         if (statement.belongsToObject) {
             session.report(
                 DiagnosticCode.INVALID_NUMBER,
-                session.locator.problemRangeOf(statement.valueToken),
+                session.valueProblemRangeOf(statement.valueToken),
                 "'${statement.value}' is not a number, but prop '${statement.key}' is of type 'number'"
             )
         }

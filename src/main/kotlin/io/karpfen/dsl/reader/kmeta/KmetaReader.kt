@@ -21,6 +21,7 @@ import io.karpfen.dsl.grammar.kmeta.KmetaParser
 import io.karpfen.dsl.meta.ClassType
 import io.karpfen.dsl.meta.Metamodel
 import io.karpfen.dsl.parser.KmetaSemantics
+import io.karpfen.dsl.parser.StringLiteralSyntax
 import io.karpfen.dsl.reader.LexerInput
 import io.karpfen.dsl.reader.ParseResult
 import io.karpfen.dsl.reader.ReadingSession
@@ -56,7 +57,7 @@ class KmetaReader(baseTypes: List<ClassType> = emptyList()) : TextReader<Metamod
     private val logger = LoggerFactory.getLogger(KmetaReader::class.java)
 
     override fun read(text: String): ParseResult<Metamodel> =
-        ReadingSession.read(LexerInput.withIndentTrimmed(text), logger) { session ->
+        ReadingSession.read(LexerInput.withIndentTrimmed(text), StringLiteralSyntax.KMETA, logger) { session ->
             val classTypes = ClassTypeConverter(session).convert(parse(session).type_definition())
             val resolver = TargetTypeResolver(session, reportsUnknownTypes = !session.hasSyntaxErrors())
             resolver.resolve(classTypes, classTypes + baseTypes)

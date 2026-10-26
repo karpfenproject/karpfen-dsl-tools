@@ -63,7 +63,7 @@ internal class StatementMatcher(
         if (property == null) {
             report(
                 DiagnosticCode.UNKNOWN_PROPERTY,
-                session.locator.problemRangeOf(keyToken),
+                session.valueProblemRangeOf(keyToken),
                 "Class type '${classType.name}' has no property '$key' (object '$objectKey')"
             )
             return null
@@ -110,7 +110,7 @@ internal class StatementMatcher(
     private fun relationOf(keyToken: TerminalNode, expectedKind: AssociationType): ClassTypeProperty? {
         val key = statementText(keyToken)
         val relation = classType.objectProperties.find { it.key == key }
-        val problemRange = session.locator.problemRangeOf(keyToken)
+        val problemRange = session.valueProblemRangeOf(keyToken)
         if (relation == null) {
             report(
                 DiagnosticCode.UNKNOWN_RELATION,
@@ -144,7 +144,7 @@ internal class StatementMatcher(
      */
     private fun classNameRangeOf(block: KmodelParser.Make_object_blockContext): SourceRange {
         val classToken = block.object_signature()?.presentTokens(KmodelParser.STRING)?.getOrNull(1)
-        return classToken?.let { session.locator.problemRangeOf(it) }
+        return classToken?.let { session.valueProblemRangeOf(it, StringLiteralSyntax.KMODEL_SIGNATURE) }
             ?: session.locator.rangeOf(block)
     }
 

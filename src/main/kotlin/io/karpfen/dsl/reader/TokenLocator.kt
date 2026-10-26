@@ -15,6 +15,7 @@
  */
 package io.karpfen.dsl.reader
 
+import io.karpfen.dsl.parser.StringLiteralSyntax
 import io.karpfen.dsl.source.SourceRange
 import io.karpfen.dsl.source.SourceText
 import org.antlr.v4.runtime.ParserRuleContext
@@ -34,6 +35,7 @@ import org.antlr.v4.runtime.tree.TerminalNode
  */
 internal class TokenLocator(private val sourceText: SourceText, private val input: LexerInput) {
 
+    /** Turns the code point indices of ANTLR into char offsets of the lexed text. */
     private val offsets = CodePointOffsets(input.lexed)
 
     /**
@@ -41,8 +43,7 @@ internal class TokenLocator(private val sourceText: SourceText, private val inpu
      */
     fun rangeOfCodePoints(startIndex: Int, endIndex: Int): SourceRange {
         val start = offsets.charOffsetOf(startIndex)
-        val end = offsets.charOffsetOf(endIndex).coerceAtLeast(start)
-        return sourceText.rangeOf(input.sourceStartOf(start), input.sourceEndOf(start, end))
+        return rangeOfLexedChars(start, offsets.charOffsetOf(endIndex).coerceAtLeast(start))
     }
 
     /**
@@ -69,22 +70,23 @@ internal class TokenLocator(private val sourceText: SourceText, private val inpu
     }
 
     /**
-     * Returns the range of a quoted string token without its quotes.
+     * Returns the range of the value of a string token: its text without the quote characters that [literals]
+     * strips, so that the text of the range is the value.
      */
-    fun innerRangeOf(quoted: TerminalNode): SourceRange {
-        val range = rangeOf(quoted)
-        if (range.length < 2) {
-            return range
-        }
-        return sourceText.rangeOf(range.start.offset + 1, range.end.offset - 1)
+    fun valueRangeOf(quoted: TerminalNode, literals: StringLiteralSyntax): SourceRange {
+        val token = quoted.symbol
+        val start = offsets.charOffsetOf(token.startIndex)
+        val end = offsets.charOffsetOf(token.stopIndex + 1).coerceAtLeast(start)
+        val span = literals.valueSpanIn(input.lexed.substring(start, end))
+        return rangeOfLexedChars(start + span.start, start + span.end)
     }
 
     /**
-     * Returns the range to mark when a quoted string token is at fault: the text between its quotes, or the
-     * whole token if that text is empty, so that the mark stays visible.
+     * Returns the range to mark when the value of a string token is at fault: the value, see [valueRangeOf], or the
+     * whole token if the value is empty, so that the mark stays visible.
      */
-    fun problemRangeOf(quoted: TerminalNode): SourceRange =
-        innerRangeOf(quoted).takeIf { it.length > 0 } ?: rangeOf(quoted)
+    fun problemRangeOf(quoted: TerminalNode, literals: StringLiteralSyntax): SourceRange =
+        valueRangeOf(quoted, literals).takeIf { it.length > 0 } ?: rangeOf(quoted)
 
     /**
      * Returns the part of [range] that [bounds] finds: given the text being read and the start inclusive and the end
@@ -104,4 +106,11 @@ internal class TokenLocator(private val sourceText: SourceText, private val inpu
      * Returns the empty range at the start of the text.
      */
     fun startOfText(): SourceRange = sourceText.rangeOf(0, 0)
+
+    /**
+     * Returns the range of the text being read that the chars of the lexed text from [start] inclusive to [end]
+     * exclusive stem from.
+     */
+    private fun rangeOfLexedChars(start: Int, end: Int): SourceRange =
+        sourceText.rangeOf(input.sourceStartOf(start), input.sourceEndOf(start, end))
 }

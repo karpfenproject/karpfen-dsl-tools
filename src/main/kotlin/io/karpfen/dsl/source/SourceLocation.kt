@@ -19,8 +19,10 @@ package io.karpfen.dsl.source
  * Where a model element is written in its text.
  *
  * @property range The whole construct that defines the element, from its first to its last token.
- * @property nameRange The name of the element between its quotes, for elements that have one; see [SourceMap]
- * for what counts as the name of each kind of element.
+ * @property nameRange The name of the element, for elements that have one: the value of the string literal that names
+ * it, without the quote characters its language strips, so that the text of the range is the name, unless KMeta or
+ * KModel read the literal across a line break that a backslash escapes, see [io.karpfen.dsl.reader.TextReader]. See
+ * [SourceMap] for what counts as the name of each kind of element. An empty name has an empty range inside its literal.
  * @property codeRange The inner range of an `EVAL` body: exactly the code the model holds for it, so that the
  * char at index `i` of the code is the char at `codeRange.start.offset + i` of the text; null for elements
  * without code.

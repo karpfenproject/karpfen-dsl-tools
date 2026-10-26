@@ -27,7 +27,8 @@ import org.antlr.v4.runtime.Lexer
  * this rule, which the parse visitor, the reader and the printer of the language share.
  *
  * The languages keep escape sequences such as `\"` as written instead of decoding them. Reading a literal only
- * strips quote characters at its edges, by a rule of each language. Writing a value tries a few literal forms, the
+ * strips quote characters at its edges, by a rule of each language, so the value is a part of the literal, which
+ * [valueSpanIn] finds. Writing a value tries a few literal forms, the
  * value between double quotes first, and takes the first form that the lexer of the language reads as one string
  * token, also with the text that follows it on its line, and that reads back to the value. Unless the writer names
  * that text, the form must hold where more string literals of both kinds follow, which suits a literal wherever it
@@ -43,19 +44,24 @@ import org.antlr.v4.runtime.Lexer
  * @param languageName The name of the language, which starts the message of a rejection.
  * @param lexerOf Creates the lexer of the language on a text.
  * @param stringTokenType The type of the string tokens of that lexer.
- * @param readRule Turns the text of a string token into its value.
+ * @param readRule Narrows the span of the text of a string token down to its value.
  */
 internal class StringLiteralSyntax private constructor(
     private val languageName: String,
     private val lexerOf: (CharStream) -> Lexer,
     private val stringTokenType: Int,
-    private val readRule: (String) -> String
+    private val readRule: (LiteralValueSpan) -> LiteralValueSpan
 ) {
 
     /**
      * Returns the value of the string token [literal], that is its text with the quotes the language strips.
      */
-    fun unquote(literal: String): String = readRule(literal)
+    fun unquote(literal: String): String = valueSpanIn(literal).value
+
+    /**
+     * Returns the part of the string token [literal] that holds its value, without the quotes the language strips.
+     */
+    fun valueSpanIn(literal: String): LiteralValueSpan = readRule(LiteralValueSpan.of(literal))
 
     /**
      * Returns [value] as a literal that reads back unchanged where [followedBy] follows it on its line, in the first
@@ -109,10 +115,12 @@ internal class StringLiteralSyntax private constructor(
         const val FOLLOWING_LITERALS = " \"x\" 'x'"
 
         /** KMeta strips every double quote at both ends of a literal. */
-        val KMETA = StringLiteralSyntax("KMeta", ::KmetaLexer, KmetaLexer.STRING) { it.trim('"') }
+        val KMETA = StringLiteralSyntax("KMeta", ::KmetaLexer, KmetaLexer.STRING) { span -> span.trimmed { it == '"' } }
 
         /** The statements of KModel strip every double and single quote at both ends of a literal. */
-        val KMODEL = StringLiteralSyntax("KModel", ::KmodelLexer, KmodelLexer.STRING) { it.trim('"', '\'') }
+        val KMODEL = StringLiteralSyntax("KModel", ::KmodelLexer, KmodelLexer.STRING) { span ->
+            span.trimmed { it == '"' || it == '\'' }
+        }
 
         /**
          * The object signatures of KModel, `"key":"Class" {`, strip one pair of double quotes and then one pair of
@@ -120,12 +128,12 @@ internal class StringLiteralSyntax private constructor(
          * type, so a printer writes them for that text.
          */
         val KMODEL_SIGNATURE = StringLiteralSyntax("KModel", ::KmodelLexer, KmodelLexer.STRING) {
-            it.removeSurrounding("\"").removeSurrounding("'")
+            it.withoutSurrounding('"').withoutSurrounding('\'')
         }
 
         /** KStates strips one pair of double quotes and then one pair of single quotes. */
-        val KSTATES = StringLiteralSyntax("KStates", ::KstatesLexer, KstatesLexer.STRING) {
-            it.trim().removeSurrounding("\"").removeSurrounding("'")
+        val KSTATES = StringLiteralSyntax("KStates", ::KstatesLexer, KstatesLexer.STRING) { span ->
+            span.trimmed { it.isWhitespace() }.withoutSurrounding('"').withoutSurrounding('\'')
         }
     }
 }
