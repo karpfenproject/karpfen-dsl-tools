@@ -29,9 +29,10 @@ import org.antlr.v4.runtime.Lexer
  * The languages keep escape sequences such as `\"` as written instead of decoding them. Reading a literal only
  * strips quote characters at its edges, by a rule of each language. Writing a value tries a few literal forms, the
  * value between double quotes first, and takes the first form that the lexer of the language reads as one string
- * token, also where more string literals follow it on the line, and that reads back to the value. The lexers of KMeta
- * and KModel read a backslash as an escape or as a plain char, whichever makes the longer token, so a literal whose
- * closing quote follows a backslash would run on into the next literal. The other forms serve values the plain form
+ * token, also with the text that follows it on its line, and that reads back to the value. Unless the writer names
+ * that text, the form must hold where more string literals of both kinds follow, which suits a literal wherever it
+ * stands. The lexers of KMeta and KModel read a backslash as an escape or as a plain char, whichever makes the
+ * longer token, so a literal whose closing quote follows a backslash could run on into the next literal. The other forms serve values the plain form
  * cannot carry: a value that ends in a lone backslash gets an extra escaped double quote that reading strips again,
  * a KModel value with an unescaped double quote goes between single quotes, and a KStates value with single quotes
  * at its edges gets another pair of them.
@@ -57,13 +58,14 @@ internal class StringLiteralSyntax private constructor(
     fun unquote(literal: String): String = readRule(literal)
 
     /**
-     * Returns [value] as a literal that reads back unchanged, in the first of the forms described above that
-     * works.
+     * Returns [value] as a literal that reads back unchanged where [followedBy] follows it on its line, in the first
+     * of the forms described above that works.
      *
-     * @throws IllegalArgumentException If no form of the language reads back to [value].
+     * @param followedBy The text that follows the literal on its line, by default [FOLLOWING_LITERALS].
+     * @throws IllegalArgumentException If no form of the language reads back to [value] there.
      */
-    fun quote(value: String): String =
-        literalFormsOf(value).firstOrNull { isStringToken(it) && unquote(it) == value }
+    fun quote(value: String, followedBy: String = FOLLOWING_LITERALS): String =
+        literalFormsOf(value).firstOrNull { isStringToken(it, followedBy) && unquote(it) == value }
             ?: throw IllegalArgumentException(
                 "$languageName cannot write the value <$value> as a string literal that reads back unchanged: it has a " +
                     "line break or a quote that no backslash escapes, or quote characters at its edges that " +
@@ -79,10 +81,10 @@ internal class StringLiteralSyntax private constructor(
 
     /**
      * Returns true if the lexer of the language reads all of [literal] as a single string token, which ends with it
-     * even where more string literals follow on the same line.
+     * where [followedBy] follows it on its line.
      */
-    private fun isStringToken(literal: String): Boolean {
-        val lexer = lexerOf(CharStreams.fromString(literal + FOLLOWING_LITERALS)).apply { removeErrorListeners() }
+    fun isStringToken(literal: String, followedBy: String = FOLLOWING_LITERALS): Boolean {
+        val lexer = lexerOf(CharStreams.fromString(literal + followedBy)).apply { removeErrorListeners() }
         val token = lexer.nextToken()
         return token.type == stringTokenType && token.text == literal
     }
@@ -103,8 +105,8 @@ internal class StringLiteralSyntax private constructor(
      */
     companion object {
 
-        /** Literals of both kinds of quotes, to find out whether a literal before them runs on into them. */
-        private const val FOLLOWING_LITERALS = " \"x\" 'x'"
+        /** Literals of both kinds of quotes, the text that may follow a literal wherever it stands. */
+        const val FOLLOWING_LITERALS = " \"x\" 'x'"
 
         /** KMeta strips every double quote at both ends of a literal. */
         val KMETA = StringLiteralSyntax("KMeta", ::KmetaLexer, KmetaLexer.STRING) { it.trim('"') }
@@ -113,8 +115,9 @@ internal class StringLiteralSyntax private constructor(
         val KMODEL = StringLiteralSyntax("KModel", ::KmodelLexer, KmodelLexer.STRING) { it.trim('"', '\'') }
 
         /**
-         * The object signatures of KModel, `"key":"Class"`, strip one pair of double quotes and then one pair of
-         * single quotes.
+         * The object signatures of KModel, `"key":"Class" {`, strip one pair of double quotes and then one pair of
+         * single quotes. Nothing but the colon, the class type and the brace follows a key, and only the brace a class
+         * type, so a printer writes them for that text.
          */
         val KMODEL_SIGNATURE = StringLiteralSyntax("KModel", ::KmodelLexer, KmodelLexer.STRING) {
             it.removeSurrounding("\"").removeSurrounding("'")

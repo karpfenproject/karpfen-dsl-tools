@@ -21,6 +21,7 @@ import io.karpfen.dsl.dsl.textual.KstatesDSLConverter
 import io.karpfen.dsl.printer.kmeta.KmetaPrinter
 import io.karpfen.dsl.printer.kmodel.KmodelPrinter
 import io.karpfen.dsl.printer.kstates.KstatesPrinter
+import io.karpfen.dsl.reader.kmodel.KmodelReader
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -139,6 +140,25 @@ class StringLiteralSyntaxTest {
         assertEquals(listOf("He said \"go\" now", "say \\\"hi\\"), point.getProp("label"))
         assertEquals("p\"1", point.getRel("buddy").single().id)
         assertEquals(printed, KmodelPrinter().print(reread))
+    }
+
+    /**
+     * An object key with a double quote that ends in a backslash can only be written between single quotes, which
+     * hold where nothing but the class type and the brace of the block follows the key.
+     */
+    @Test
+    fun `a kmodel key with a double quote and a trailing backslash survives a round trip`() {
+        val metamodel = KmetaDSLConverter.parseKmetaString("""type "P" "A point" { prop("label", "string") }""")
+        val text = "make object 'p\"1\\':\"P\" {\n    prop(\"label\") -> \"x\"\n}\n"
+        val read = KmodelReader(metamodel).read(text)
+        assertEquals(emptyList(), read.diagnostics)
+
+        val printed = KmodelPrinter().print(read.model!!)
+        val reread = KmodelReader(metamodel).read(printed)
+
+        assertEquals(emptyList(), reread.diagnostics, printed)
+        assertEquals("p\"1\\", reread.model!!.objects.single().id)
+        assertEquals(printed, KmodelPrinter().print(reread.model!!))
     }
 
     /**

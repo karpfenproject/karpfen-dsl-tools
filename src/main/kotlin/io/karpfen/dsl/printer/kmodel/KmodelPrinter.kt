@@ -88,11 +88,20 @@ class KmodelPrinter internal constructor(private val tree: ObjectTree) : Documen
     private fun writeObject(obj: DataObject, prefix: String, writer: CodeWriter, enclosing: Set<DataObject>) {
         require(obj !in enclosing) { "The object '${obj.id}' of class type ${obj.ofType.name} embeds itself." }
         val inside = enclosing + obj
-        val signature = "${signatureLiterals.quote(obj.id)}:${signatureLiterals.quote(obj.ofType.name)}"
-        writer.block("${prefix}make object $signature") {
+        writer.block("${prefix}make object ${signatureOf(obj)}") {
             obj.properties.forEach { writeProperty(it, writer) }
             obj.relations.forEach { writeRelation(it, writer, inside) }
         }
+    }
+
+    /**
+     * Returns the signature `"id":"Class"` of [obj], each literal written for the text that follows it up to the
+     * opening brace of the block.
+     */
+    private fun signatureOf(obj: DataObject): String {
+        val classType = signatureLiterals.quote(obj.ofType.name, followedBy = BLOCK_OPENING)
+        val id = signatureLiterals.quote(obj.id, followedBy = ":$classType$BLOCK_OPENING")
+        return "$id:$classType"
     }
 
     private fun writeProperty(property: SimplePropertyObject, writer: CodeWriter) {
@@ -121,5 +130,11 @@ class KmodelPrinter internal constructor(private val tree: ObjectTree) : Documen
         is SimpleAtomicPropertyObject -> listOf(property.getValue())
         is SimpleListPropertyObject -> property.getValues()
         else -> throw IllegalArgumentException("Unsupported kind of property value: ${property::class.simpleName}")
+    }
+
+    private companion object {
+
+        /** The text that follows the signature of an object: the opening brace of its block. */
+        const val BLOCK_OPENING = " {"
     }
 }
