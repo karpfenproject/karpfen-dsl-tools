@@ -220,6 +220,28 @@ JOIN  "scanLeft", "scanRight" -> "report"    { }
 
 All three forms share the same optional `NOT LOOPING`, `BREAKPOINT` and `CONDITION` syntax, and live in the same `TRANSITIONS` block so their definition order is preserved. The runtime never blocks a `SPLIT` or a `JOIN` because of `NOT LOOPING`; the marker only has an effect on a `TRANSITION`. The runtime decides which apply: splits only while the machine is simple, joins (with priority) only while it is parallel. See the runtime's execution-semantics guide for the full behaviour.
 
+### Optional features
+
+Five parts of the language are optional features, listed by `KstatesFeature` in the package `io.karpfen.dsl.states`.
+The grammar and `KstatesDSLConverter` always accept them. `KstatesReader` takes the set of features that are switched
+on, which is every feature unless a tool says otherwise. For each construct of a feature that is off it reports an
+error with the code `kstates.feature-off` at the keyword that introduces the construct, and still builds the state
+machine.
+
+| Feature | Id | Constructs | Reported at |
+|---------|----|------------|-------------|
+| Histories | `history` | `SHALLOW HISTORY`, `DEEP HISTORY` | `SHALLOW`, `DEEP` |
+| Tick limits | `tickLimit` | `TICK LIMIT { ... }` | `TICK` |
+| Breakpoints | `breakpoints` | `BREAKPOINT { ... }` in states and transitions | `BREAKPOINT` |
+| Macros | `macros` | the `MACROS` block and every `MACRO(...)` call, also in `WITH ... AS` | `MACROS` once for the block, `MACRO` of each call |
+| Splits and joins | `parallel` | `SPLIT` and `JOIN` transitions | `SPLIT`, `JOIN` |
+
+The ids are stable, so a tool can store its choice in a configuration file.
+
+```kotlin
+val result = KstatesReader(switchedOn = setOf(KstatesFeature.MACROS)).read(text)
+```
+
 ### Macros
 
 Macros are declared in `MACROS`:

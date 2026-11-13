@@ -76,6 +76,12 @@ enum class DiagnosticCode(val id: String, val severity: Severity) {
     TICK_COUNT("kstates.tick-count", Severity.ERROR),
 
     /**
+     * A KStates text uses a construct of a [io.karpfen.dsl.states.KstatesFeature] that the reader was
+     * told is switched off, such as a history while histories are off.
+     */
+    FEATURE_OFF("kstates.feature-off", Severity.ERROR),
+
+    /**
      * The reader failed and could not build a model: on nesting deeper than the parser can recurse, or through a
      * defect of the reader. The reader also logs the failure, see [io.karpfen.dsl.reader.TextReader].
      */
