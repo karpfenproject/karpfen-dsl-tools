@@ -31,10 +31,10 @@ class ExampleCatalogTest {
      */
     @Test
     fun `the catalog finds every example`() {
-        assertEquals(21, catalog.allFiles().size)
-        assertEquals(10, catalog.metamodels().size)
-        assertEquals(6, catalog.models().size)
-        assertEquals(5, catalog.stateMachines().size)
+        assertEquals(24, catalog.allFiles().size)
+        assertEquals(11, catalog.metamodels().size)
+        assertEquals(7, catalog.models().size)
+        assertEquals(6, catalog.stateMachines().size)
     }
 
     /**

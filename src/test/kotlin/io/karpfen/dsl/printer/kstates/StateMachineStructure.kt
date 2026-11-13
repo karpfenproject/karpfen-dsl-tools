@@ -64,6 +64,7 @@ data class StateMachineStructure(
  * @property name The state name.
  * @property isInitial True for an initial state.
  * @property outerName The name of the outer state, null for a top-level state.
+ * @property options The history, the breakpoints at entry and exit, the delay, the timeout and its target state.
  * @property entry The `ENTRY` actions.
  * @property onDo The `DO` actions.
  * @property innerStates The inner states in order.
@@ -72,6 +73,7 @@ data class StateStructure(
     val name: String,
     val isInitial: Boolean,
     val outerName: String?,
+    val options: List<Any?>,
     val entry: ActionBlock,
     val onDo: ActionBlock,
     val innerStates: List<StateStructure>
@@ -84,6 +86,7 @@ data class StateStructure(
  * @property sources The source states.
  * @property targets The target states.
  * @property allowLoops False for `NOT LOOPING`.
+ * @property breakpoints The breakpoints at the start and at the end.
  * @property condition The structure of the condition.
  */
 data class TransitionStructure(
@@ -91,6 +94,7 @@ data class TransitionStructure(
     val sources: List<String>,
     val targets: List<String>,
     val allowLoops: Boolean,
+    val breakpoints: Pair<Boolean, Boolean>,
     val condition: ConditionStructure
 )
 
@@ -120,6 +124,7 @@ fun State.structure(): StateStructure = StateStructure(
     name,
     isInitial,
     outerState?.name,
+    listOf(history, entryBreakpoint, exitBreakpoint, delay, timeout, timeoutTo),
     onEntry.shaped(),
     onDo.shaped(),
     innerStates.map { it.structure() }
@@ -142,10 +147,13 @@ private fun ActionRightSide.shaped(): ActionRightSide =
 /**
  * Returns the structure of this transition.
  */
-fun TransitionLike.structure(): TransitionStructure = when (this) {
-    is Transition -> TransitionStructure("TRANSITION", listOf(fromState), listOf(toState), allowLoops, condition.structure())
-    is SplitTransition -> TransitionStructure("SPLIT", listOf(fromState), toStates, allowLoops, condition.structure())
-    is JoinTransition -> TransitionStructure("JOIN", fromStates, listOf(toState), allowLoops, condition.structure())
+fun TransitionLike.structure(): TransitionStructure {
+    val breakpoints = startBreakpoint to endBreakpoint
+    return when (this) {
+        is Transition -> TransitionStructure("TRANSITION", listOf(fromState), listOf(toState), allowLoops, breakpoints, condition.structure())
+        is SplitTransition -> TransitionStructure("SPLIT", listOf(fromState), toStates, allowLoops, breakpoints, condition.structure())
+        is JoinTransition -> TransitionStructure("JOIN", fromStates, listOf(toState), allowLoops, breakpoints, condition.structure())
+    }
 }
 
 /**

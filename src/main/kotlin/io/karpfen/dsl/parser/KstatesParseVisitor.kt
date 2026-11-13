@@ -18,12 +18,15 @@ package io.karpfen.dsl.parser
 import io.karpfen.dsl.grammar.kstates.KstatesBaseVisitor
 import io.karpfen.dsl.grammar.kstates.KstatesParser
 import org.antlr.v4.runtime.misc.Interval
+import io.karpfen.dsl.states.History
 
 /**
  * Turns a KStates parse tree into a [KstatesFile].
  *
  * Besides reading the tree, the visitor checks that every action rule is written with the number of
- * operands its operation expects, see [ActionRuleSyntax].
+ * operands its operation expects, see [ActionRuleSyntax]. A `DELAY` or `TIMEOUT` whose number of ticks is not whole
+ * is read without its ticks, as in version 1.0; the reader reports it, see
+ * [io.karpfen.dsl.reader.kstates.KstatesReader].
  */
 class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
 
@@ -42,16 +45,47 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         return KstatesFile(attachedToClass, states, transitions, macros)
     }
 
-    /** Reads a state definition with its `ENTRY` and `DO` blocks and its nested states. */
+    /**
+     * Reads a state definition with its history, breakpoints and tick limit, its `ENTRY` and `DO` blocks and its
+     * nested states.
+     */
     private fun parseState(ctx: KstatesParser.State_definitionContext): ParsedState {
         val name = unquote(ctx.STRING().text)
         val isInitial = ctx.INITIAL() != null
+
+        val breakpoints = ctx.state_breakpoint_block()?.state_breakpoint_definition()
+        val entryBreakpoint = breakpoints?.ENTRY() != null
+        val exitBreakpoint = breakpoints?.EXIT() != null
+        val history = historyOf(ctx.history_definition())
+        val tickLimit = ctx.tick_limit_block()?.tick_limit_definition()
+        val delay = tickLimit?.delay_definition()?.NUMBER()?.text?.let { StateOptionSyntax.ticksOf(it) }
+        val timeout = tickLimit?.timeout_definition()?.NUMBER()?.text?.let { StateOptionSyntax.ticksOf(it) }
+        val timeoutTo = tickLimit?.timeout_definition()?.STRING()?.text?.let { unquote(it) }
 
         val onEntry = ctx.entry_block()?.let { parseActionBlock(it.action_block()) }
         val onDo = ctx.do_block()?.let { parseActionBlock(it.action_block()) }
         val innerStates = ctx.state_definition().map { parseState(it) }.toMutableList()
 
-        return ParsedState(name, isInitial, onEntry, onDo, innerStates)
+        return ParsedState(
+            name = name,
+            isInitial = isInitial,
+            entryBreakpoint = entryBreakpoint,
+            exitBreakpoint = exitBreakpoint,
+            history = history,
+            delay = delay,
+            timeout = timeout,
+            timeoutTo = timeoutTo,
+            onEntry = onEntry,
+            onDo = onDo,
+            innerStates = innerStates
+        )
+    }
+
+    /** Returns the history written as [ctx] in front of `STATE`, [History.NONE] for null. */
+    private fun historyOf(ctx: KstatesParser.History_definitionContext?): History = when {
+        ctx?.shallow_history_definition() != null -> History.SHALLOW
+        ctx?.deep_history_definition() != null -> History.DEEP
+        else -> History.NONE
     }
 
     /** Reads the items of an action block. */
@@ -132,9 +166,12 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         val fromState = unquote(ctx.STRING(0).text)
         val toState = unquote(ctx.STRING(1).text)
         val allowLoops = ctx.not_looping() == null
+        val breakpoints = ctx.transition_breakpoint_block()?.transition_breakpoint_definition()
+        val startBreakpoint = breakpoints?.START() != null
+        val endBreakpoint = breakpoints?.END() != null
         val condition = parseCondition(ctx.condition_block())
 
-        return ParsedTransition(fromState, toState, allowLoops, condition)
+        return ParsedTransition(fromState, toState, allowLoops, startBreakpoint, endBreakpoint, condition)
     }
 
     /** Reads `SPLIT "from" -> "to", ...` with its condition; the first state is the source. */
@@ -143,9 +180,12 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         val fromState = strings.first()
         val toStates = strings.drop(1)
         val allowLoops = ctx.not_looping() == null
+        val breakpoints = ctx.transition_breakpoint_block()?.transition_breakpoint_definition()
+        val startBreakpoint = breakpoints?.START() != null
+        val endBreakpoint = breakpoints?.END() != null
         val condition = parseCondition(ctx.condition_block())
 
-        return ParsedSplitTransition(fromState, toStates, allowLoops, condition)
+        return ParsedSplitTransition(fromState, toStates, allowLoops, startBreakpoint, endBreakpoint, condition)
     }
 
     /** Reads `JOIN "from", ... -> "to"` with its condition; the last state is the target. */
@@ -154,9 +194,12 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         val toState = strings.last()
         val fromStates = strings.dropLast(1)
         val allowLoops = ctx.not_looping() == null
+        val breakpoints = ctx.transition_breakpoint_block()?.transition_breakpoint_definition()
+        val startBreakpoint = breakpoints?.START() != null
+        val endBreakpoint = breakpoints?.END() != null
         val condition = parseCondition(ctx.condition_block())
 
-        return ParsedJoinTransition(fromStates, toState, allowLoops, condition)
+        return ParsedJoinTransition(fromStates, toState, allowLoops, startBreakpoint, endBreakpoint, condition)
     }
 
     /**

@@ -1,0 +1,5 @@
+// The metamodel of the pedestrian crossing example.
+type "Crossing" "A pedestrian crossing with one light for the cars" {
+    prop("light", "string")
+    prop("log", list("string"))
+}

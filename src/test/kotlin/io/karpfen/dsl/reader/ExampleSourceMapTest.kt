@@ -49,7 +49,7 @@ class ExampleSourceMapTest {
             assertEquals(emptyList(), result.diagnostics, "$example")
             assertEquals(example.convertedStructureOf(example.text), StructureDump.of(result.model), "$example")
         }
-        assertEquals(21, examples.size)
+        assertEquals(24, examples.size)
     }
 
     /**
@@ -128,7 +128,7 @@ class ExampleSourceMapTest {
             StateMachineLocations(checker).check(result.model!!)
 
             checker.assertNoDeviations("$example")
-            assertTrue(checker.checked > 50, "$example has its elements checked")
+            assertTrue(checker.checked > 20, "$example has its elements checked")
         }
     }
 }

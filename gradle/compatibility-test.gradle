@@ -20,7 +20,7 @@ import javax.inject.Inject
  * pins, whose converters the compatibility tests hold the current ones to. Version 1.0 committed the parsers ANTLR
  * generated for it, in the root packages `kmeta`, `kmodel` and `kstates`, next to its Kotlin sources.
  */
-def referenceCommit = '859a95da0541e6c403994d22d38f8c8510720324'
+def referenceCommit = 'f34b9433a78386845f74b35b6e25fff57903be22'
 
 /**
  * Writes the Kotlin sources and the generated parsers of version 1.0 from the history of the git repository that

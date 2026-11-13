@@ -34,8 +34,10 @@ import org.slf4j.LoggerFactory
  *
  * A text without errors yields the state machine that
  * [io.karpfen.dsl.dsl.textual.KstatesDSLConverter.parseKstatesString] builds from it; like the converter, the
- * reader reads the text as written. The reader reports syntax errors, action rules written with another number of
- * operands than their operation expects, and a state machine that does not mark exactly one state as `INITIAL`.
+ * reader reads the text as written, with one exception: a `DELAY` or `TIMEOUT` whose number of ticks is not whole
+ * is reported and left out, where the converter keeps the state without the ticks. The reader reports syntax errors,
+ * action rules written with another number of operands than their operation expects, numbers of ticks that are not
+ * whole, and a state machine that does not mark exactly one state as `INITIAL`.
  * The count of initial states is left out when the `STATES` block is missing or contains a syntax error, since
  * the parser may have lost a state or its `INITIAL` while it recovered.
  *

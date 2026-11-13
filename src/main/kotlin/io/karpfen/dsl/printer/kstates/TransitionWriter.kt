@@ -15,6 +15,7 @@
  */
 package io.karpfen.dsl.printer.kstates
 
+import io.karpfen.dsl.parser.StateOptionSyntax
 import io.karpfen.dsl.printer.CodeWriter
 import io.karpfen.dsl.states.JoinTransition
 import io.karpfen.dsl.states.SplitTransition
@@ -22,8 +23,8 @@ import io.karpfen.dsl.states.Transition
 import io.karpfen.dsl.states.TransitionLike
 
 /**
- * Writes transitions of all three kinds, `TRANSITION`, `SPLIT` and `JOIN`, with `NOT LOOPING` and their
- * `CONDITION` block.
+ * Writes transitions of all three kinds, `TRANSITION`, `SPLIT` and `JOIN`, with `NOT LOOPING`, their breakpoints
+ * and their `CONDITION` block.
  *
  * @param conditions Writes the `CONDITION` block.
  * @param syntax The shared pieces of KStates syntax.
@@ -34,14 +35,18 @@ internal class TransitionWriter(
 ) {
 
     /**
-     * Writes [transition] as a block with its condition, or as `header { }` when it has none.
+     * Writes [transition] as a block with its `BREAKPOINT` block on one line and its condition, or as `header { }`
+     * when it has neither.
      *
      * @throws IllegalArgumentException If a split has fewer than two targets or a join fewer than two
      * sources, which KStates cannot express, or a name cannot be written as a string literal.
      */
     fun write(transition: TransitionLike, writer: CodeWriter) {
         val looping = if (transition.allowLoops) "" else " NOT LOOPING"
-        writer.block(headerOf(transition) + looping) { conditions.write(transition.condition, writer) }
+        writer.block(headerOf(transition) + looping) {
+            StateOptionSyntax.breakpointBlock("START" to transition.startBreakpoint, "END" to transition.endBreakpoint)?.let { writer.line(it) }
+            conditions.write(transition.condition, writer)
+        }
     }
 
     /** Returns the header of [transition] up to its loop marker: the keyword of its kind and its states. */

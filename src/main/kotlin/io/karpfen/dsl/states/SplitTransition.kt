@@ -28,13 +28,17 @@ import io.karpfen.dsl.states.conditions.Condition
  * @property toStates The target states; one parallel branch is created for each.
  * @property allowLoops False if this transition must not fire twice in a row.
  * @property condition The condition that must hold for this transition to fire.
+ * @property startBreakpoint True if a breakpoint is attached to the start of this transition.
+ * @property endBreakpoint True if a breakpoint is attached to the end of this transition.
  */
 data class SplitTransition(
     val fromState: String,
     val toStates: List<String>,
     override val allowLoops: Boolean,
     override val condition: Condition,
+    override val startBreakpoint: Boolean = false,
+    override val endBreakpoint: Boolean = false,
 ) : TransitionLike {
     override fun toString(): String =
-        "SplitTransition(fromState=$fromState, toStates=$toStates, allowLoops=$allowLoops, condition=${condition.conditionType})"
+        "SplitTransition(fromState=$fromState, toStates=$toStates, allowLoops=$allowLoops, startBreakpoint=$startBreakpoint, endBreakpoint=$endBreakpoint, condition=${condition.conditionType})"
 }

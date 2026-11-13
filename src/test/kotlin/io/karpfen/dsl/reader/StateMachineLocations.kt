@@ -15,6 +15,7 @@
  */
 package io.karpfen.dsl.reader
 
+import io.karpfen.dsl.states.History
 import io.karpfen.dsl.states.JoinTransition
 import io.karpfen.dsl.states.SplitTransition
 import io.karpfen.dsl.states.State
@@ -62,7 +63,12 @@ class StateMachineLocations(private val checker: LocationChecker) {
     }
 
     private fun checkState(state: State) {
-        val keyword = if (state.isInitial) "INITIAL" else "STATE"
+        val keyword = when {
+            state.isInitial -> "INITIAL"
+            state.history == History.SHALLOW -> "SHALLOW"
+            state.history == History.DEEP -> "DEEP"
+            else -> "STATE"
+        }
         checker.expect(state, "state ${state.name}", keyword, state.name)
         state.outerState?.let { checker.expectWithin(it, state, "state ${state.name}") }
         checkSection(state, state.onEntry, "ENTRY")

@@ -26,13 +26,17 @@ import io.karpfen.dsl.states.conditions.Condition
  * @property toState The name of the target state.
  * @property allowLoops True if this transition is allowed to loop back to the same state.
  * @property condition The condition that must be satisfied for this transition to occur.
+ * @property startBreakpoint True if a breakpoint is attached to the start of this transition.
+ * @property endBreakpoint True if a breakpoint is attached to the end of this transition.
  */
 data class Transition(
     val fromState: String,
     val toState: String,
     override val allowLoops: Boolean,
     override val condition: Condition,
+    override val startBreakpoint: Boolean = false,
+    override val endBreakpoint: Boolean = false,
 ) : TransitionLike {
     override fun toString(): String =
-        "Transition(fromState=$fromState, toState=$toState, allowLoops=$allowLoops, condition=${condition.conditionType})"
+        "Transition(fromState=$fromState, toState=$toState, allowLoops=$allowLoops, startBreakpoint=$startBreakpoint, endBreakpoint=$endBreakpoint, condition=${condition.conditionType})"
 }

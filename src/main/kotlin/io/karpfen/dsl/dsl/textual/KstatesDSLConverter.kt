@@ -81,7 +81,13 @@ object KstatesDSLConverter {
             onDo = convertActionBlock(parsedState.onDo),
             innerStates = mutableListOf(),
             outerState = outerState,
-            isInitial = parsedState.isInitial
+            isInitial = parsedState.isInitial,
+            entryBreakpoint = parsedState.entryBreakpoint,
+            exitBreakpoint = parsedState.exitBreakpoint,
+            history = parsedState.history,
+            delay = parsedState.delay,
+            timeout = parsedState.timeout,
+            timeoutTo = parsedState.timeoutTo,
         )
 
         for (inner in parsedState.innerStates) {
@@ -139,18 +145,24 @@ object KstatesDSLConverter {
                 fromState = transition.fromState,
                 toState = transition.toState,
                 allowLoops = transition.allowLoops,
+                startBreakpoint = transition.startBreakpoint,
+                endBreakpoint = transition.endBreakpoint,
                 condition = convertCondition(transition.condition)
             )
             is ParsedSplitTransition -> SplitTransition(
                 fromState = transition.fromState,
                 toStates = transition.toStates,
                 allowLoops = transition.allowLoops,
+                startBreakpoint = transition.startBreakpoint,
+                endBreakpoint = transition.endBreakpoint,
                 condition = convertCondition(transition.condition)
             )
             is ParsedJoinTransition -> JoinTransition(
                 fromStates = transition.fromStates,
                 toState = transition.toState,
                 allowLoops = transition.allowLoops,
+                startBreakpoint = transition.startBreakpoint,
+                endBreakpoint = transition.endBreakpoint,
                 condition = convertCondition(transition.condition)
             )
         }

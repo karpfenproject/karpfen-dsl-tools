@@ -15,6 +15,7 @@
  */
 package io.karpfen.dsl.parser
 
+import io.karpfen.dsl.states.History
 import io.karpfen.dsl.states.actions.ActionOperationType
 
 /**
@@ -37,6 +38,12 @@ data class KstatesFile(
  *
  * @property name The state name.
  * @property isInitial True if the state is marked `INITIAL`.
+ * @property entryBreakpoint True if its `BREAKPOINT` block names `ENTRY`.
+ * @property exitBreakpoint True if its `BREAKPOINT` block names `EXIT`.
+ * @property history The history written in front of `STATE`.
+ * @property delay The ticks of the `DELAY` of its `TICK LIMIT` block, or null if there is none.
+ * @property timeout The ticks of the `TIMEOUT` of its `TICK LIMIT` block, or null if there is none.
+ * @property timeoutTo The state the `TIMEOUT` leads to, or null if there is none.
  * @property onEntry The `ENTRY` block, or null if there is none.
  * @property onDo The `DO` block, or null if there is none.
  * @property innerStates The nested states, in definition order.
@@ -44,6 +51,12 @@ data class KstatesFile(
 data class ParsedState(
     val name: String,
     val isInitial: Boolean,
+    val entryBreakpoint: Boolean,
+    val exitBreakpoint: Boolean,
+    val history: History,
+    val delay: Long?,
+    val timeout: Long?,
+    val timeoutTo: String?,
     val onEntry: ParsedActionBlock?,
     val onDo: ParsedActionBlock?,
     val innerStates: List<ParsedState>
@@ -199,12 +212,16 @@ sealed interface ParsedTransitionLike
  * @property fromState The source state.
  * @property toState The target state.
  * @property allowLoops False if the transition is marked `NOT LOOPING`.
+ * @property startBreakpoint True if its `BREAKPOINT` block names `START`.
+ * @property endBreakpoint True if its `BREAKPOINT` block names `END`.
  * @property condition The clauses of its CONDITION block; empty for an unconditional transition.
  */
 data class ParsedTransition(
     val fromState: String,
     val toState: String,
     val allowLoops: Boolean,
+    val startBreakpoint: Boolean,
+    val endBreakpoint: Boolean,
     val condition: List<ParsedCondition>
 ) : ParsedTransitionLike
 
@@ -214,12 +231,16 @@ data class ParsedTransition(
  * @property fromState The source state.
  * @property toStates The target states, one parallel branch each.
  * @property allowLoops False if the transition is marked `NOT LOOPING`.
+ * @property startBreakpoint True if its `BREAKPOINT` block names `START`.
+ * @property endBreakpoint True if its `BREAKPOINT` block names `END`.
  * @property condition The clauses of its CONDITION block; empty for an unconditional transition.
  */
 data class ParsedSplitTransition(
     val fromState: String,
     val toStates: List<String>,
     val allowLoops: Boolean,
+    val startBreakpoint: Boolean,
+    val endBreakpoint: Boolean,
     val condition: List<ParsedCondition>
 ) : ParsedTransitionLike
 
@@ -229,12 +250,16 @@ data class ParsedSplitTransition(
  * @property fromStates The source states of the parallel branches.
  * @property toState The target state.
  * @property allowLoops False if the transition is marked `NOT LOOPING`.
+ * @property startBreakpoint True if its `BREAKPOINT` block names `START`.
+ * @property endBreakpoint True if its `BREAKPOINT` block names `END`.
  * @property condition The clauses of its CONDITION block; empty for an unconditional transition.
  */
 data class ParsedJoinTransition(
     val fromStates: List<String>,
     val toState: String,
     val allowLoops: Boolean,
+    val startBreakpoint: Boolean,
+    val endBreakpoint: Boolean,
     val condition: List<ParsedCondition>
 ) : ParsedTransitionLike
 

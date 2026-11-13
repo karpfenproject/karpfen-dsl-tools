@@ -1,0 +1,92 @@
+// A pedestrian crossing. It shows what a state can carry besides its actions and inner
+// states: a history, a tick limit and breakpoints.
+//
+// "operating" has a deep history. When the crossing comes back from "maintenance", it
+// continues in the inner state it was in when the service began.
+//
+// "cars go" has a delay. The cars keep their green light for at least 5 ticks, even when
+// a pedestrian presses the button earlier.
+//
+// "cars wait" has a delay and a timeout. The cars wait for at least 2 ticks. When no
+// pedestrian has reported the crossing as free after 10 ticks, the cars go anyway.
+//
+// The breakpoints halt a run that has the Breakpoint feature of the runtime switched on.
+STATEMACHINE ATTACHED TO "Crossing" {
+
+    STATES {
+
+        INITIAL DEEP HISTORY STATE "operating" {
+
+            STATE "cars go" {
+                TICK LIMIT {
+                    DELAY: 5 TICKS
+                }
+                ENTRY {
+                    SET("light", "green")
+                }
+            }
+
+            STATE "cars wait" {
+                BREAKPOINT { ENTRY }
+                TICK LIMIT {
+                    DELAY: 2 TICKS
+                    TIMEOUT: AFTER 10 TICKS TRANSITION TO "cars go"
+                }
+                ENTRY {
+                    SET("light", "red")
+                }
+            }
+        }
+
+        SHALLOW HISTORY STATE "maintenance" {
+            BREAKPOINT { ENTRY EXIT }
+            ENTRY {
+                SET("light", "blinking")
+            }
+
+            STATE "testing" {
+                TICK LIMIT {
+                    TIMEOUT: AFTER 1 TICK TRANSITION TO "maintenance"
+                }
+                ENTRY {
+                    APPEND("log", "tested")
+                }
+            }
+        }
+    }
+
+    TRANSITIONS {
+
+        TRANSITION "cars go" -> "cars wait" {
+            CONDITION {
+                EVENT("public", "pedestrian")
+            }
+        }
+
+        TRANSITION "cars wait" -> "cars go" {
+            BREAKPOINT { START END }
+            CONDITION {
+                EVENT("public", "crossed")
+            }
+        }
+
+        TRANSITION "operating" -> "maintenance" {
+            CONDITION {
+                EVENT("public", "service")
+            }
+        }
+
+        TRANSITION "maintenance" -> "testing" NOT LOOPING {
+            BREAKPOINT { END }
+            CONDITION {
+                EVENT("public", "test")
+            }
+        }
+
+        TRANSITION "maintenance" -> "operating" {
+            CONDITION {
+                EVENT("public", "resume")
+            }
+        }
+    }
+}

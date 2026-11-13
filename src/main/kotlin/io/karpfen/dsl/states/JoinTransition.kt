@@ -28,13 +28,17 @@ import io.karpfen.dsl.states.conditions.Condition
  * @property toState The single target state entered after the join.
  * @property allowLoops False if this transition must not fire twice in a row.
  * @property condition The condition that must hold for this transition to fire.
+ * @property startBreakpoint True if a breakpoint is attached to the start of this transition.
+ * @property endBreakpoint True if a breakpoint is attached to the end of this transition.
  */
 data class JoinTransition(
     val fromStates: List<String>,
     val toState: String,
     override val allowLoops: Boolean,
     override val condition: Condition,
+    override val startBreakpoint: Boolean = false,
+    override val endBreakpoint: Boolean = false,
 ) : TransitionLike {
     override fun toString(): String =
-        "JoinTransition(fromStates=$fromStates, toState=$toState, allowLoops=$allowLoops, condition=${condition.conditionType})"
+        "JoinTransition(fromStates=$fromStates, toState=$toState, allowLoops=$allowLoops, startBreakpoint=$startBreakpoint, endBreakpoint=$endBreakpoint, condition=${condition.conditionType})"
 }

@@ -45,7 +45,7 @@ class StrictConverterCompatibilityTest {
         val asWritten = comparison.assertAgree(all.map { Comparison.Case(it.path, it, it.text) })
 
         assertTrue(asWritten.all { it is Outcome.Converted }, "An example does not convert")
-        assertEquals(21, all.size)
+        assertEquals(24, all.size)
         comparison.inEveryLayout(all)
     }
 

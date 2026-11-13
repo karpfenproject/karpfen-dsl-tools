@@ -72,6 +72,9 @@ enum class DiagnosticCode(val id: String, val severity: Severity) {
     /** A KStates action rule is written with another number of operands than its operation expects. */
     ACTION_ARITY("kstates.action-arity", Severity.ERROR),
 
+    /** A KStates `DELAY` or `TIMEOUT` counts its ticks with a number that is not whole. */
+    TICK_COUNT("kstates.tick-count", Severity.ERROR),
+
     /**
      * The reader failed and could not build a model: on nesting deeper than the parser can recurse, or through a
      * defect of the reader. The reader also logs the failure, see [io.karpfen.dsl.reader.TextReader].

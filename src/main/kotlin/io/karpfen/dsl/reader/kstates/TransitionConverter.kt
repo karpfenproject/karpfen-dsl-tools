@@ -17,6 +17,7 @@ package io.karpfen.dsl.reader.kstates
 
 import io.karpfen.dsl.grammar.kstates.KstatesParser
 import io.karpfen.dsl.reader.ReadingSession
+import io.karpfen.dsl.reader.presentToken
 import io.karpfen.dsl.reader.presentTokens
 import io.karpfen.dsl.states.JoinTransition
 import io.karpfen.dsl.states.SplitTransition
@@ -26,7 +27,7 @@ import org.antlr.v4.runtime.ParserRuleContext
 
 /**
  * Converts the transition definitions of a KStates parse tree into [Transition]s, [SplitTransition]s and
- * [JoinTransition]s and records where each is written.
+ * [JoinTransition]s with their breakpoints and conditions and records where each is written.
  *
  * A transition is left out if fewer than two of its state names are present.
  *
@@ -60,6 +61,8 @@ internal class TransitionConverter(
                 fromState = states[0],
                 toState = states[1],
                 allowLoops = transition.not_looping() == null,
+                startBreakpoint = hasBreakpoint(transition.transition_breakpoint_block(), KstatesParser.START),
+                endBreakpoint = hasBreakpoint(transition.transition_breakpoint_block(), KstatesParser.END),
                 condition = conditions.convert(transition.condition_block())
             ),
             transition
@@ -74,6 +77,8 @@ internal class TransitionConverter(
                 fromState = states.first(),
                 toStates = states.drop(1),
                 allowLoops = transition.not_looping() == null,
+                startBreakpoint = hasBreakpoint(transition.transition_breakpoint_block(), KstatesParser.START),
+                endBreakpoint = hasBreakpoint(transition.transition_breakpoint_block(), KstatesParser.END),
                 condition = conditions.convert(transition.condition_block())
             ),
             transition
@@ -88,11 +93,17 @@ internal class TransitionConverter(
                 fromStates = states.dropLast(1),
                 toState = states.last(),
                 allowLoops = transition.not_looping() == null,
+                startBreakpoint = hasBreakpoint(transition.transition_breakpoint_block(), KstatesParser.START),
+                endBreakpoint = hasBreakpoint(transition.transition_breakpoint_block(), KstatesParser.END),
                 condition = conditions.convert(transition.condition_block())
             ),
             transition
         )
     }
+
+    /** Returns true if the `BREAKPOINT` [block] of a transition names the word of [tokenType], `START` or `END`. */
+    private fun hasBreakpoint(block: KstatesParser.Transition_breakpoint_blockContext?, tokenType: Int): Boolean =
+        block?.transition_breakpoint_definition()?.presentToken(tokenType) != null
 
     /**
      * Returns the state names of [transition] in text order, or null if fewer than two are present.

@@ -15,11 +15,13 @@
  */
 package io.karpfen.dsl.printer.kstates
 
+import io.karpfen.dsl.parser.StateOptionSyntax
 import io.karpfen.dsl.printer.CodeWriter
 import io.karpfen.dsl.states.State
 
 /**
- * Writes a state with its `ENTRY` and `DO` blocks and, nested in it, its inner states in order.
+ * Writes a state with its history, its breakpoints and tick limit, its `ENTRY` and `DO` blocks and, nested in it,
+ * its inner states in order.
  *
  * @param actions Writes the `ENTRY` and `DO` blocks.
  * @param syntax The shared pieces of KStates syntax.
@@ -30,18 +32,38 @@ internal class StateWriter(
 ) {
 
     /**
-     * Writes [state] as `STATE "name" { ... }`, with `INITIAL` in front for an initial state, or as
-     * `STATE "name" { }` when it has neither actions nor inner states.
+     * Writes [state] as `STATE "name" { ... }`, with `INITIAL` and its history in front, or as `STATE "name" { }`
+     * when it has nothing inside. Inside, the `BREAKPOINT` block comes first on one line, then the `TICK LIMIT`
+     * block with its `DELAY` before its `TIMEOUT`, then the actions and the inner states.
      *
-     * @throws IllegalArgumentException If a name, path or value cannot be written as a string literal, or an
-     * action is of a kind KStates cannot express.
+     * @throws IllegalArgumentException If a name, path or value cannot be written as a string literal, an action
+     * is of a kind KStates cannot express, a number of ticks is negative, or the state has a timeout without the
+     * state it leads to or the other way round.
      */
     fun write(state: State, writer: CodeWriter) {
         val initial = if (state.isInitial) "INITIAL " else ""
-        writer.block("${initial}STATE ${syntax.quote(state.name)}") {
+        writer.block("$initial${StateOptionSyntax.historyPrefix(state.history)}STATE ${syntax.quote(state.name)}") {
+            StateOptionSyntax.breakpointBlock("ENTRY" to state.entryBreakpoint, "EXIT" to state.exitBreakpoint)?.let { writer.line(it) }
+            writeTickLimit(state, writer)
             actions.writeSection("ENTRY", state.onEntry, writer)
             actions.writeSection("DO", state.onDo, writer)
             state.innerStates.forEach { write(it, writer) }
+        }
+    }
+
+    /** Writes the `TICK LIMIT` block of [state], or nothing for a state with neither a delay nor a timeout. */
+    private fun writeTickLimit(state: State, writer: CodeWriter) {
+        val timeout = state.timeout
+        val timeoutTo = state.timeoutTo
+        require((timeout == null) == (timeoutTo == null)) {
+            "A TIMEOUT needs both its ticks and the state it leads to: $state"
+        }
+        if (state.delay == null && timeout == null) return
+        writer.block("TICK LIMIT") {
+            state.delay?.let { writer.line("DELAY: ${StateOptionSyntax.ticks(it)}") }
+            if (timeout != null && timeoutTo != null) {
+                writer.line("TIMEOUT: AFTER ${StateOptionSyntax.ticks(timeout)} TRANSITION TO ${syntax.quote(timeoutTo)}")
+            }
         }
     }
 }

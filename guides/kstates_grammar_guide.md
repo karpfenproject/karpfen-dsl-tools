@@ -55,6 +55,72 @@ STATE "observe" {
 - Exactly one state should be initial in a complete machine.
 - States can contain nested sub-states.
 
+Inside a state, the parts come in a fixed order: the `BREAKPOINT` block, the `TICK LIMIT` block, `ENTRY`, `DO` and
+then the nested states. Each part is optional.
+
+### History
+
+A state can remember which of its inner states was active when it was left. The history is written between `INITIAL`
+and `STATE`:
+
+```
+SHALLOW HISTORY STATE "maintenance" { ... }
+INITIAL DEEP HISTORY STATE "operating" { ... }
+```
+
+| Form | What the state remembers |
+|------|--------------------------|
+| `SHALLOW HISTORY` | The directly nested state that was active last. |
+| `DEEP HISTORY` | The innermost state that was active last, at any depth inside the state. |
+
+A history only makes sense on a state with nested states. The runtime applies it only in an environment whose
+`History` feature is switched on; see the runtime's execution-semantics guide.
+
+### Tick limits
+
+A `TICK LIMIT` block bounds how long a state stays active, counted in engine ticks:
+
+```
+STATE "cars wait" {
+    TICK LIMIT {
+        DELAY: 2 TICKS
+        TIMEOUT: AFTER 10 TICKS TRANSITION TO "cars go"
+    }
+}
+```
+
+| Part | Meaning |
+|------|---------|
+| `DELAY: <n> TICKS` | The state is not left before it was active for more than `n` ticks. |
+| `TIMEOUT: AFTER <n> TICKS TRANSITION TO "<state>"` | When the state was active for more than `n` ticks, the state machine goes to the named state. |
+
+- Either part may stand alone, and the two may come in either order.
+- `TICK` and `TICKS` are read alike, so `1 TICK` and `5 TICKS` are both fine.
+- The number must be whole. `KstatesReader` reports any other number with the code `kstates.tick-count` and leaves
+  the delay or the timeout out. `KstatesDSLConverter` reads the state without the ticks and does not complain.
+- The runtime applies tick limits only in an environment whose `TickLimit` feature is switched on.
+
+### Breakpoints
+
+A `BREAKPOINT` block marks where a debugger halts the state machine. A state can halt at its entry, at its exit or at
+both; a transition of any kind at its start, at its end or at both:
+
+```
+STATE "cars wait" {
+    BREAKPOINT { ENTRY EXIT }
+}
+
+TRANSITION "cars wait" -> "cars go" {
+    BREAKPOINT { START END }
+    CONDITION { EVENT("public", "crossed") }
+}
+```
+
+- The two words of a block may come in either order, and either may stand alone. An empty block marks nothing.
+- In a transition the `BREAKPOINT` block comes before the `CONDITION` block.
+- Breakpoints change nothing in a normal run. The runtime halts at them only in an environment whose `Breakpoint`
+  feature is switched on.
+
 ### Action Blocks (`ENTRY` / `DO`)
 
 `ENTRY` and `DO` both contain action rules:
@@ -67,16 +133,33 @@ ENTRY {
 }
 ```
 
-Action rule format:
+An action rule names an operation and one, two or three operands. Every operation except `EVENT` also has a
+lowercase spelling, for example `set`.
 
-```
-<SET|APPEND|EVENT>("leftSide", <rightSide>)
-```
+| Form | Operations | Operands |
+|------|------------|----------|
+| `OP("path")` | `DROPLIST`, `DROPOBJ` | The list property to empty, or the object to remove. |
+| `OP("path", <rightSide>)` | `SET`, `APPEND`, `SETLIST` | The property and its new value or element. |
+| `EVENT("domain", "name")` | `EVENT` | The domain and the name of the event to raise. |
+| `OP("source", "relation", <rightSide>)` | `SETOBJ`, `APPENDOBJ` | The owning object, its relation and the target object. |
+
+A rule written with another number of operands than its operation takes is rejected: the converter throws, and
+`KstatesReader` reports it with the code `kstates.action-arity`.
 
 Right side can be:
 - a literal string: `"value"`
 - a macro call: `MACRO("name", "arg1", "arg2")`
 - an eval statement: `EVAL { ... }`
+
+A `WITH` block evaluates a macro once and binds its result to a name for the rules inside it. They read the result
+as `$(name)` or, for an object, as `$(name->field)`:
+
+```
+WITH MACRO("opposite_direction", "position", "obstacle->position") AS "dir" {
+    SET("direction->x", EVAL { return $(dir->x) })
+    SET("direction->y", EVAL { return $(dir->y) })
+}
+```
 
 An action block may also contain `IF IN SCOPE(...)` blocks. These run their body only when every path they list currently resolves to a value, which is handy when a state can be reached with or without a scoped event:
 
@@ -135,7 +218,7 @@ JOIN  "scanLeft", "scanRight" -> "report"    { }
 - `SPLIT "from" -> "t1", "t2", ...` fans one state out into several parallel branches (at least two targets).
 - `JOIN "s1", "s2", ... -> "to"` collapses a set of parallel branches back into a single state (at least two sources).
 
-All three forms share the same optional `NOT LOOPING` and `CONDITION` syntax, and live in the same `TRANSITIONS` block so their definition order is preserved. The runtime decides which apply: splits only while the machine is simple, joins (with priority) only while it is parallel. See the runtime's execution-semantics guide for the full behaviour.
+All three forms share the same optional `NOT LOOPING`, `BREAKPOINT` and `CONDITION` syntax, and live in the same `TRANSITIONS` block so their definition order is preserved. The runtime never blocks a `SPLIT` or a `JOIN` because of `NOT LOOPING`; the marker only has an effect on a `TRANSITION`. The runtime decides which apply: splits only while the machine is simple, joins (with priority) only while it is parallel. See the runtime's execution-semantics guide for the full behaviour.
 
 ### Macros
 
@@ -162,6 +245,7 @@ Macro structure:
 ## Complete Example
 
 The file `example/statemachine_full_example/cleaning_robot.kstates` is a complete and parseable reference example.
+The file `example/statemachine_state_options_example/crossing.kstates` shows histories, tick limits and breakpoints.
 
 It contains:
 - Top-level states such as `ready`, `observe`, and `drive`
@@ -223,7 +307,7 @@ Low-level parse access is available via `KStatesFileParser` in the package `io.k
 
 The integration test `KstatesParserIntegrationTest` shows a full parse flow against the example file.
 
-For text that may contain errors, such as text being typed in an editor, `KstatesReader` from the package `io.karpfen.dsl.reader.kstates` reads without throwing: it reports every problem as a diagnostic with a range, among them a wrong number of `INITIAL` states and action rules of the wrong arity, builds a partial state machine and locates its elements, and the code of every `EVAL` body, in a source map. The test `KstatesReaderDiagnosticsTest` shows the problems it reports.
+For text that may contain errors, such as text being typed in an editor, `KstatesReader` from the package `io.karpfen.dsl.reader.kstates` reads without throwing: it reports every problem as a diagnostic with a range, among them a wrong number of `INITIAL` states, action rules of the wrong arity and numbers of ticks that are not whole, builds a partial state machine and locates its elements, and the code of every `EVAL` body, in a source map. The test `KstatesReaderDiagnosticsTest` shows the problems it reports.
 
 The way back is `KstatesPrinter` from the package `io.karpfen.dsl.printer.kstates`, to which `KstatesDSLConverter.convertToKstatesString` delegates: it writes a state machine, or a single state, transition or macro, as KStates text in the canonical layout. Its KDoc describes the layout, including how the code of `EVAL` blocks is written.
 
@@ -250,7 +334,46 @@ states_block
     ;
 
 state_definition
-    : INITIAL? STATE STRING LBRACE entry_block? do_block? state_definition* RBRACE
+    : INITIAL? history_definition? STATE STRING LBRACE state_breakpoint_block? tick_limit_block? entry_block? do_block? state_definition* RBRACE
+    ;
+
+history_definition
+    : shallow_history_definition
+    | deep_history_definition
+    ;
+
+shallow_history_definition
+    : SHALLOW HISTORY
+    ;
+
+deep_history_definition
+    : DEEP HISTORY
+    ;
+
+state_breakpoint_block
+    : BREAKPOINT LBRACE state_breakpoint_definition? RBRACE
+    ;
+
+state_breakpoint_definition
+    : ENTRY EXIT?
+    | EXIT ENTRY?
+    ;
+
+tick_limit_block
+    : TICK LIMIT LBRACE tick_limit_definition? RBRACE
+    ;
+
+tick_limit_definition
+    : delay_definition timeout_definition?
+    | timeout_definition delay_definition?
+    ;
+
+delay_definition
+    : DELAY COLON NUMBER TICK
+    ;
+
+timeout_definition
+    : TIMEOUT COLON AFTER NUMBER TICK TRANSITION TO STRING
     ;
 
 entry_block
@@ -325,19 +448,28 @@ transition_definition
     ;
 
 normal_transition
-    : TRANSITION STRING ARROW STRING not_looping? LBRACE condition_block? RBRACE
+    : TRANSITION STRING ARROW STRING not_looping? LBRACE transition_breakpoint_block? condition_block? RBRACE
     ;
 
 split_transition
-    : SPLIT STRING ARROW STRING (COMMA STRING)+ not_looping? LBRACE condition_block? RBRACE
+    : SPLIT STRING ARROW STRING (COMMA STRING)+ not_looping? LBRACE transition_breakpoint_block? condition_block? RBRACE
     ;
 
 join_transition
-    : JOIN STRING (COMMA STRING)+ ARROW STRING not_looping? LBRACE condition_block? RBRACE
+    : JOIN STRING (COMMA STRING)+ ARROW STRING not_looping? LBRACE transition_breakpoint_block? condition_block? RBRACE
     ;
 
 not_looping
     : NOT LOOPING
+    ;
+
+transition_breakpoint_block
+    : BREAKPOINT LBRACE transition_breakpoint_definition? RBRACE
+    ;
+
+transition_breakpoint_definition
+    : START END?
+    | END START?
     ;
 
 condition_block
@@ -405,49 +537,62 @@ code_content
     | ~(LBRACE | RBRACE)
     ;
 
-STATEMACHINE : 'STATEMACHINE' ;
-ATTACHED     : 'ATTACHED' ;
-TO           : 'TO' ;
-STATES       : 'STATES' ;
-STATE        : 'STATE' ;
-INITIAL      : 'INITIAL' ;
-ENTRY        : 'ENTRY' ;
-DO           : 'DO' ;
-SET          : 'SET' | 'set' ;
-SETLIST      : 'SETLIST' | 'setlist' ;
-DROPLIST     : 'DROPLIST' | 'droplist' ;
-APPEND       : 'APPEND' | 'append' ;
-SETOBJ       : 'SETOBJ' | 'setobj' ;
-APPENDOBJ    : 'APPENDOBJ' | 'appendobj' ;
-DROPOBJ      : 'DROPOBJ' | 'dropobj' ;
-EVENT        : 'EVENT' ;
-WITH         : 'WITH' | 'with' ;
-AS           : 'AS' | 'as' ;
-MACRO        : 'MACRO' ;
-EVAL         : 'EVAL' ;
-TRANSITIONS  : 'TRANSITIONS' ;
-TRANSITION   : 'TRANSITION' ;
-SPLIT        : 'SPLIT' ;
-JOIN         : 'JOIN' ;
-NOT          : 'NOT' ;
-LOOPING      : 'LOOPING' ;
-CONDITION    : 'CONDITION' ;
-VALUE        : 'VALUE' ;
-MACROS       : 'MACROS' ;
-TAKES        : 'TAKES' ;
-RETURNS      : 'RETURNS' ;
-DEFINITION   : 'DEFINITION' ;
-REFERENCE    : 'reference' ;
-IF           : 'IF' ;
-IN           : 'IN' ;
-SCOPE        : 'SCOPE' ;
+STATEMACHINE    : 'STATEMACHINE' ;
+ATTACHED        : 'ATTACHED' ;
+TO              : 'TO' ;
+STATES          : 'STATES' ;
+STATE           : 'STATE' ;
+INITIAL         : 'INITIAL' ;
+SHALLOW         : 'SHALLOW' ;
+DEEP            : 'DEEP' ;
+HISTORY         : 'HISTORY' ;
+BREAKPOINT      : 'BREAKPOINT' ;
+TICK            : 'TICK' | 'TICKS' ;
+LIMIT           : 'LIMIT' ;
+DELAY           : 'DELAY' ;
+TIMEOUT         : 'TIMEOUT' ;
+AFTER           : 'AFTER' ;
+ENTRY           : 'ENTRY' ;
+EXIT            : 'EXIT' ;
+DO              : 'DO' ;
+SET             : 'SET' | 'set' ;
+SETLIST         : 'SETLIST' | 'setlist' ;
+DROPLIST        : 'DROPLIST' | 'droplist' ;
+APPEND          : 'APPEND' | 'append' ;
+SETOBJ          : 'SETOBJ' | 'setobj' ;
+APPENDOBJ       : 'APPENDOBJ' | 'appendobj' ;
+DROPOBJ         : 'DROPOBJ' | 'dropobj' ;
+EVENT           : 'EVENT' ;
+WITH            : 'WITH' | 'with' ;
+AS              : 'AS' | 'as' ;
+MACRO           : 'MACRO' ;
+EVAL            : 'EVAL' ;
+TRANSITIONS     : 'TRANSITIONS' ;
+TRANSITION      : 'TRANSITION' ;
+SPLIT           : 'SPLIT' ;
+JOIN            : 'JOIN' ;
+NOT             : 'NOT' ;
+LOOPING         : 'LOOPING' ;
+START           : 'START' ;
+END             : 'END' ;
+CONDITION       : 'CONDITION' ;
+VALUE           : 'VALUE' ;
+MACROS          : 'MACROS' ;
+TAKES           : 'TAKES' ;
+RETURNS         : 'RETURNS' ;
+DEFINITION      : 'DEFINITION' ;
+REFERENCE       : 'reference' ;
+IF              : 'IF' ;
+IN              : 'IN' ;
+SCOPE           : 'SCOPE' ;
 
-ARROW        : '->' ;
-LBRACE       : '{' ;
-RBRACE       : '}' ;
-LPAREN       : '(' ;
-RPAREN       : ')' ;
-COMMA        : ',' ;
+ARROW           : '->' ;
+LBRACE          : '{' ;
+RBRACE          : '}' ;
+LPAREN          : '(' ;
+RPAREN          : ')' ;
+COMMA           : ',' ;
+COLON           : ':' ;
 
 STRING       : '"' ( '\\' . | ~["\\\r\n] )* '"' ;
 SSTRING      : '\'' ( '\\' . | ~['\\\r\n] )* '\'' ;

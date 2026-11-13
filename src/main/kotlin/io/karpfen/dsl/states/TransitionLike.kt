@@ -33,6 +33,12 @@ sealed interface TransitionLike {
     /** False if this transition must not fire twice in a row. */
     val allowLoops: Boolean
 
+    /** True if a breakpoint is attached to the start of this transition, before it is applied. */
+    val startBreakpoint: Boolean
+
+    /** True if a breakpoint is attached to the end of this transition, after it was applied. */
+    val endBreakpoint: Boolean
+
     /** The condition that must hold for this transition to fire. */
     val condition: Condition
 }

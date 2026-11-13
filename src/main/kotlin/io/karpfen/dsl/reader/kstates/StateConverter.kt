@@ -15,9 +15,12 @@
  */
 package io.karpfen.dsl.reader.kstates
 
+import io.karpfen.dsl.diagnostics.DiagnosticCode
 import io.karpfen.dsl.grammar.kstates.KstatesParser
+import io.karpfen.dsl.parser.StateOptionSyntax
 import io.karpfen.dsl.reader.ReadingSession
 import io.karpfen.dsl.reader.presentToken
+import io.karpfen.dsl.states.History
 import io.karpfen.dsl.states.State
 import io.karpfen.dsl.states.actions.ActionBlock
 import org.antlr.v4.runtime.ParserRuleContext
@@ -26,7 +29,9 @@ import org.antlr.v4.runtime.ParserRuleContext
  * Converts the state definitions of a KStates parse tree into [State]s with their nested states and records
  * where each state and each of its `ENTRY` and `DO` blocks is written.
  *
- * A state without a name is left out together with its nested states.
+ * A state without a name is left out together with its nested states. A `DELAY` or `TIMEOUT` whose number of ticks
+ * is missing or not whole is left out and, when the number is written, reported; so is a `TIMEOUT` without its
+ * target state, which the parser already reported.
  *
  * @param session The read the conversion belongs to.
  * @param actions Converts the `ENTRY` and `DO` blocks.
@@ -43,22 +48,65 @@ internal class StateConverter(
         definitions.mapNotNull { convertState(it, outerState) }.toMutableList()
 
     /**
-     * Converts a state definition with its `ENTRY` and `DO` blocks and its nested states, inside [outerState]; null
-     * without a name.
+     * Converts a state definition with its history, breakpoints and tick limit, its `ENTRY` and `DO` blocks and its
+     * nested states, inside [outerState]; null without a name.
      */
     private fun convertState(definition: KstatesParser.State_definitionContext, outerState: State?): State? {
         val nameToken = definition.presentToken(KstatesParser.STRING) ?: return null
+        val breakpoints = definition.state_breakpoint_block()?.state_breakpoint_definition()
+        val tickLimit = definition.tick_limit_block()?.tick_limit_definition()
+        val timeout = tickLimit?.timeout_definition()?.let { timeoutOf(it) }
         val state = State(
             name = unquoted(nameToken),
             onEntry = definition.entry_block()?.let { entry -> actionBlockOf(entry.action_block(), entry) } ?: emptyBlock(),
             onDo = definition.do_block()?.let { doBlock -> actionBlockOf(doBlock.action_block(), doBlock) } ?: emptyBlock(),
             innerStates = mutableListOf(),
             outerState = outerState,
-            isInitial = definition.presentToken(KstatesParser.INITIAL) != null
+            isInitial = definition.presentToken(KstatesParser.INITIAL) != null,
+            entryBreakpoint = breakpoints?.presentToken(KstatesParser.ENTRY) != null,
+            exitBreakpoint = breakpoints?.presentToken(KstatesParser.EXIT) != null,
+            history = historyOf(definition.history_definition()),
+            delay = tickLimit?.delay_definition()?.let { ticksOf("DELAY", it) },
+            timeout = timeout?.first,
+            timeoutTo = timeout?.second
         )
         state.innerStates.addAll(convert(definition.state_definition(), state))
         session.record(state, definition, nameToken)
         return state
+    }
+
+    /** Returns the history written as [definition] in front of `STATE`, [History.NONE] for null or half a history. */
+    private fun historyOf(definition: KstatesParser.History_definitionContext?): History {
+        val shallow = definition?.shallow_history_definition()
+        val deep = definition?.deep_history_definition()
+        return when {
+            shallow?.presentToken(KstatesParser.HISTORY) != null -> History.SHALLOW
+            deep?.presentToken(KstatesParser.HISTORY) != null -> History.DEEP
+            else -> History.NONE
+        }
+    }
+
+    /**
+     * Returns the ticks and the target state of the `TIMEOUT` [definition], or null if either is missing or the
+     * number of ticks is not whole.
+     */
+    private fun timeoutOf(definition: KstatesParser.Timeout_definitionContext): Pair<Long, String>? {
+        val ticks = ticksOf("TIMEOUT", definition) ?: return null
+        val target = definition.presentToken(KstatesParser.STRING) ?: return null
+        return ticks to unquoted(target)
+    }
+
+    /**
+     * Returns the number of ticks of the `DELAY` or `TIMEOUT` [definition] named [part]; null without a number, and
+     * null with a report for a number that is not whole.
+     */
+    private fun ticksOf(part: String, definition: ParserRuleContext): Long? {
+        val number = definition.presentToken(KstatesParser.NUMBER) ?: return null
+        val ticks = StateOptionSyntax.ticksOf(number.text)
+        if (ticks == null) {
+            session.report(DiagnosticCode.TICK_COUNT, session.locator.rangeOf(number), StateOptionSyntax.ticksMessage(part, number.text))
+        }
+        return ticks
     }
 
     /**
