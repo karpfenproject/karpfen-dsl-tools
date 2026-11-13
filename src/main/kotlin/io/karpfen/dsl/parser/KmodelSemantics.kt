@@ -46,6 +46,12 @@ internal object KmodelSemantics {
     }
 
     /**
+     * Returns true if [text] is a boolean value as KModel and the runtime read it: `true` or `false` in any case. Any
+     * other text, which [valueOf] reads as false, is no boolean value.
+     */
+    fun isBooleanText(text: String): Boolean = text.equals("true", ignoreCase = true) || text.equals("false", ignoreCase = true)
+
+    /**
      * Returns the objects among [objects] that a `knows` statement can refer to, by their ids: objects with an empty
      * id cannot be referred to, and of several objects with the same id the last one wins.
      */

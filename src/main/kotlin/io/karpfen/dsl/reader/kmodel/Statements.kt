@@ -23,6 +23,21 @@ import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.tree.TerminalNode
 
 /**
+ * A statement that assigns a value to the property or relation its key names.
+ */
+internal interface KeyedStatement {
+
+    /** The key without quotes. */
+    val key: String
+
+    /** The quoted key. */
+    val keyToken: TerminalNode
+
+    /** True if the property or relation the key names is declared as a list. */
+    val declaredAsList: Boolean
+}
+
+/**
  * A `prop` statement whose key the class type of its object defines.
  *
  * @property context The statement in the parse tree.
@@ -35,14 +50,16 @@ import org.antlr.v4.runtime.tree.TerminalNode
 internal class PropStatement(
     val context: ParserRuleContext,
     val property: SimpleProperty,
-    val keyToken: TerminalNode,
+    override val keyToken: TerminalNode,
     val valueToken: TerminalNode,
     val belongsToObject: Boolean
-) {
+) : KeyedStatement {
 
-    /** The key without quotes. */
-    val key: String
+    override val key: String
         get() = property.key
+
+    override val declaredAsList: Boolean
+        get() = property.isList
 
     /** The value of the quoted value token. */
     val value: String
@@ -60,13 +77,15 @@ internal class PropStatement(
 internal class HasStatement(
     val context: ParserRuleContext,
     val relation: ClassTypeProperty,
-    val keyToken: TerminalNode,
+    override val keyToken: TerminalNode,
     val child: DataObject
-) {
+) : KeyedStatement {
 
-    /** The key without quotes. */
-    val key: String
+    override val key: String
         get() = relation.key
+
+    override val declaredAsList: Boolean
+        get() = relation.isList
 }
 
 /**
@@ -82,14 +101,16 @@ internal class HasStatement(
 internal class KnowsStatement(
     val context: ParserRuleContext,
     val relation: ClassTypeProperty,
-    val keyToken: TerminalNode,
+    override val keyToken: TerminalNode,
     val targetToken: TerminalNode,
     val belongsToObject: Boolean
-) {
+) : KeyedStatement {
 
-    /** The key without quotes. */
-    val key: String
+    override val key: String
         get() = relation.key
+
+    override val declaredAsList: Boolean
+        get() = relation.isList
 
     /** The id of the object referred to, the value of the quoted id token. */
     val targetId: String

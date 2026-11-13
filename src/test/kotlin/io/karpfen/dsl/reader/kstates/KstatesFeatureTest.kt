@@ -40,7 +40,7 @@ class KstatesFeatureTest {
                     ENTRY { SET("speed", MACRO("half", "speed")) WITH MACRO("half", "x") AS "h" { SET("y", "h") } }
                     STATE "x" { }
                 }
-                DEEP HISTORY STATE "b" { STATE "y" { DO { SET("z", EVAL { DEEP = "SPLIT" }) } } }
+                DEEP HISTORY STATE "b" { STATE "y" { DO { SET("z", EVAL { DEEP = "SPLIT"; return DEEP }) } } }
                 STATE "c" { }
             }
             TRANSITIONS {

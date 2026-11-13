@@ -28,6 +28,7 @@ All code lives below the package `io.karpfen.dsl`; the KDoc on the declarations 
 | `io.karpfen.dsl.parser` | File parsers that turn text into a syntax-level form (`KmetaFile`, `KmodelFile`, `KstatesFile`), `LoggingSyntaxErrorListener`, and the one home of each language rule that the converters, readers and printers share, such as `StringLiteralSyntax`, `ConditionClauses` and `KmodelSemantics` |
 | `io.karpfen.dsl.dsl.textual` | The converters `KmetaDSLConverter`, `KmodelDSLConverter`, `KstatesDSLConverter` and `JsonToModelConverter`, the usual entry points |
 | `io.karpfen.dsl.reader`, `.kmeta`, `.kmodel`, `.kstates` | The readers `KmetaReader`, `KmodelReader` and `KstatesReader`, which read text without throwing, behind the interface `TextReader`, and their `ParseResult` |
+| `io.karpfen.dsl.verification` | `ProjectVerifier`, which checks the state machines of a project against its metamodels, its model and themselves, with its `ProjectInput` and `ProjectFindings` |
 | `io.karpfen.dsl.diagnostics` | `Diagnostic`, the problem a reader reports, with its `Severity` and its stable `DiagnosticCode` |
 | `io.karpfen.dsl.source` | `SourcePosition` and `SourceRange`, `SourceText`, which turns offsets into lines and columns, and `SourceMap`, which locates model elements in their text |
 | `io.karpfen.dsl.printer`, `.kmeta`, `.kmodel`, `.kstates` | The printers `KmetaPrinter`, `KmodelPrinter` and `KstatesPrinter`, which write metamodels, models and state machines back as text |
@@ -67,6 +68,10 @@ a reader agrees with its converter, what it reports, what a partial model leaves
 suspends; the KDoc of `Diagnostic` and `SourceMap` says what a problem and a location hold. The tests of the readers
 are in the test package `io.karpfen.dsl.reader`, `ReaderRobustnessTest` among them, and the texts they vary come from
 `TextLayout` and `Mutator`, which the printer tests and the comparison with version 1.0 share.
+
+A reader checks its text on its own. `ProjectVerifier` checks the read state machines of a project against the read
+metamodels and model: paths, operations, macro calls, events in scope, reachable states and the values of the model.
+[The verification guide](guides/verification.md) lists every check of the readers and of the verifier with its code.
 
 ## Printing
 

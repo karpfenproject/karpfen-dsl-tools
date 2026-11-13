@@ -26,9 +26,13 @@ package io.karpfen.dsl.source
  * @property codeRange The inner range of an `EVAL` body: exactly the code the model holds for it, so that the
  * char at index `i` of the code is the char at `codeRange.start.offset + i` of the text; null for elements
  * without code.
+ * @property operandRanges The values of the further string literals of the element that name something, in the order
+ * they are written, each without its quote characters like [nameRange]; empty for elements without them. See
+ * [SourceMap] for the operands of each kind of element.
  */
 data class SourceLocation(
     val range: SourceRange,
     val nameRange: SourceRange? = null,
-    val codeRange: SourceRange? = null
+    val codeRange: SourceRange? = null,
+    val operandRanges: List<SourceRange> = emptyList()
 )

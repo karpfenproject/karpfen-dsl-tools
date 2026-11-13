@@ -344,7 +344,7 @@ Kotlin's `apply()` is used to chain calls on each object.
 
 To parse a `.kmodel` file, use `KmodelDSLConverter` from the package `io.karpfen.dsl.dsl.textual`. It parses with `KmodelFileParser` (package `io.karpfen.dsl.parser`), checks the objects against the metamodel and builds the model classes of the package `io.karpfen.dsl.instance`. The test `KmodelParserIntegrationTest` shows the whole flow on the example files.
 
-For text that may contain errors, such as text being typed in an editor, `KmodelReader` from the package `io.karpfen.dsl.reader.kmodel` reads without throwing: it reports every problem as a diagnostic with a range, among them unknown names and unresolved `knows` references, builds a partial model and locates its objects and assignments in a source map. The test `KmodelReaderDiagnosticsTest` shows the problems it reports.
+For text that may contain errors, such as text being typed in an editor, `KmodelReader` from the package `io.karpfen.dsl.reader.kmodel` reads without throwing: it reports every problem as a diagnostic with a range, among them unknown names, unresolved `knows` references, object ids used twice, several values for a key that holds one and booleans other than `true` and `false`, builds a partial model and locates its objects and assignments in a source map. The test `KmodelReaderDiagnosticsTest` shows the problems it reports, and [the verification guide](verification.md) lists them all.
 
 The way back is `KmodelPrinter` from the package `io.karpfen.dsl.printer.kmodel`, to which `KmodelDSLConverter.convertToKmodelString` delegates: it writes a model from its root object, or a single object with the objects it embeds, as KModel text in the canonical layout.
 

@@ -16,13 +16,15 @@
 package io.karpfen.dsl.diagnostics
 
 /**
- * The kinds of [Diagnostic]s the readers report.
+ * The kinds of [Diagnostic]s the readers and the verification of a project report.
  *
  * Both the constant names and the [id]s are stable, so that tools can rely on them, for example to offer a
- * fix for a kind of problem.
+ * fix for a kind of problem. The readers report the kinds prefixed with a language, `syntax` or `reader`; the
+ * verification of the files of a project together, [io.karpfen.dsl.verification.ProjectVerifier], reports the
+ * kinds prefixed with `project`.
  *
- * @property id A stable identifier of the kind, prefixed with the language it belongs to, or with `syntax`
- * and `reader` for kinds every language shares.
+ * @property id A stable identifier of the kind, prefixed with the language it belongs to, with `syntax`
+ * and `reader` for kinds every language shares, or with `project` for the kinds that need several files.
  * @property severity The severity of diagnostics of this kind.
  */
 enum class DiagnosticCode(val id: String, val severity: Severity) {
@@ -80,6 +82,129 @@ enum class DiagnosticCode(val id: String, val severity: Severity) {
      * told is switched off, such as a history while histories are off.
      */
     FEATURE_OFF("kstates.feature-off", Severity.ERROR),
+
+    /** A KMeta text defines two types of the same name. */
+    DUPLICATE_TYPE("kmeta.duplicate-type", Severity.ERROR),
+
+    /** A KMeta type has two properties or relations, or a property and a relation, with the same key. */
+    DUPLICATE_KEY("kmeta.duplicate-key", Severity.ERROR),
+
+    /** Two objects of a KModel text have the same id. */
+    DUPLICATE_OBJECT_ID("kmodel.duplicate-id", Severity.ERROR),
+
+    /** A KModel object gives several values to a property or relation that its class type does not declare as a list. */
+    SEVERAL_VALUES("kmodel.several-values", Severity.ERROR),
+
+    /** A KModel `prop` assigns a value other than `true` or `false` to a boolean property. */
+    INVALID_BOOLEAN("kmodel.invalid-boolean", Severity.ERROR),
+
+    /** Two states of a KStates state machine have the same name, at any depth. */
+    DUPLICATE_STATE("kstates.duplicate-state", Severity.ERROR),
+
+    /** A KStates transition, split, join or timeout names a state that the state machine does not define. */
+    UNKNOWN_STATE("kstates.unknown-state", Severity.ERROR),
+
+    /** A KStates `SPLIT` names the same target state twice. */
+    REPEATED_SPLIT_TARGET("kstates.repeated-split-target", Severity.ERROR),
+
+    /** A KStates `JOIN` names the same source state twice. */
+    REPEATED_JOIN_SOURCE("kstates.repeated-join-source", Severity.ERROR),
+
+    /** A KStates text defines two macros of the same name. */
+    DUPLICATE_MACRO("kstates.duplicate-macro", Severity.ERROR),
+
+    /** A KStates macro has two `TAKES` parameters of the same name. */
+    DUPLICATE_PARAMETER("kstates.duplicate-parameter", Severity.ERROR),
+
+    /** A KStates `MACRO(...)` call, or an `@name(...)` call in the code of an `EVAL`, names a macro the text does not define. */
+    UNKNOWN_MACRO("kstates.unknown-macro", Severity.ERROR),
+
+    /**
+     * A KStates macro call passes more arguments than the macro takes, or an `@name(...)` call in the code of an
+     * `EVAL`, which Python runs as a function call, passes another number.
+     */
+    MACRO_ARGUMENT_COUNT("kstates.macro-argument-count", Severity.ERROR),
+
+    /**
+     * A KStates `MACRO(...)` call passes fewer arguments than the macro takes; the runtime reads each missing argument
+     * from the path named like its parameter.
+     */
+    MISSING_MACRO_ARGUMENTS("kstates.missing-macro-arguments", Severity.WARNING),
+
+    /** A KStates `CONDITION` has more than one `EVENT` clause. */
+    SEVERAL_EVENT_CLAUSES("kstates.several-event-clauses", Severity.ERROR),
+
+    /**
+     * A KStates `CONDITION` has an `EVENT` clause that is not its first clause; the runtime finds it in any place, so
+     * the clause only reads better first.
+     */
+    EVENT_CLAUSE_NOT_FIRST("kstates.event-clause-not-first", Severity.WARNING),
+
+    /** A KStates state has a history but no inner states, so there is nothing it could remember. */
+    HISTORY_WITHOUT_INNER_STATES("kstates.history-without-inner-states", Severity.WARNING),
+
+    /** A KStates `BREAKPOINT` block names neither of its two words and so marks nothing. */
+    EMPTY_BREAKPOINT("kstates.empty-breakpoint", Severity.WARNING),
+
+    /** A KStates `TICK LIMIT` block has neither a `DELAY` nor a `TIMEOUT` and so limits nothing. */
+    EMPTY_TICK_LIMIT("kstates.empty-tick-limit", Severity.WARNING),
+
+    /** A KStates `TICK LIMIT` has a `DELAY` longer than its `TIMEOUT`, which holds the timeout back. */
+    DELAY_BEYOND_TIMEOUT("kstates.delay-beyond-timeout", Severity.WARNING),
+
+    /** The code of a KStates `EVAL` holds `//`, which starts a comment of KStates there, so a brace after it on its line does not count. */
+    COMMENT_IN_EVAL("kstates.comment-in-eval", Severity.WARNING),
+
+    /** The code of a KStates `EVAL` has no `return`, so it yields no value. */
+    EVAL_WITHOUT_RETURN("kstates.eval-without-return", Severity.WARNING),
+
+    /** A state machine is `ATTACHED TO` a class type that the metamodel of the project does not define. */
+    UNKNOWN_ATTACHED_TYPE("project.unknown-attached-type", Severity.ERROR),
+
+    /** The model has no object of the id a state machine is attached to, or it is of another class type than its `ATTACHED TO` names. */
+    ATTACHED_OBJECT_TYPE("project.attached-object-type", Severity.ERROR),
+
+    /** A path of an action or of a `VALUE` condition names a property or relation the class type on its way lacks. */
+    UNKNOWN_PATH("project.unknown-path", Severity.ERROR),
+
+    /** An operation is applied to something it cannot change, such as `APPEND` to a property that is not a list. */
+    OPERATION_MISMATCH("project.operation-mismatch", Severity.ERROR),
+
+    /** The literal right side of a `SET`, `APPEND` or `SETLIST` cannot be read as the type of the property it is written to. */
+    LITERAL_MISMATCH("project.literal-mismatch", Severity.ERROR),
+
+    /** A `$(path)` reference in the code of an `EVAL` does not resolve. */
+    UNRESOLVED_CODE_REFERENCE("project.unresolved-code-reference", Severity.ERROR),
+
+    /** A `TAKES` or `RETURNS` of a macro names a type that is neither primitive nor defined by the project. */
+    UNKNOWN_MACRO_TYPE("project.unknown-macro-type", Severity.ERROR),
+
+    /** An argument path of a macro call does not resolve. */
+    UNRESOLVED_MACRO_ARGUMENT("project.unresolved-macro-argument", Severity.ERROR),
+
+    /** An argument path of a macro call leads to something of another type than the parameter takes. */
+    MACRO_ARGUMENT_TYPE("project.macro-argument-type", Severity.ERROR),
+
+    /** An `event->field` path reads a field that no event that can be in scope there carries, or an event no event metamodel declares. */
+    UNKNOWN_EVENT_FIELD("project.unknown-event-field", Severity.ERROR),
+
+    /** A state can never become active. */
+    UNREACHABLE_STATE("project.unreachable-state", Severity.WARNING),
+
+    /** A transition can never fire, because an earlier transition from the same state always fires first. */
+    SHADOWED_TRANSITION("project.shadowed-transition", Severity.WARNING),
+
+    /** A `JOIN` can never fire, because its source states can never be active side by side. */
+    JOIN_NEVER_FIRES("project.join-never-fires", Severity.WARNING),
+
+    /** A `SPLIT` can never fire, because its source state is only active inside a branch of a split, where no split fires. */
+    SPLIT_INSIDE_PARALLEL("project.split-inside-parallel", Severity.WARNING),
+
+    /** Code reads `event` or `event->...` where no event can be in scope. */
+    EVENT_NOT_IN_SCOPE("project.event-not-in-scope", Severity.WARNING),
+
+    /** A state machine reads a property that the model gives no value, on the way from the object it runs on, and that no action writes. */
+    UNSET_PROPERTY("project.unset-property", Severity.WARNING),
 
     /**
      * The reader failed and could not build a model: on nesting deeper than the parser can recurse, or through a

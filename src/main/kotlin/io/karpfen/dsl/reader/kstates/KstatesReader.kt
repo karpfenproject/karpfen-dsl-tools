@@ -38,9 +38,11 @@ import org.slf4j.LoggerFactory
  * reader reads the text as written, with one exception: a `DELAY` or `TIMEOUT` whose number of ticks is not whole
  * is reported and left out, where the converter keeps the state without the ticks. The reader reports syntax errors,
  * action rules written with another number of operands than their operation expects, numbers of ticks that are not
- * whole, a state machine that does not mark exactly one state as `INITIAL`, and every construct of a
- * [KstatesFeature] that is not among the switched-on features, see [FeatureCheck]; such a construct is still part
- * of the state machine.
+ * whole, a state machine that does not mark exactly one state as `INITIAL`, every construct of a
+ * [KstatesFeature] that is not among the switched-on features, see [FeatureCheck], which is still part of the state
+ * machine, and what [ConsistencyChecks] finds: names defined twice, names of states and macros that are not defined,
+ * macro calls with the wrong number of arguments, misplaced `EVENT` clauses, and the warnings about options without
+ * effect and `EVAL` code that does not run as meant.
  * The count of initial states is left out when the `STATES` block is missing or contains a syntax error, since
  * the parser may have lost a state or its `INITIAL` while it recovered.
  *
@@ -60,7 +62,8 @@ class KstatesReader(private val switchedOn: Set<KstatesFeature> = KstatesFeature
     /** Reads [text] into a state machine, as described for the class. */
     override fun read(text: String): ParseResult<StateMachine> =
         ReadingSession.read(LexerInput.asWritten(text), StringLiteralSyntax.KSTATES, logger) { session ->
-            val machine = parse(session).statemachine()
+            val tokens = tokensOf(session)
+            val machine = parse(session, tokens).statemachine()
             val evalBodies = EvalBodies(session)
             val states = StateConverter(session, ActionConverter(session, evalBodies))
                 .convert(machine?.states_block()?.state_definition().orEmpty(), null)
@@ -72,6 +75,7 @@ class KstatesReader(private val switchedOn: Set<KstatesFeature> = KstatesFeature
             val classToken = machine?.presentToken(KstatesParser.STRING)
             val stateMachine = StateMachine(classToken?.let { unquoted(it) } ?: "", states, transitions, macros)
             machine?.let { session.record(stateMachine, it, classToken) }
+            ConsistencyChecks(session).check(stateMachine, machine, tokens)
             stateMachine
         }
 
@@ -85,10 +89,11 @@ class KstatesReader(private val switchedOn: Set<KstatesFeature> = KstatesFeature
         }
     }
 
-    /** Parses the text of [session], whose lexer and parser report their syntax errors to it. */
-    private fun parse(session: ReadingSession): KstatesParser.Kstates_fileContext {
-        val lexer = session.reportingSyntaxErrors(KstatesLexer(session.charStream()))
-        val parser = session.reportingSyntaxErrors(KstatesParser(CommonTokenStream(lexer)))
-        return parser.kstates_file()
-    }
+    /** Returns the tokens of the text of [session], with the comments; the lexer reports its errors to the session. */
+    private fun tokensOf(session: ReadingSession): CommonTokenStream =
+        CommonTokenStream(session.reportingSyntaxErrors(KstatesLexer(session.charStream())))
+
+    /** Parses [tokens], the tokens of the text of [session], whose parser reports its syntax errors to the session. */
+    private fun parse(session: ReadingSession, tokens: CommonTokenStream): KstatesParser.Kstates_fileContext =
+        session.reportingSyntaxErrors(KstatesParser(tokens)).kstates_file()
 }

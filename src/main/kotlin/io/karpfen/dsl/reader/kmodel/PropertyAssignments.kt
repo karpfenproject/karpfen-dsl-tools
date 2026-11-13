@@ -19,6 +19,7 @@ import io.karpfen.dsl.diagnostics.DiagnosticCode
 import io.karpfen.dsl.instance.SimpleAtomicPropertyObject
 import io.karpfen.dsl.instance.SimpleListPropertyObject
 import io.karpfen.dsl.instance.SimplePropertyObject
+import io.karpfen.dsl.meta.SimplePropertyType
 import io.karpfen.dsl.parser.KmodelSemantics
 import io.karpfen.dsl.reader.ReadingSession
 
@@ -28,7 +29,8 @@ import io.karpfen.dsl.reader.ReadingSession
  * its property, see [KmodelSemantics].
  *
  * A value that is not a number for a number property is left out, and reported if its statement surely belongs to the
- * object.
+ * object. A value of a boolean property other than `true` and `false` is read as false, as the converter reads it, and
+ * reported likewise.
  *
  * @param session The read the statements belong to.
  */
@@ -68,6 +70,7 @@ internal class PropertyAssignments(private val session: ReadingSession) {
      * number for a number property, and reports it if the statement belongs to the object.
      */
     private fun valueOf(statement: PropStatement): Any? = try {
+        checkBoolean(statement)
         KmodelSemantics.valueOf(statement.property.propertyType, statement.value)
     } catch (notANumber: NumberFormatException) {
         if (statement.belongsToObject) {
@@ -78,5 +81,21 @@ internal class PropertyAssignments(private val session: ReadingSession) {
             )
         }
         null
+    }
+
+    /**
+     * Reports the value of [statement] if its property is a boolean and the value is neither `true` nor `false`, see
+     * [KmodelSemantics.isBooleanText], unless the statement may belong to another object; the value stays as the
+     * converter reads it.
+     */
+    private fun checkBoolean(statement: PropStatement) {
+        val isBoolean = statement.property.propertyType == SimplePropertyType.BOOLEAN
+        if (isBoolean && statement.belongsToObject && !KmodelSemantics.isBooleanText(statement.value)) {
+            session.report(
+                DiagnosticCode.INVALID_BOOLEAN,
+                session.valueProblemRangeOf(statement.valueToken),
+                "'${statement.value}' is not a boolean, but prop '${statement.key}' is of type 'boolean'; write true or false"
+            )
+        }
     }
 }

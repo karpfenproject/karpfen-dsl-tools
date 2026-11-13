@@ -46,6 +46,11 @@ import java.util.IdentityHashMap
  *   Every `EVAL` body, held by an [io.karpfen.dsl.states.actions.EvalActionRightSide], an
  *   [io.karpfen.dsl.states.conditions.EvalCondition] or a [io.karpfen.dsl.states.macros.CodeBlock], has a
  *   [SourceLocation.codeRange].
+ *   The [SourceLocation.operandRanges] of KStates elements hold the further strings that name something: the
+ *   states of a transition, split or join in the order they are written, the target of the `TIMEOUT` of a state,
+ *   the path and, for `SETOBJ` and `APPENDOBJ`, the relation of an action rule (the domain of an `EVENT` rule),
+ *   the value of a literal right side, the arguments of a macro call, the paths of an `IF IN SCOPE` block, and the
+ *   type name of a takes or returns directive.
  *
  * Elements the reader makes up instead of reading, such as the empty `ENTRY` block of a state without one or
  * the always-true condition of a transition without a `CONDITION` block, have no location. A source map is
@@ -86,6 +91,12 @@ class SourceMap internal constructor(locations: IdentityHashMap<Any, List<Source
      * Returns the inner range of the `EVAL` body [element] holds, see [SourceLocation.codeRange].
      */
     fun codeRangeOf(element: Any): SourceRange? = locationOf(element)?.codeRange
+
+    /**
+     * Returns the ranges of the operands of [element], see [SourceLocation.operandRanges]; empty if the element has
+     * no location or no operands.
+     */
+    fun operandRangesOf(element: Any): List<SourceRange> = locationOf(element)?.operandRanges.orEmpty()
 
     /** Holds the map without any location. */
     companion object {

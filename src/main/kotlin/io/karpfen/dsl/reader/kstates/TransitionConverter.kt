@@ -111,9 +111,9 @@ internal class TransitionConverter(
     private fun stateNamesOf(transition: ParserRuleContext): List<String>? =
         transition.presentTokens(KstatesParser.STRING).map { unquoted(it) }.takeIf { it.size >= 2 }
 
-    /** Records [transition] at [construct] and returns it. */
+    /** Records [transition] at [construct], with the names of its states as operands, and returns it. */
     private fun <T : TransitionLike> recorded(transition: T, construct: ParserRuleContext): T {
-        session.record(transition, construct)
+        session.record(transition, construct, operands = construct.presentTokens(KstatesParser.STRING))
         return transition
     }
 }

@@ -36,8 +36,10 @@ import org.slf4j.LoggerFactory
  * every `knows` reference resolved. Like the converter, the reader reads the text with its common indentation
  * trimmed, see [LexerInput.withIndentTrimmed]. The reader reports syntax errors, objects of unknown class types,
  * unknown properties and relations, `has` and `knows` used for the other kind of relation, values that are
- * not numbers for number properties, and `knows` references to missing objects or to objects of another class
- * type; it warns about embedded objects of another class type than their relation declares. A text with a syntax
+ * not numbers for number properties, values other than `true` and `false` for boolean properties, several values for
+ * a property or relation that is not declared as a list, two objects with the same id, and `knows` references to
+ * missing objects or to objects of another class type; it warns about embedded objects of another class type than their
+ * relation declares. A text with a syntax
  * error gets no report of references to missing objects, since the parser may have lost an object while it
  * recovered. Where a syntax error in the braces may have given the statements of one object to another, see
  * [StatementOwnership], those statements get no report of their own: they are read as far as they match the class
@@ -66,8 +68,10 @@ class KmodelReader(private val metamodel: Metamodel) : TextReader<Model> {
             val converter = DataObjectConverter(session, metamodel, pendingLinks, StatementOwnership.of(file))
             val root = file.make_object_block()?.let { converter.convert(it) }
             val rootObjects = listOfNotNull(root).toMutableList()
+            val referable = referableObjects(rootObjects, converter.detachedObjects)
+            DuplicateIdCheck(session).check(referable.toSet())
             val resolver = KnowsResolver(session, reportsMissingObjects = !session.hasSyntaxErrors())
-            resolver.resolve(pendingLinks.all, referableObjects(rootObjects, converter.detachedObjects))
+            resolver.resolve(pendingLinks.all, referable)
             Model(rootObjects, metamodel)
         }
 

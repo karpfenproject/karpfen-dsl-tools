@@ -41,7 +41,7 @@ class KstatesStateOptionsTest {
 
     /**
      * Both ways of reading yield the history, the delay, the timeout and the breakpoints of each state, and a
-     * state without them has none.
+     * state without them has none. The history without inner states and the empty blocks are only warned about.
      */
     @Test
     fun `the history, the tick limit and the breakpoints of a state are read`() {
@@ -57,7 +57,12 @@ class KstatesStateOptionsTest {
             """.trimIndent()
         )
 
-        for (machine in bothReadingsOf(text)) {
+        val warnings = listOf(
+            DiagnosticCode.HISTORY_WITHOUT_INNER_STATES,
+            DiagnosticCode.EMPTY_TICK_LIMIT,
+            DiagnosticCode.EMPTY_BREAKPOINT
+        )
+        for (machine in bothReadingsOf(text, warnings)) {
             val (a, b, c) = machine.states
             assertEquals(listOf(History.DEEP, true, true, 1L, 10L, "b"), optionsOf(a))
             assertEquals(listOf(History.NONE, false, true, 3L, null, null), optionsOf(a.innerStates.single()))
@@ -82,7 +87,7 @@ class KstatesStateOptionsTest {
             """.trimIndent()
         )
 
-        for (machine in bothReadingsOf(text)) {
+        for (machine in bothReadingsOf(text, listOf(DiagnosticCode.EMPTY_BREAKPOINT))) {
             assertEquals(
                 listOf(true to false, true to true, false to true, false to false),
                 machine.transitions.map { it.startBreakpoint to it.endBreakpoint }
@@ -201,10 +206,13 @@ class KstatesStateOptionsTest {
         assertNull(state.timeout)
     }
 
-    /** Returns the state machine of [text] as the throwing converter and as the reader build it. */
-    private fun bothReadingsOf(text: String): List<StateMachine> {
+    /**
+     * Returns the state machine of [text] as the throwing converter and as the reader build it; the reader reports
+     * exactly the [warnings], in text order.
+     */
+    private fun bothReadingsOf(text: String, warnings: List<DiagnosticCode> = emptyList()): List<StateMachine> {
         val result = KstatesReader().read(text)
-        assertEquals(emptyList(), result.diagnostics, result.diagnostics.joinToString("\n"))
+        assertEquals(warnings, result.diagnostics.map { it.code }, result.diagnostics.joinToString("\n"))
         return listOf(KstatesDSLConverter.parseKstatesString(text), result.model!!)
     }
 

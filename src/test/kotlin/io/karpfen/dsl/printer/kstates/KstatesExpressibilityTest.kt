@@ -15,6 +15,7 @@
  */
 package io.karpfen.dsl.printer.kstates
 
+import io.karpfen.dsl.diagnostics.DiagnosticCode
 import io.karpfen.dsl.dsl.textual.KstatesDSLConverter
 import io.karpfen.dsl.fixtures.CodeShape
 import io.karpfen.dsl.reader.kstates.KstatesReader
@@ -116,7 +117,7 @@ class KstatesExpressibilityTest {
     @Test
     fun `code an EVAL block can hold reads back unchanged`() {
         listOf("return \"}\"", "d = {'a': {}}\nreturn d['a']", "x = 7 // 2\nreturn x", "return 1").forEach { code ->
-            val rule = readBack(stateDoing(evalRule(code))).onDo.items.single() as ActionRule
+            val rule = readBack(stateDoing(evalRule(code)), setOf(DiagnosticCode.COMMENT_IN_EVAL)).onDo.items.single() as ActionRule
             assertEquals(code, CodeShape.of((rule.rightSide as EvalActionRightSide).code))
         }
     }
@@ -240,12 +241,13 @@ class KstatesExpressibilityTest {
         State("busy", ActionBlock(mutableListOf()), ActionBlock(mutableListOf(item)), mutableListOf(), null, true)
 
     /**
-     * Prints [state] into a document and reads it back with the converter, which must not throw.
+     * Prints [state] into a document and reads it back with the converter, which must not throw; the reader may report
+     * nothing but the [warnings].
      */
-    private fun readBack(state: State): State {
+    private fun readBack(state: State, warnings: Set<DiagnosticCode> = emptySet()): State {
         val text = "STATEMACHINE ATTACHED TO \"R\" {\n    STATES {\n        ${printer.printState(state, 2)}\n    }\n" +
             "    TRANSITIONS { }\n}\n"
-        assertTrue(KstatesReader().read(text).diagnostics.isEmpty(), text)
+        assertTrue(KstatesReader().read(text).diagnostics.all { it.code in warnings }, text)
         return KstatesDSLConverter.parseKstatesString(text).states.single()
     }
 

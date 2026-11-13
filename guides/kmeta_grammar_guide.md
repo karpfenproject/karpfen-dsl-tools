@@ -290,7 +290,7 @@ val metamodel = m.build()
 
 To parse a `.kmeta` file, use `KmetaDSLConverter` from the package `io.karpfen.dsl.dsl.textual`. It parses with `KmetaFileParser` (package `io.karpfen.dsl.parser`) and builds the metamodel classes of the package `io.karpfen.dsl.meta`. The test `KmetaStringParserTest` shows the whole flow on the example file `example/metamodel_dsl_example.kmeta`.
 
-For text that may contain errors, such as text being typed in an editor, `KmetaReader` from the package `io.karpfen.dsl.reader.kmeta` reads without throwing: it reports every problem as a diagnostic with a range, builds a partial metamodel and locates its types, properties and relation targets in a source map. The test `ExampleSourceMapTest` shows it on every example.
+For text that may contain errors, such as text being typed in an editor, `KmetaReader` from the package `io.karpfen.dsl.reader.kmeta` reads without throwing: it reports every problem as a diagnostic with a range, among them types defined twice and keys defined twice in one type, builds a partial metamodel and locates its types, properties and relation targets in a source map. The test `ExampleSourceMapTest` shows it on every example. [The verification guide](verification.md) lists every problem the readers report.
 
 The way back is `KmetaPrinter` from the package `io.karpfen.dsl.printer.kmeta`, to which `KmetaDSLConverter.convertToKmetaString` delegates: it writes a metamodel, a single type or a single rule as KMeta text in the canonical layout, with the root type last, and can leave out the base types of an event metamodel.
 

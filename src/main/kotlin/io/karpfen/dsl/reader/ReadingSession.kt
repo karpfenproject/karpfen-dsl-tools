@@ -81,8 +81,8 @@ internal class ReadingSession private constructor(
     }
 
     /**
-     * Records that [element] is defined by [construct], named by the value of the string token [name] and, for an
-     * `EVAL` body, holds the code at [codeRange].
+     * Records that [element] is defined by [construct], named by the value of the string token [name], with the
+     * values of the string tokens [operands] as its operands and, for an `EVAL` body, holds the code at [codeRange].
      *
      * @param nameLiterals The string literal syntax of [name], by default that of the language.
      */
@@ -91,10 +91,12 @@ internal class ReadingSession private constructor(
         construct: ParserRuleContext,
         name: TerminalNode? = null,
         codeRange: SourceRange? = null,
-        nameLiterals: StringLiteralSyntax = literals
+        nameLiterals: StringLiteralSyntax = literals,
+        operands: List<TerminalNode> = emptyList()
     ) {
         val nameRange = name?.let { locator.valueRangeOf(it, nameLiterals) }
-        record(element, SourceLocation(locator.rangeOf(construct), nameRange, codeRange))
+        val operandRanges = operands.map { locator.valueRangeOf(it, literals) }
+        record(element, SourceLocation(locator.rangeOf(construct), nameRange, codeRange, operandRanges))
     }
 
     /**
@@ -126,6 +128,13 @@ internal class ReadingSession private constructor(
         val location = sourceMap.locationOf(element) ?: return locator.startOfText()
         return location.nameRange?.takeIf { it.length > 0 } ?: location.range
     }
+
+    /**
+     * Returns the range to mark when the operand at [index] of [element] is at fault: that operand if it is not empty,
+     * otherwise the range [problemRangeOf] marks for the element.
+     */
+    fun operandProblemRangeOf(element: Any, index: Int): SourceRange =
+        sourceMap.locationOf(element)?.operandRanges?.getOrNull(index)?.takeIf { it.length > 0 } ?: problemRangeOf(element)
 
     /**
      * Removes [element] from the source map, for an element left out of the model after it was recorded.

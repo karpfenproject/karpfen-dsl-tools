@@ -39,7 +39,7 @@ class KnowsPrecedenceTest {
     /**
      * The object of the model wins over the object outside it, so the reference resolves to the object the
      * converter resolves it to once the unknown class type is fixed, and no reference error follows from the wrong
-     * class type alone.
+     * class type alone. The two objects share an id, which is reported at the later one.
      */
     @Test
     fun `an object of the model wins over an object outside it with the same id`() {
@@ -55,7 +55,10 @@ class KnowsPrecedenceTest {
 
         val result = KmodelReader(metamodel).read(text)
 
-        assertEquals(listOf(DiagnosticCode.UNKNOWN_CLASS_TYPE), result.diagnostics.map { it.code })
+        assertEquals(
+            listOf(DiagnosticCode.UNKNOWN_CLASS_TYPE, DiagnosticCode.DUPLICATE_OBJECT_ID),
+            result.diagnostics.map { it.code }
+        )
         val root = result.model!!.objects.single()
         val q = root.relations.first { it.key == "q" } as ClassTypeAtomicPropertyObject
         assertSame(root.getRel("p").single(), q.getValue())

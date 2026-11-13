@@ -191,7 +191,7 @@ class ReaderRobustnessTest {
         }
         result.diagnostics.firstOrNull { it.code == DiagnosticCode.READER_FAILURE }?.let { return it.message }
         val locations = ReachableObjects.from(result.model).flatMap { result.sourceMap.locationsOf(it) }
-        val locatedRanges = locations.flatMap { listOfNotNull(it.range, it.nameRange, it.codeRange) }
+        val locatedRanges = locations.flatMap { listOfNotNull(it.range, it.nameRange, it.codeRange) + it.operandRanges }
         val ranges = result.diagnostics.map { it.range } + locatedRanges
         return ranges.firstNotNullOfOrNull { TextPositions.deviationOf(text, it) }
     }

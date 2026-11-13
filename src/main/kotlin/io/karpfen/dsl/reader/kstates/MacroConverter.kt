@@ -25,6 +25,7 @@ import io.karpfen.dsl.states.macros.CodeBlock
 import io.karpfen.dsl.states.macros.Definition
 import io.karpfen.dsl.states.macros.ReturnsDirective
 import io.karpfen.dsl.states.macros.TakesDirective
+import org.antlr.v4.runtime.tree.TerminalNode
 
 /**
  * Converts the macro definitions of a KStates parse tree into [Macro]s and records where each macro, directive,
@@ -66,8 +67,11 @@ internal class MacroConverter(
             return null
         }
         val nameToken = directive.presentToken(KstatesParser.STRING) ?: return null
-        val type = directive.type_expression()?.let { typeOf(it) } ?: return null
-        return TakesDirective(unquoted(nameToken), type).also { session.record(it, directive, nameToken) }
+        val expression = directive.type_expression() ?: return null
+        val type = typeOf(expression) ?: return null
+        return TakesDirective(unquoted(nameToken), type).also {
+            session.record(it, directive, nameToken, operands = listOfNotNull(typeNameTokenOf(expression)))
+        }
     }
 
     /**
@@ -85,8 +89,13 @@ internal class MacroConverter(
         } else {
             expression.type_expression()?.let { typeOf(it) }
         }
-        return type?.let { ReturnsDirective(it) }?.also { session.record(it, directive) }
+        val typeNameToken = reference?.presentToken(KstatesParser.STRING) ?: expression.type_expression()?.let { typeNameTokenOf(it) }
+        return type?.let { ReturnsDirective(it) }?.also { session.record(it, directive, operands = listOfNotNull(typeNameToken)) }
     }
+
+    /** Returns the token of the type name of [expression]: the string itself, or the string of a typed call. */
+    private fun typeNameTokenOf(expression: KstatesParser.Type_expressionContext): TerminalNode? =
+        expression.presentToken(KstatesParser.STRING) ?: expression.typed_call_expression()?.presentToken(KstatesParser.STRING)
 
     /**
      * Writes a type expression the way the throwing converter does: `"T"` as `T`, `list("T")` as `list("T")`.

@@ -52,6 +52,9 @@ internal class DataObjectConverter(
     /** Turns the matched `has` and `knows` statements of an object into its relation values. */
     private val relationAssignments = RelationAssignments(session, pendingLinks)
 
+    /** Reports the further values of properties and relations that hold a single value. */
+    private val multiplicityCheck = MultiplicityCheck(session)
+
     /** The objects converted so far that are not part of the model, in text order. */
     private val detached = mutableListOf<DataObject>()
 
@@ -99,6 +102,7 @@ internal class DataObjectConverter(
             statement.has_statement()?.let { hasStatementOf(it, matcher) }?.let { embeddings.add(it) }
             statement.knows_statement()?.let { matcher.knowsStatementOf(it) }?.let { links.add(it) }
         }
+        multiplicityCheck.check(props + embeddings + links, key, ownership.ownsItsStatements(block))
         val relations = relationAssignments.embed(embeddings) + relationAssignments.link(links, key)
         val dataObject = DataObject(classType, key, propertyAssignments.assign(props), relations.toMutableList())
         session.record(dataObject, block, keyToken, nameLiterals = StringLiteralSyntax.KMODEL_SIGNATURE)

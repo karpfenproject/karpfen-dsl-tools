@@ -71,7 +71,8 @@ internal class StateConverter(
             timeoutTo = timeout?.second
         )
         state.innerStates.addAll(convert(definition.state_definition(), state))
-        session.record(state, definition, nameToken)
+        val timeoutTarget = tickLimit?.timeout_definition()?.presentToken(KstatesParser.STRING)?.takeIf { timeout != null }
+        session.record(state, definition, nameToken, operands = listOfNotNull(timeoutTarget))
         return state
     }
 

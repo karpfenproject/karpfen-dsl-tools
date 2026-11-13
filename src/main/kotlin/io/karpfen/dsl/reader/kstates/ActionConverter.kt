@@ -72,8 +72,9 @@ internal class ActionConverter(
     /** Converts `IF IN SCOPE("path", ...) { ... }`; null without its block. */
     private fun convertInScopeBlock(block: KstatesParser.In_scope_blockContext): InScopeBlock? {
         val body = block.action_block() ?: return null
-        val inScope = InScopeBlock(block.presentTokens(KstatesParser.STRING).map { unquoted(it) }, convertBlock(body))
-        session.record(inScope, block)
+        val pathTokens = block.presentTokens(KstatesParser.STRING)
+        val inScope = InScopeBlock(pathTokens.map { unquoted(it) }, convertBlock(body))
+        session.record(inScope, block, operands = pathTokens)
         return inScope
     }
 
@@ -96,7 +97,8 @@ internal class ActionConverter(
             return null
         }
         val operation = ActionRuleSyntax.operationOf(rule).operation
-        val operands = rule.presentTokens(KstatesParser.STRING).map { unquoted(it) }
+        val operandTokens = rule.presentTokens(KstatesParser.STRING)
+        val operands = operandTokens.map { unquoted(it) }
         val rightSideContext = rule.action_right_side()
         val leftSide = operands.firstOrNull() ?: return null
         val writtenArity = ActionRuleSyntax.writtenArity(operands.size, rightSideContext != null)
@@ -115,7 +117,7 @@ internal class ActionConverter(
             rightSide = rightSideContext?.let { convertRightSide(it) },
             secondSide = if (writtenArity == Arity.TERNARY) operands[1] else null
         )
-        session.record(actionRule, rule)
+        session.record(actionRule, rule, operands = operandTokens)
         return actionRule
     }
 
@@ -124,7 +126,7 @@ internal class ActionConverter(
      */
     private fun convertRightSide(rightSide: KstatesParser.Action_right_sideContext): ActionRightSide? {
         rightSide.presentToken(KstatesParser.STRING)?.let { token ->
-            return ValueActionRightSide(unquoted(token)).also { session.record(it, rightSide) }
+            return ValueActionRightSide(unquoted(token)).also { session.record(it, rightSide, operands = listOf(token)) }
         }
         rightSide.macro_call()?.let { return convertMacroCall(it) }
         val statement = rightSide.eval_statement() ?: return null
@@ -139,7 +141,7 @@ internal class ActionConverter(
         val strings = call.presentTokens(KstatesParser.STRING)
         val nameToken = strings.firstOrNull() ?: return null
         val macroCall = MacroActionRightSide(unquoted(nameToken), strings.drop(1).map { unquoted(it) })
-        session.record(macroCall, call, nameToken)
+        session.record(macroCall, call, nameToken, operands = strings.drop(1))
         return macroCall
     }
 }

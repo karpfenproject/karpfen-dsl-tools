@@ -37,7 +37,8 @@ import org.slf4j.LoggerFactory
  * followed by the base types, with the last type of the text as root. Like the converter, the reader reads the text
  * with its common indentation trimmed, see [LexerInput.withIndentTrimmed]. The reader reports syntax errors, a
  * `prop` of a type other than `string`, `number` and `boolean` at that type, a relation to an unknown class
- * type at the type name, and a text without any type, which yields no model. A text with a syntax error gets no
+ * type at the type name, a type defined twice and a key defined twice in one type at the later name, and a text
+ * without any type, which yields no model. A text with a syntax error gets no
  * report of unknown class types and none of a missing type, since the parser may have lost the definition of a type
  * while it recovered; it yields no model either if no type is left.
  *
@@ -61,6 +62,7 @@ class KmetaReader(baseTypes: List<ClassType> = emptyList()) : TextReader<Metamod
     override fun read(text: String): ParseResult<Metamodel> =
         ReadingSession.read(LexerInput.withIndentTrimmed(text), StringLiteralSyntax.KMETA, logger) { session ->
             val classTypes = ClassTypeConverter(session).convert(parse(session).type_definition())
+            DuplicateDefinitionCheck(session).check(classTypes)
             val resolver = TargetTypeResolver(session, reportsUnknownTypes = !session.hasSyntaxErrors())
             resolver.resolve(classTypes, classTypes + baseTypes)
             metamodelOf(classTypes, session)
