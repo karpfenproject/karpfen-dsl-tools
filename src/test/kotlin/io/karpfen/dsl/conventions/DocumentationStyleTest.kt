@@ -59,12 +59,12 @@ class DocumentationStyleTest {
     }
 
     /**
-     * The guard of the reference ids reads the README, the grammar guides, the CI workflow and the grammars.
+     * The guard of the reference ids reads the README, the reference documentation, the CI workflow and the grammars.
      */
     @Test
-    fun `the guarded documents are the README, the guides, the workflow and the grammars`() {
+    fun `the guarded documents are the README, the reference, the workflow and the grammars`() {
         val paths = documents.keys
-        listOf("README.md", "guides/kstates_grammar_guide.md", ".github/workflows/build.yml").forEach {
+        listOf("README.md", "docs/reference/2.3-kstates.md", ".github/workflows/build.yml").forEach {
             assertTrue(it in paths, "$it is not guarded")
         }
         assertEquals(3, paths.count { it.endsWith(".g4") }, "the grammars are not guarded")
