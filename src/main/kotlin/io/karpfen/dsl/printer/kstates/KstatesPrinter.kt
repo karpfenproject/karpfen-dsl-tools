@@ -26,7 +26,8 @@ import io.karpfen.dsl.states.TransitionLike
  * Writes [StateMachine]s, and single states, transitions and macros of them, as KStates text in the
  * canonical layout.
  *
- * The layout indents by four spaces, writes one statement per line and separates the `STATES`,
+ * The header has the form of the state machine, see [StateMachine.isAttachable]. The layout indents by four spaces,
+ * writes one statement per line and separates the `STATES`,
  * `TRANSITIONS` and `MACROS` sections by a blank line. States, transitions, macros and actions follow the
  * order of the state machine; the `MACROS` section is left out when there are no macros, and so are empty
  * `ENTRY` and `DO` blocks and the `CONDITION` block of an unconditional transition. The code of an `EVAL` block
@@ -71,12 +72,13 @@ class KstatesPrinter internal constructor(
      *
      * @throws IllegalArgumentException If a name, path or value cannot be written as a KStates string
      * literal, or the state machine holds something KStates cannot express, such as a split with a single
-     * target, an action rule with another number of operands than its operation expects, `EVAL` code whose braces
-     * do not balance, or a typed call that a macro directive cannot hold, or if its states or actions nest deeper than
-     * the printer can recurse.
+     * target, an action rule with another number of operands than its operation expects, an `ATTACH` clause on another
+     * rule than `SETOBJ` and `APPENDOBJ`, an attachable state machine without a type, `EVAL` code whose braces do not
+     * balance, or a typed call that a macro directive cannot hold, or if its states or actions nest deeper than the
+     * printer can recurse.
      */
     override fun print(document: StateMachine): String = CodeWriter.document { writer ->
-        writer.block("STATEMACHINE ATTACHED TO ${syntax.quote(document.attachedToClass)}") {
+        writer.block(headerOf(document)) {
             writer.block("STATES") { document.states.forEach { states.write(it, writer) } }
             writer.blankLine()
             writer.block("TRANSITIONS") { document.transitions.forEach { transitions.write(it, writer) } }
@@ -85,6 +87,18 @@ class KstatesPrinter internal constructor(
                 writer.block("MACROS") { document.macros.forEach { macros.write(it, writer) } }
             }
         }
+    }
+
+    /**
+     * Returns the header of [machine] before its brace: `STATEMACHINE ATTACHED TO "Type"` for an attached state machine,
+     * `STATEMACHINE "name" ATTACHABLE TO "A", "B"` for an attachable one.
+     *
+     * @throws IllegalArgumentException If an attachable state machine has no type, which KStates cannot read back.
+     */
+    private fun headerOf(machine: StateMachine): String {
+        val name = machine.name ?: return "STATEMACHINE ATTACHED TO ${syntax.quote(machine.attachedToClass)}"
+        require(machine.attachableTo.isNotEmpty()) { "The attachable state machine '$name' needs at least one type." }
+        return "STATEMACHINE ${syntax.quote(name)} ATTACHABLE TO ${syntax.quoteAll(machine.attachableTo)}"
     }
 
     /**

@@ -19,6 +19,7 @@ import io.karpfen.dsl.parser.ActionRuleSyntax
 import io.karpfen.dsl.printer.CodeWriter
 import io.karpfen.dsl.states.actions.ActionBlock
 import io.karpfen.dsl.states.actions.ActionItem
+import io.karpfen.dsl.states.actions.ActionOperationType
 import io.karpfen.dsl.states.actions.ActionRightSide
 import io.karpfen.dsl.states.actions.ActionRule
 import io.karpfen.dsl.states.actions.EvalActionRightSide
@@ -79,10 +80,12 @@ internal class ActionWriter(private val syntax: KstatesSyntax) {
 
     /**
      * Returns an action rule with the operands it has, as [ActionRule] describes them: `OP("path")`,
-     * `OP("path", value)` or `OP("source", "relation", target)`.
+     * `OP("path", value)` or `OP("source", "relation", target)`, followed by `ATTACH value` if it has an `ATTACH`
+     * clause.
      *
-     * @throws IllegalArgumentException If the rule has a relation but no right side, or another number of operands
-     * than its operation expects, which KStates cannot read back.
+     * @throws IllegalArgumentException If the rule has a relation but no right side, another number of operands
+     * than its operation expects, or an `ATTACH` clause on an operation other than `SETOBJ` and `APPENDOBJ`, which
+     * KStates cannot read back.
      */
     private fun ruleText(rule: ActionRule, writer: CodeWriter): String {
         require(rule.rightSide != null || rule.secondSide == null) {
@@ -97,7 +100,12 @@ internal class ActionWriter(private val syntax: KstatesSyntax) {
             rule.secondSide?.let { syntax.quote(it) },
             rule.rightSide?.let { rightSideText(it, writer) }
         )
-        return "${ActionRuleSyntax.keywordOf(rule.operationType)}(${operands.joinToString(", ")})"
+        val ruleText = "${ActionRuleSyntax.keywordOf(rule.operationType)}(${operands.joinToString(", ")})"
+        val attach = rule.attach ?: return ruleText
+        require(rule.operationType == ActionOperationType.SETOBJ || rule.operationType == ActionOperationType.APPENDOBJ) {
+            "The ${rule.operationType} rule on '${rule.leftSide}' has an ATTACH clause, which only SETOBJ and APPENDOBJ take."
+        }
+        return "$ruleText ATTACH ${rightSideText(attach.stateMachineName, writer)}"
     }
 
     /**

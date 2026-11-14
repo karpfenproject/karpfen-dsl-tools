@@ -43,6 +43,7 @@ internal object ActionRuleSyntax {
             op.SETOBJ() != null -> ParsedActionOperationType.SETOBJ
             op.APPENDOBJ() != null -> ParsedActionOperationType.APPENDOBJ
             op.DROPOBJ() != null -> ParsedActionOperationType.DROPOBJ
+            op.EXCHANGE() != null -> ParsedActionOperationType.EXCHANGE
             else -> ParsedActionOperationType.EVENT
         }
     }

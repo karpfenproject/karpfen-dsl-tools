@@ -23,7 +23,6 @@ import io.karpfen.dsl.reader.ParseResult
 import io.karpfen.dsl.reader.ReadingSession
 import io.karpfen.dsl.reader.TextReader
 import io.karpfen.dsl.reader.containsSyntaxError
-import io.karpfen.dsl.reader.presentToken
 import io.karpfen.dsl.states.KstatesFeature
 import io.karpfen.dsl.states.State
 import io.karpfen.dsl.states.StateMachine
@@ -38,7 +37,8 @@ import org.slf4j.LoggerFactory
  * reader reads the text as written, with one exception: a `DELAY` or `TIMEOUT` whose number of ticks is not whole
  * is reported and left out, where the converter keeps the state without the ticks. The reader reports syntax errors,
  * action rules written with another number of operands than their operation expects, numbers of ticks that are not
- * whole, a state machine that does not mark exactly one state as `INITIAL`, every construct of a
+ * whole, a state machine that does not mark exactly one state as `INITIAL`, a header that does not fit its form, see
+ * [HeaderConverter], every construct of a
  * [KstatesFeature] that is not among the switched-on features, see [FeatureCheck], which is still part of the state
  * machine, and what [ConsistencyChecks] finds: names defined twice, names of states and macros that are not defined,
  * macro calls with the wrong number of arguments, misplaced `EVENT` clauses, and the warnings about options without
@@ -72,9 +72,7 @@ class KstatesReader(private val switchedOn: Set<KstatesFeature> = KstatesFeature
             val macros = MacroConverter(session, evalBodies).convert(machine?.macros_block()?.macro_definition().orEmpty())
             checkInitialStates(machine?.states_block(), states, session)
             FeatureCheck(session, switchedOn).check(machine)
-            val classToken = machine?.presentToken(KstatesParser.STRING)
-            val stateMachine = StateMachine(classToken?.let { unquoted(it) } ?: "", states, transitions, macros)
-            machine?.let { session.record(stateMachine, it, classToken) }
+            val stateMachine = HeaderConverter(session).convert(machine, states, transitions, macros)
             ConsistencyChecks(session).check(stateMachine, machine, tokens)
             stateMachine
         }

@@ -26,7 +26,8 @@ import io.karpfen.dsl.states.StateMachine
  * @property machine The state machine.
  * @property report The report of the problems found in its text.
  * @property types The class types of the project, or null if the domain metamodel has errors.
- * @property contextType The type the machine is attached to, or null if it is unknown.
+ * @property contextType The type the machine runs on in this pass, or null if it is unknown: the type of an attached
+ * machine, one of the types of an attachable machine, which is checked once per type, see [ProjectVerifier].
  * @property attachedObjectId The id of the object the machine runs on, or null if it is not given.
  * @property objects Every object of the model, the embedded ones included, or null if there is no model or it has
  * errors.
@@ -34,6 +35,7 @@ import io.karpfen.dsl.states.StateMachine
  * @property sites The rules of the machine and the paths it reads.
  * @property resolver Finds what the paths of the machine refer to.
  * @property writtenKeys The keys that some action of some state machine of the project writes.
+ * @property attachables The attachable state machines of the project, which `ATTACH` and `EXCHANGE` name.
  */
 internal class MachineContext(
     val machine: StateMachine,
@@ -45,7 +47,8 @@ internal class MachineContext(
     val graph: MachineGraph?,
     val sites: MachineSites,
     val resolver: ReadResolver,
-    val writtenKeys: Set<String>
+    val writtenKeys: Set<String>,
+    val attachables: AttachableMachines
 ) {
 
     /** The object of the model the machine runs on, or null if it is not given, not found or the model has errors. */

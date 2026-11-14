@@ -19,13 +19,41 @@ grammar Kmeta;
 package io.karpfen.dsl.grammar.kmeta;
 }
 
+@lexer::members {
+    /**
+     * Reports characters that start no token the way the grammar did before `behaves` and `after` were keywords. A
+     * text such as `a "x"` lets the lexer read `a` as the start of `after` and fail at the quote, which it would then
+     * skip together with the `a`; without the keywords it skipped the `a` alone and read the string. So when the
+     * failed characters start with the first letter of one of the two keywords, which no other token starts with, the
+     * lexer goes back to that letter, reports it alone and skips only it.
+     */
+    @Override
+    public void notifyListeners(LexerNoViableAltException e) {
+        int start = _tokenStartCharIndex;
+        if (_input.index() > start) {
+            int first = _input.getText(org.antlr.v4.runtime.misc.Interval.of(start, start)).codePointAt(0);
+            if (first == 'a' || first == 'b') {
+                _input.seek(start);
+                setCharPositionInLine(_tokenStartCharPositionInLine);
+            }
+        }
+        super.notifyListeners(e);
+    }
+}
+
 // Parser Rules
 kmeta_file
     : type_definition* EOF
     ;
 
+// The behaviour clause is a rule of its own that may be empty, so that a missing brace after the description is
+// recovered from exactly as in a grammar without the clause.
 type_definition
-    : TYPE STRING STRING LBRACE rule_list? RBRACE
+    : TYPE STRING STRING behaviour_clause LBRACE rule_list? RBRACE
+    ;
+
+behaviour_clause
+    : (BEHAVES AFTER STRING)?
     ;
 
 rule_list
@@ -61,6 +89,8 @@ PROP     : 'prop' ;
 HAS      : 'has' ;
 KNOWS    : 'knows' ;
 LIST     : 'list' ;
+BEHAVES  : 'behaves' ;
+AFTER    : 'after' ;
 
 LBRACE   : '{' ;
 RBRACE   : '}' ;

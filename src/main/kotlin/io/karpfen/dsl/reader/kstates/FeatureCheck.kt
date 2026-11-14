@@ -26,8 +26,9 @@ import org.antlr.v4.runtime.ParserRuleContext
  * Reports every construct of a [KstatesFeature] that is not among [switchedOn], once, at the keyword that
  * introduces it: `SHALLOW` or `DEEP` of a history, `TICK` of a tick limit, `BREAKPOINT` of a breakpoint block,
  * `MACROS` of the macros block, which stands for the definitions in it, `MACRO` of every macro call, also the
- * one a `WITH` binds, and `SPLIT` or `JOIN` of such a transition. A construct whose keyword the text does not
- * contain, because the parser conjured it up, is not reported.
+ * one a `WITH` binds, `SPLIT` or `JOIN` of such a transition, `ATTACHABLE` of an attachable state machine, `ATTACH`
+ * of an `ATTACH` clause and `EXCHANGE` of such a rule. A construct whose keyword the text does not contain, because the
+ * parser conjured it up, is not reported.
  *
  * The check only reports; the state machine is built from the text as before.
  *
@@ -48,7 +49,10 @@ internal class FeatureCheck(private val session: ReadingSession, private val swi
         context.children.orEmpty().filterIsInstance<ParserRuleContext>().forEach(::visit)
     }
 
-    /** The feature of the construct [context] introduces and the type of its keyword, or null for any other context. */
+    /**
+     * The feature of the construct [context] introduces and the type of its keyword, or null for any other context; a
+     * context that holds no such keyword, such as an attached state machine or the operation `SET`, is not reported.
+     */
     private fun introducerOf(context: ParserRuleContext): Pair<KstatesFeature, Int>? = when (context) {
         is KstatesParser.Shallow_history_definitionContext -> KstatesFeature.HISTORY to KstatesParser.SHALLOW
         is KstatesParser.Deep_history_definitionContext -> KstatesFeature.HISTORY to KstatesParser.DEEP
@@ -59,6 +63,9 @@ internal class FeatureCheck(private val session: ReadingSession, private val swi
         is KstatesParser.Macro_callContext -> KstatesFeature.MACROS to KstatesParser.MACRO
         is KstatesParser.Split_transitionContext -> KstatesFeature.PARALLEL to KstatesParser.SPLIT
         is KstatesParser.Join_transitionContext -> KstatesFeature.PARALLEL to KstatesParser.JOIN
+        is KstatesParser.StatemachineContext -> KstatesFeature.ATTACHMENT to KstatesParser.ATTACHABLE
+        is KstatesParser.Attach_clauseContext -> KstatesFeature.ATTACHMENT to KstatesParser.ATTACH
+        is KstatesParser.Action_operationContext -> KstatesFeature.ATTACHMENT to KstatesParser.EXCHANGE
         else -> null
     }
 
@@ -70,8 +77,10 @@ internal class FeatureCheck(private val session: ReadingSession, private val swi
     }
 
     companion object {
-        /** The message of a construct of [feature] while the feature is off. */
-        fun messageOf(feature: KstatesFeature): String =
-            "${feature.displayName} are switched off, so this ${feature.constructName} is not allowed."
+        /** The message of a construct of [feature] while the feature is off, in KStates and in KMeta. */
+        fun messageOf(feature: KstatesFeature): String {
+            val verb = if (feature.isPlural) "are" else "is"
+            return "${feature.displayName} $verb switched off, so this ${feature.constructName} is not allowed."
+        }
     }
 }

@@ -16,6 +16,7 @@
 package io.karpfen.dsl.dsl.functional
 
 import io.karpfen.dsl.meta.AssociationType
+import io.karpfen.dsl.meta.BehavesAfter
 import io.karpfen.dsl.meta.ClassType
 import io.karpfen.dsl.meta.ClassTypeProperty
 import io.karpfen.dsl.meta.ClassTypeReference
@@ -45,15 +46,18 @@ class MetamodelBuilder {
     /**
      * Defines a class type, replacing an earlier one of the same name.
      *
+     * @param behavesAfter The name of the attachable state machine every object of the type gets, as KMeta writes it
+     * with `behaves after`, or null for none.
      * @return This builder, for chaining.
      */
     fun makeClass(
         name: String,
         comment: String,
         props: List<SimpleProperty> = emptyList(),
-        rels: List<ClassTypeProperty> = emptyList()
+        rels: List<ClassTypeProperty> = emptyList(),
+        behavesAfter: String? = null
     ): MetamodelBuilder {
-        val classType = ClassType(name, comment, props, rels)
+        val classType = ClassType(name, comment, props, rels, behavesAfter?.let { BehavesAfter(it) })
         classTypes[name] = classType
         return this
     }

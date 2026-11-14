@@ -27,6 +27,7 @@ import io.karpfen.dsl.states.actions.ActionBlock
 import io.karpfen.dsl.states.actions.ActionItem
 import io.karpfen.dsl.states.actions.ActionRightSide
 import io.karpfen.dsl.states.actions.ActionRule
+import io.karpfen.dsl.states.actions.AttachClause
 import io.karpfen.dsl.states.actions.EvalActionRightSide
 import io.karpfen.dsl.states.actions.InScopeBlock
 import io.karpfen.dsl.states.actions.MacroActionRightSide
@@ -36,7 +37,7 @@ import org.antlr.v4.runtime.ParserRuleContext
 
 /**
  * Converts KStates action blocks with their rules, `IF IN SCOPE` and `WITH` blocks, checks the arity of every
- * rule and records where each block, item and right side is written.
+ * rule and records where each block, item, right side and `ATTACH` clause is written.
  *
  * A rule that contains a syntax error is left out without further checks, since the syntax error is reported
  * already; a rule with the wrong arity is reported and left out.
@@ -89,8 +90,9 @@ internal class ActionConverter(
     }
 
     /**
-     * Converts an action rule and checks its arity; null for a rule that contains a syntax error, lacks its
-     * operation or its path, or has another number of operands than its operation expects, which is reported.
+     * Converts an action rule with its `ATTACH` clause and checks its arity; null for a rule that contains a syntax
+     * error, lacks its operation or its path, or has another number of operands than its operation expects, which is
+     * reported. The grammar allows the clause only after a rule with three operands.
      */
     private fun convertRule(rule: KstatesParser.Action_ruleContext): ActionRule? {
         if (rule.containsSyntaxError() || rule.action_operation() == null) {
@@ -115,14 +117,23 @@ internal class ActionConverter(
             operationType = operation,
             leftSide = leftSide,
             rightSide = rightSideContext?.let { convertRightSide(it) },
-            secondSide = if (writtenArity == Arity.TERNARY) operands[1] else null
+            secondSide = if (writtenArity == Arity.TERNARY) operands[1] else null,
+            attach = rule.attach_clause()?.let { convertAttachClause(it) }
         )
         session.record(actionRule, rule, operands = operandTokens)
         return actionRule
     }
 
     /**
-     * Converts the right side of a rule: a literal value, a macro call or an `EVAL` body.
+     * Converts `ATTACH value` and records it at the whole clause; null for a clause without its value.
+     */
+    private fun convertAttachClause(clause: KstatesParser.Attach_clauseContext): AttachClause? {
+        val value = clause.action_right_side()?.let { convertRightSide(it) } ?: return null
+        return AttachClause(value).also { session.record(it, clause) }
+    }
+
+    /**
+     * Converts the right side of a rule or of an `ATTACH` clause: a literal value, a macro call or an `EVAL` body.
      */
     private fun convertRightSide(rightSide: KstatesParser.Action_right_sideContext): ActionRightSide? {
         rightSide.presentToken(KstatesParser.STRING)?.let { token ->

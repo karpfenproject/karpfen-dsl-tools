@@ -27,8 +27,11 @@ import java.util.IdentityHashMap
  * current version, which differ only in their packages, yield the same text if their structure is the same.
  * An object met a second time is written as a reference to its first occurrence, which makes cycles, such as
  * a state and its outer state, and shared objects, such as resolved class types, part of the comparison.
+ *
+ * @param omitted Decides which fields are left out: given the object, the field and its value, true leaves the field
+ * out, so that a comparison can pass over fields one side lacks.
  */
-class StructureDump private constructor() {
+class StructureDump private constructor(private val omitted: (Any, Field, Any?) -> Boolean) {
 
     private val ids = IdentityHashMap<Any, Int>()
 
@@ -69,10 +72,14 @@ class StructureDump private constructor() {
         ids[value] = id
         text.append(value.javaClass.simpleName).append('#').append(id).append(" {")
         for (field in fieldsOf(value.javaClass)) {
+            field.isAccessible = true
+            val fieldValue = field.get(value)
+            if (omitted(value, field, fieldValue)) {
+                continue
+            }
             newLine(depth + 1)
             text.append(field.name).append(" = ")
-            field.isAccessible = true
-            write(field.get(value), depth + 1)
+            write(fieldValue, depth + 1)
         }
         newLine(depth)
         text.append('}')
@@ -86,9 +93,11 @@ class StructureDump private constructor() {
     companion object {
 
         /**
-         * Returns the structure of the graph reachable from [root].
+         * Returns the structure of the graph reachable from [root], without the fields [omitted] leaves out; by default
+         * every field is written.
          */
-        fun of(root: Any?): String = StructureDump().apply { write(root, 0) }.text.toString()
+        fun of(root: Any?, omitted: (Any, Field, Any?) -> Boolean = { _, _, _ -> false }): String =
+            StructureDump(omitted).apply { write(root, 0) }.text.toString()
 
         /**
          * Returns the instance fields of [type] and its superclasses, the fields of a superclass first and the

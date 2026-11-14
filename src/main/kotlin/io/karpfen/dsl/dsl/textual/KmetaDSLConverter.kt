@@ -16,6 +16,7 @@
 package io.karpfen.dsl.dsl.textual
 
 import io.karpfen.dsl.meta.AssociationType
+import io.karpfen.dsl.meta.BehavesAfter
 import io.karpfen.dsl.meta.ClassType
 import io.karpfen.dsl.meta.ClassTypeProperty
 import io.karpfen.dsl.meta.ClassTypeReference
@@ -102,7 +103,8 @@ object KmetaDSLConverter {
         val simpleProperties = definition.props.map { toSimpleProperty(it) }
         val embedded = definition.has.map { toClassTypeProperty(it, AssociationType.EMBEDDED) }
         val linked = definition.knows.map { toClassTypeProperty(it, AssociationType.LINK) }
-        return ClassType(definition.name, definition.description, simpleProperties, embedded + linked)
+        val behavesAfter = definition.behavesAfter?.let { BehavesAfter(it) }
+        return ClassType(definition.name, definition.description, simpleProperties, embedded + linked, behavesAfter)
     }
 
     /**

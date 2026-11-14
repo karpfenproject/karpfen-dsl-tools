@@ -30,7 +30,9 @@ import io.karpfen.dsl.states.StateMachine
  * @property events The event metamodel, read with the types of [metamodel] as base types, or null if the project
  * declares no events.
  * @property model The model, read against [metamodel], or null if the project has none.
- * @property stateMachines The state machines, each with the object it is attached to.
+ * @property stateMachines Every state machine of the project: the attached ones, each with the object it is attached
+ * to where known, and the attachable ones, which the `behaves after` of the types and the `ATTACH` and `EXCHANGE` of the
+ * state machines name. The verifier tells the two forms apart by [io.karpfen.dsl.states.StateMachine.isAttachable].
  */
 class ProjectInput(
     val metamodel: ParseResult<Metamodel>,
@@ -44,6 +46,7 @@ class ProjectInput(
  *
  * @property read The state machine as [io.karpfen.dsl.reader.kstates.KstatesReader] read it.
  * @property attachedObjectId The id of the object of the model the state machine is attached to, or null if it is not
- * attached to an object yet; without it, the checks against the values of the model are left out.
+ * attached to an object yet, which is the usual case for an attachable state machine; without it, the checks against
+ * the values of the model are left out.
  */
 class StateMachineInput(val read: ParseResult<StateMachine>, val attachedObjectId: String? = null)

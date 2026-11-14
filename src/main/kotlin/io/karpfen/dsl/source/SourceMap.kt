@@ -27,17 +27,20 @@ import java.util.IdentityHashMap
  * The readers of `io.karpfen.dsl.reader` record these elements; the name is the quoted string named here:
  * - KMeta: a [io.karpfen.dsl.meta.ClassType] (named by its type name), a
  *   [io.karpfen.dsl.meta.SimpleProperty] and a [io.karpfen.dsl.meta.ClassTypeProperty] (named by their key),
- *   and the [io.karpfen.dsl.meta.ClassTypeReference] of a relation (the `"T"` or `list("T")` part, named by
- *   the type name).
+ *   the [io.karpfen.dsl.meta.ClassTypeReference] of a relation (the `"T"` or `list("T")` part, named by
+ *   the type name), and the [io.karpfen.dsl.meta.BehavesAfter] of a type (the whole clause from `behaves` on, named by
+ *   the state machine).
  * - KModel: a [io.karpfen.dsl.instance.DataObject] (named by its key), every `prop`, `has` and `knows`
  *   assignment as a [io.karpfen.dsl.instance.SimplePropertyObject] or
  *   [io.karpfen.dsl.instance.ClassTypePropertyObject] (named by its key; one location per statement when
  *   several statements form a list), and the [io.karpfen.dsl.instance.ObjectReference] of each `has` and
  *   `knows` statement (named by the id of the object it refers to).
- * - KStates: the [io.karpfen.dsl.states.StateMachine] (named by its class), every
+ * - KStates: the [io.karpfen.dsl.states.StateMachine] (an attached one named by its type, an attachable one named by
+ *   its name, with its types as its operands), every
  *   [io.karpfen.dsl.states.State], the `ENTRY` and `DO` blocks and the bodies of `IF IN SCOPE` and `WITH`
  *   blocks as [io.karpfen.dsl.states.actions.ActionBlock]s, every action item and the right side of every
- *   rule, every transition of the three kinds, every condition clause and the
+ *   rule, the [io.karpfen.dsl.states.actions.AttachClause] of a rule (the whole clause from `ATTACH` on, without a name;
+ *   its value is recorded like a right side), every transition of the three kinds, every condition clause and the
  *   [io.karpfen.dsl.states.conditions.CompositeCondition] of a block with several clauses, and every
  *   [io.karpfen.dsl.states.Macro] with its takes and returns directives, its
  *   [io.karpfen.dsl.states.macros.Definition] and its [io.karpfen.dsl.states.macros.CodeBlock].

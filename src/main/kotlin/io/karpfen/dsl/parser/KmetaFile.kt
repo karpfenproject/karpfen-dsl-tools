@@ -27,10 +27,12 @@ data class KmetaFile(val types: List<TypeDefinition>)
  *
  * @property name The type name.
  * @property description The type description.
+ * @property behavesAfter The name of the attachable state machine after `behaves after`, or null without the clause.
  */
 data class TypeDefinition(
     val name: String,
-    val description: String
+    val description: String,
+    val behavesAfter: String? = null
 ) {
 
     /** The `prop` rules, in definition order. */

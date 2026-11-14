@@ -26,6 +26,7 @@ import io.karpfen.dsl.reader.LexerInput
 import io.karpfen.dsl.reader.ParseResult
 import io.karpfen.dsl.reader.ReadingSession
 import io.karpfen.dsl.reader.TextReader
+import io.karpfen.dsl.states.KstatesFeature
 import org.antlr.v4.runtime.CommonTokenStream
 import org.slf4j.LoggerFactory
 
@@ -37,8 +38,10 @@ import org.slf4j.LoggerFactory
  * followed by the base types, with the last type of the text as root. Like the converter, the reader reads the text
  * with its common indentation trimmed, see [LexerInput.withIndentTrimmed]. The reader reports syntax errors, a
  * `prop` of a type other than `string`, `number` and `boolean` at that type, a relation to an unknown class
- * type at the type name, a type defined twice and a key defined twice in one type at the later name, and a text
- * without any type, which yields no model. A text with a syntax error gets no
+ * type at the type name, a type defined twice and a key defined twice in one type at the later name, a
+ * `behaves after` while [KstatesFeature.ATTACHMENT] is switched off, see [BehaviourFeatureCheck], and a text without
+ * any type, which yields no model. Whether the state machine a `behaves after` names exists, and fits the type, only
+ * the verification of a project can tell, see [io.karpfen.dsl.verification.ProjectVerifier]. A text with a syntax error gets no
  * report of unknown class types and none of a missing type, since the parser may have lost the definition of a type
  * while it recovered; it yields no model either if no type is left.
  *
@@ -49,8 +52,14 @@ import org.slf4j.LoggerFactory
  * @param baseTypes Class types defined elsewhere that the types of the text may refer to without defining
  * them, such as the domain types the payload of an event embeds; they become part of the metamodel, but not
  * of its source map.
+ * @param switchedOn The optional features the text may use; only [KstatesFeature.ATTACHMENT] has a construct in
+ * KMeta. A tool passes the set it passes to the [io.karpfen.dsl.reader.kstates.KstatesReader]. Every feature is on by
+ * default, so the reader then reports what the converter rejects and nothing more.
  */
-class KmetaReader(baseTypes: List<ClassType> = emptyList()) : TextReader<Metamodel> {
+class KmetaReader(
+    baseTypes: List<ClassType> = emptyList(),
+    private val switchedOn: Set<KstatesFeature> = KstatesFeature.ALL
+) : TextReader<Metamodel> {
 
     /** The class types defined elsewhere, which every read adds to its metamodel. */
     private val baseTypes = baseTypes.toList()
@@ -61,7 +70,9 @@ class KmetaReader(baseTypes: List<ClassType> = emptyList()) : TextReader<Metamod
     /** Reads [text] into a metamodel, as described for the class. */
     override fun read(text: String): ParseResult<Metamodel> =
         ReadingSession.read(LexerInput.withIndentTrimmed(text), StringLiteralSyntax.KMETA, logger) { session ->
-            val classTypes = ClassTypeConverter(session).convert(parse(session).type_definition())
+            val definitions = parse(session).type_definition()
+            val classTypes = ClassTypeConverter(session).convert(definitions)
+            BehaviourFeatureCheck(session, switchedOn).check(definitions)
             DuplicateDefinitionCheck(session).check(classTypes)
             val resolver = TargetTypeResolver(session, reportsUnknownTypes = !session.hasSyntaxErrors())
             resolver.resolve(classTypes, classTypes + baseTypes)

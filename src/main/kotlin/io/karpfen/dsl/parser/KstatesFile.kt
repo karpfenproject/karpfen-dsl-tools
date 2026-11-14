@@ -21,16 +21,23 @@ import io.karpfen.dsl.states.actions.ActionOperationType
 /**
  * The syntax-level content of a KStates file, before it is converted into a state machine.
  *
- * @property attachedToClass The class type the state machine is attached to.
+ * @property attachedToClass The class type an attached state machine is attached to; the empty string for an
+ * attachable one.
  * @property states The top-level states, in definition order.
  * @property transitions The transitions of all kinds, in definition order.
  * @property macros The macro definitions, in definition order.
+ * @property name The name of an attachable state machine, the empty string if the text lacks it; null for an attached
+ * one.
+ * @property attachableTo The types after `ATTACHABLE TO`, in the order they are written; empty for an attached state
+ * machine.
  */
 data class KstatesFile(
     val attachedToClass: String,
     val states: List<ParsedState>,
     val transitions: List<ParsedTransitionLike>,
-    val macros: List<ParsedMacro>
+    val macros: List<ParsedMacro>,
+    val name: String? = null,
+    val attachableTo: List<String> = emptyList()
 )
 
 /**
@@ -111,19 +118,21 @@ data class ParsedWithBlock(
 /**
  * A single action rule. The meaning of the operands depends on the operation's arity:
  * - unary (DROPLIST, DROPOBJ): [leftSide] is the target path; [secondSide] and [rightSide] are null.
- * - binary (SET, APPEND, SETLIST, EVENT): [leftSide] is the target path; [rightSide] is the value.
+ * - binary (SET, APPEND, SETLIST, EVENT, EXCHANGE): [leftSide] is the target path; [rightSide] is the value.
  * - ternary (SETOBJ, APPENDOBJ): [leftSide] is the source path, [secondSide] the relation, [rightSide] the target.
  *
  * @property operationType The operation.
  * @property leftSide The first operand.
  * @property secondSide The relation of a ternary operation, null otherwise.
  * @property rightSide The value or target, null for a unary operation.
+ * @property attach The value of the `ATTACH` clause after a ternary rule, null for a rule without one.
  */
 data class ParsedActionRule(
     val operationType: ParsedActionOperationType,
     val leftSide: String,
     val secondSide: String? = null,
-    val rightSide: ParsedActionRightSide? = null
+    val rightSide: ParsedActionRightSide? = null,
+    val attach: ParsedActionRightSide? = null
 )
 
 /**
@@ -154,7 +163,10 @@ enum class ParsedActionOperationType(val operation: ActionOperationType) {
     DROPOBJ(ActionOperationType.DROPOBJ),
 
     /** `EVENT`, sends an event. */
-    EVENT(ActionOperationType.EVENT)
+    EVENT(ActionOperationType.EVENT),
+
+    /** `EXCHANGE`, replaces the state machine of an object. */
+    EXCHANGE(ActionOperationType.EXCHANGE)
 }
 
 /**
@@ -167,7 +179,7 @@ enum class Arity(val usage: String, val operandCount: Int) {
     /** One operand, the target path. */
     UNARY("OP(\"path\")", 1),
 
-    /** A target path and a value. */
+    /** A target path and a value, or a path and the name of a state machine. */
     BINARY("OP(\"path\", value)", 2),
 
     /** A source path, a relation and a target. */

@@ -69,7 +69,8 @@ class KmetaPrinter : DocumentPrinter<Metamodel> {
     }
 
     /**
-     * Returns the type definition `type "Name" "Description" { ... }` of [type] with its rules, as a fragment
+     * Returns the type definition `type "Name" "Description" { ... }` of [type] with its rules, and with
+     * `behaves after "name"` before the brace if the type has the clause, as a fragment
      * whose first line stands at [indentLevel].
      *
      * @param sharedIndentation The number of whitespace chars that every line of the document the fragment stands in
@@ -104,10 +105,12 @@ class KmetaPrinter : DocumentPrinter<Metamodel> {
         CodeWriter.fragment(0, sharedIndentation) { it.line(relationRule(property)) }
 
     /**
-     * Writes the definition of [type] with its `prop` rules first and then its `has` and `knows` rules.
+     * Writes the definition of [type] with its `behaves after` clause in the header, its `prop` rules first and then
+     * its `has` and `knows` rules.
      */
     private fun writeType(type: ClassType, writer: CodeWriter) {
-        writer.block("type ${literals.quote(type.name)} ${literals.quote(type.comment)}") {
+        val behaviour = type.behavesAfter?.let { " behaves after ${literals.quote(it.stateMachineName)}" } ?: ""
+        writer.block("type ${literals.quote(type.name)} ${literals.quote(type.comment)}$behaviour") {
             type.simpleProperties.forEach { writer.line(propRule(it)) }
             type.objectProperties.forEach { writer.line(relationRule(it)) }
         }

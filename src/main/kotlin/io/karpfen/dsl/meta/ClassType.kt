@@ -22,12 +22,15 @@ package io.karpfen.dsl.meta
  * @property comment Documentation or description for this class type.
  * @property simpleProperties The simple (primitive) property definitions.
  * @property objectProperties The object property definitions, that is the embedded and linked relations.
+ * @property behavesAfter The `behaves after` clause, which names the attachable state machine every object of this
+ * type gets; null for a type without one.
  */
 data class ClassType(
     val name: String,
     val comment: String,
     val simpleProperties: List<SimpleProperty>,
-    val objectProperties: List<ClassTypeProperty>
+    val objectProperties: List<ClassTypeProperty>,
+    val behavesAfter: BehavesAfter? = null
 ) {
 
     /**

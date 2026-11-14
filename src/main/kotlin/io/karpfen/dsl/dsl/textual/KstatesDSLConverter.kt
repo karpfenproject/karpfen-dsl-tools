@@ -46,7 +46,7 @@ object KstatesDSLConverter {
         val initialStates = InitialStates.of(stateObjects).size
         require(initialStates == 1) { InitialStates.countMessage(initialStates) }
 
-        return StateMachine(parsed.attachedToClass, stateObjects, transitions, macros)
+        return StateMachine(parsed.attachedToClass, stateObjects, transitions, macros, parsed.name, parsed.attachableTo)
     }
 
     /**
@@ -119,13 +119,14 @@ object KstatesDSLConverter {
         }
     }
 
-    /** Converts an action rule with its operands. */
+    /** Converts an action rule with its operands and its `ATTACH` clause. */
     private fun convertActionRule(action: ParsedActionRule): ActionRule {
         return ActionRule(
             operationType = action.operationType.operation,
             leftSide = action.leftSide,
             secondSide = action.secondSide,
-            rightSide = action.rightSide?.let { convertActionRightSide(it) }
+            rightSide = action.rightSide?.let { convertActionRightSide(it) },
+            attach = action.attach?.let { AttachClause(convertActionRightSide(it)) }
         )
     }
 

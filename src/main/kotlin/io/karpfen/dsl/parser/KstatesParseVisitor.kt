@@ -37,12 +37,29 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
      */
     override fun visitKstates_file(ctx: KstatesParser.Kstates_fileContext): KstatesFile {
         val machineCtx = ctx.statemachine()
+        if (machineCtx.ATTACHABLE() != null) {
+            return parseAttachable(machineCtx)
+        }
         val attachedToClass = unquote(machineCtx.STRING().text)
         val states = machineCtx.states_block().state_definition().map { parseState(it) }
         val transitions = machineCtx.transitions_block().transition_definition().map { parseTransition(it) }
         val macros = machineCtx.macros_block()?.macro_definition()?.map { parseMacro(it) } ?: emptyList()
 
         return KstatesFile(attachedToClass, states, transitions, macros)
+    }
+
+    /**
+     * Reads an attachable state machine, `STATEMACHINE "name" ATTACHABLE TO "A", "B" { ... }`, with its name, which is
+     * empty if the text lacks it, its types and its states, transitions and macros.
+     */
+    private fun parseAttachable(machineCtx: KstatesParser.StatemachineContext): KstatesFile {
+        val name = machineCtx.statemachine_name()?.STRING()?.let { unquote(it.text) } ?: ""
+        val typeTokens = listOfNotNull(machineCtx.STRING()) + machineCtx.further_types()?.STRING().orEmpty()
+        val states = machineCtx.states_block().state_definition().map { parseState(it) }
+        val transitions = machineCtx.transitions_block().transition_definition().map { parseTransition(it) }
+        val macros = machineCtx.macros_block()?.macro_definition()?.map { parseMacro(it) } ?: emptyList()
+
+        return KstatesFile("", states, transitions, macros, name, typeTokens.map { unquote(it.text) })
     }
 
     /**
@@ -119,8 +136,8 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
     }
 
     /**
-     * Reads an action rule and checks that the arity actually written, `OP("a")`, `OP("a", rhs)` or
-     * `OP("a", "b", rhs)`, is the one its operation expects, see [ActionRuleSyntax].
+     * Reads an action rule with its `ATTACH` clause, if any, and checks that the arity actually written, `OP("a")`,
+     * `OP("a", rhs)` or `OP("a", "b", rhs)`, is the one its operation expects, see [ActionRuleSyntax].
      */
     private fun parseActionRule(ctx: KstatesParser.Action_ruleContext): ParsedActionRule {
         val operation = ActionRuleSyntax.operationOf(ctx)
@@ -136,9 +153,13 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         return when (actualArity) {
             Arity.UNARY -> ParsedActionRule(operation, strings[0], null, null)
             Arity.BINARY -> ParsedActionRule(operation, strings[0], null, rightSide)
-            Arity.TERNARY -> ParsedActionRule(operation, strings[0], strings[1], rightSide)
+            Arity.TERNARY -> ParsedActionRule(operation, strings[0], strings[1], rightSide, attachOf(ctx))
         }
     }
+
+    /** Reads the value of the `ATTACH` clause of [ctx], or returns null for a rule without one. */
+    private fun attachOf(ctx: KstatesParser.Action_ruleContext): ParsedActionRightSide? =
+        ctx.attach_clause()?.action_right_side()?.let { parseActionRightSide(it) }
 
     /** Reads the right side of a rule: a literal value, a macro call or the code of an `EVAL` block. */
     private fun parseActionRightSide(ctx: KstatesParser.Action_right_sideContext): ParsedActionRightSide {
