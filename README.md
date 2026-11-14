@@ -16,7 +16,7 @@ The reference of the languages and of the library is chapter 2 of the karpfen re
 | [2 Modeling languages](docs/reference/2-modeling-languages.md) | The three languages, their files and lexical rules, and the lamp example. |
 | [2.1 KMeta](docs/reference/2.1-kmeta.md) | Types, properties, relations and event definitions. |
 | [2.2 KModel](docs/reference/2.2-kmodel.md) | Objects, keys, values, embedded objects and references. |
-| [2.3 KStates](docs/reference/2.3-kstates.md) | States, actions, transitions, events, macros and the optional features. |
+| [2.3 KStates](docs/reference/2.3-kstates.md) | States, actions, transitions, events, macros, the optional features and the management of state machines. |
 | [2.4 Checks](docs/reference/2.4-checks.md) | Every problem the readers and the verifier report, with its code. |
 | [2.5 Using the library](docs/reference/2.5-library.md) | Reading, checking, printing and building models from Kotlin code. |
 

@@ -9,14 +9,17 @@ changes the model.
 |---|---|---|
 | `.kmeta` | [2.1 KMeta](2.1-kmeta.md) | A metamodel: the types of a domain with their properties and relations. |
 | `.kmodel` | [2.2 KModel](2.2-kmodel.md) | A model: one root object with the objects it holds, all of types of one metamodel. |
-| `.kstates` | [2.3 KStates](2.3-kstates.md) | One state machine, attached to a type of the metamodel. |
+| `.kstates` | [2.3 KStates](2.3-kstates.md) | One state machine, attached to a type of the metamodel or attachable to several. |
 
 A project has one domain metamodel, one model and any number of state machines. A model is read against its
 metamodel: every object is of a type the metamodel defines, and every value fits a property of that type. A state
 machine names its type after `ATTACHED TO`. Which object of the model it runs on is decided when the project runs, by
 the object's key, see
 [3.3 Running the runtime](https://github.com/karpfenproject/karpfen-runtime/blob/main/docs/reference/3.3-running-the-runtime.md)
-and [4.5 Running](https://github.com/karpfenproject/karpfen-IDE/blob/main/docs/reference/4.5-running.md).
+and [4.5 Running](https://github.com/karpfenproject/karpfen-IDE/blob/main/docs/reference/4.5-running.md). An attachable
+state machine has a name instead, and objects get instances of it through their types and through the actions of other
+state machines, see
+[2.3.11 State machine management and lifecycle](2.3-kstates.md#2311-state-machine-management-and-lifecycle).
 
 A project may have a second `.kmeta` file, the event metamodel. Each of its types is one event, and the properties of
 the type are the payload the event carries, see [2.1.7 Event definitions](2.1-kmeta.md#217-event-definitions). A state
