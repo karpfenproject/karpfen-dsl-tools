@@ -19,7 +19,6 @@ import io.karpfen.dsl.diagnostics.DiagnosticCode
 import io.karpfen.dsl.dsl.textual.KmetaDSLConverter
 import io.karpfen.dsl.fixtures.StructureDump
 import io.karpfen.dsl.meta.BehavesAfter
-import io.karpfen.dsl.states.KstatesFeature
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -65,16 +64,13 @@ class KmetaBehaviourTest {
         assertEquals("Bulb", result.sourceMap.nameRangeOf(bulb)!!.textIn(text))
     }
 
-    /** While dynamic attachment is off the clause is reported at `behaves`, and the type keeps it. */
+    /** The clause is part of the core language and reads without any finding. */
     @Test
-    fun `the clause is reported while the feature is off`() {
-        val result = KmetaReader(switchedOn = KstatesFeature.ALL - KstatesFeature.ATTACHMENT).read(text)
+    fun `the clause reads without findings`() {
+        val result = KmetaReader().read(text)
 
-        assertEquals(listOf(DiagnosticCode.KMETA_FEATURE_OFF), result.diagnostics.map { it.code })
-        assertEquals("behaves", result.diagnostics.single().range.textIn(text))
-        assertEquals("Dynamic attachment is switched off, so this attachment is not allowed.", result.diagnostics.single().message)
+        assertEquals(emptyList(), result.diagnostics)
         assertEquals(BehavesAfter("blinking"), result.model!!.types.first().behavesAfter)
-        assertEquals(emptyList(), KmetaReader(switchedOn = emptySet()).read(text.replace(" behaves after \"blinking\"", "")).diagnostics)
     }
 
     /** The keywords are written in lower case like every KMeta keyword, and the clause needs its name. */

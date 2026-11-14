@@ -96,7 +96,7 @@ class KstatesFeatureTest {
     /** Each feature has its own identifier and is found by it. */
     @Test
     fun `features are found by their identifiers`() {
-        assertEquals(listOf("history", "tickLimit", "breakpoints", "macros", "parallel", "attachment"), KstatesFeature.entries.map { it.id })
+        assertEquals(listOf("history", "tickLimit", "breakpoints", "macros", "parallel"), KstatesFeature.entries.map { it.id })
         KstatesFeature.entries.forEach { assertEquals(it, KstatesFeature.byId(it.id)) }
         assertNull(KstatesFeature.byId("teleport"))
     }

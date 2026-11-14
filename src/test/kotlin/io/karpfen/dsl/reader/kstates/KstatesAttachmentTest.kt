@@ -20,7 +20,6 @@ import io.karpfen.dsl.dsl.textual.KstatesDSLConverter
 import io.karpfen.dsl.fixtures.StructureDump
 import io.karpfen.dsl.grammar.kstates.KstatesLexer
 import io.karpfen.dsl.reader.ParseResult
-import io.karpfen.dsl.states.KstatesFeature
 import io.karpfen.dsl.states.StateMachine
 import io.karpfen.dsl.states.actions.ActionOperationType
 import io.karpfen.dsl.states.actions.ActionRule
@@ -229,21 +228,18 @@ class KstatesAttachmentTest {
         }
     }
 
-    /** With dynamic attachment off, each of its constructs is reported at its keyword, and the model stays whole. */
+    /** Dynamic attachment is part of the core language, so its constructs are allowed with every optional feature off. */
     @Test
-    fun `each construct is reported while the feature is off`() {
+    fun `the constructs are allowed with every optional feature off`() {
         val text = machine(
             "\"keeper\" ATTACHABLE TO \"Room\"",
             "APPENDOBJ(\"self\", \"spares\", EVAL { return {} }) ATTACH \"blinking\" EXCHANGE(\"lamp->bulb\", \"steady\") SET(\"x\", \"1\")"
         )
-        val result = KstatesReader(KstatesFeature.ALL - KstatesFeature.ATTACHMENT).read(text)
+        val result = KstatesReader(emptySet()).read(text)
 
-        assertTrue(result.diagnostics.all { it.code == DiagnosticCode.FEATURE_OFF }, result.diagnostics.joinToString("\n"))
-        assertEquals(listOf("ATTACHABLE", "ATTACH", "EXCHANGE"), result.diagnostics.map { it.range.textIn(text) })
-        assertEquals("Dynamic attachment is switched off, so this attachment is not allowed.", result.diagnostics.first().message)
+        assertEquals(emptyList(), result.diagnostics)
         assertEquals("keeper", result.model!!.name)
         assertEquals(3, rulesOf(result.model).size)
-        assertEquals(emptyList(), KstatesReader(KstatesFeature.ALL - KstatesFeature.ATTACHMENT).read(machine("ATTACHED TO \"Lamp\"")).diagnostics)
     }
 
     /** The code and the macro call of an `ATTACH` clause are checked like those of a rule. */

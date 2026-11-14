@@ -170,12 +170,6 @@ enum class DiagnosticCode(val id: String, val severity: Severity) {
     /** A KStates state machine names the same type twice after `ATTACHABLE TO`. */
     REPEATED_ATTACHABLE_TYPE("kstates.repeated-attachable-type", Severity.ERROR),
 
-    /**
-     * A KMeta text uses a construct of a [io.karpfen.dsl.states.KstatesFeature] that the reader was told is switched
-     * off: `behaves after` while dynamic attachment is off.
-     */
-    KMETA_FEATURE_OFF("kmeta.feature-off", Severity.ERROR),
-
     /** A state machine is `ATTACHED TO`, or `ATTACHABLE TO`, a class type that the metamodel of the project does not define. */
     UNKNOWN_ATTACHED_TYPE("project.unknown-attached-type", Severity.ERROR),
 
