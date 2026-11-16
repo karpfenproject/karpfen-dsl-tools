@@ -23,23 +23,17 @@ import io.karpfen.dsl.fixtures.ExampleCatalog
 import io.karpfen.dsl.fixtures.MetamodelExample
 import io.karpfen.dsl.fixtures.ModelExample
 import io.karpfen.dsl.meta.Metamodel
-import io.karpfen.dsl.parser.KStatesFileParser
-import io.karpfen.dsl.parser.KmetaFileParser
-import io.karpfen.dsl.parser.KmodelFileParser
 import java.io.File
 import dsl.textual.JsonToModelConverter as LegacyJsonConverter
 import dsl.textual.KmetaDSLConverter as LegacyKmetaConverter
 import dsl.textual.KmodelDSLConverter as LegacyKmodelConverter
 import dsl.textual.KstatesDSLConverter as LegacyKstatesConverter
 import meta.Metamodel as LegacyMetamodel
-import parser.KStatesFileParser as LegacyKstatesFileParser
-import parser.KmetaFileParser as LegacyKmetaFileParser
-import parser.KmodelFileParser as LegacyKmodelFileParser
 
 /**
  * The entry points of both versions the compatibility tests compare, each paired with the examples of [catalog] it
  * reads: the throwing converters of the three languages for texts and for files, the conversion of a single KModel
- * object, the syntax-level file parsers and the conversion of JSON documents.
+ * object and the conversion of JSON documents.
  *
  * @param catalog The examples.
  * @param documents Where the conversions of files find the texts they read.
@@ -136,36 +130,6 @@ class ComparedExamples(
             { KmodelDSLConverter.parseSingleObject(it, example.metamodel) }
         )
     }
-
-    /**
-     * Returns the examples of all three languages with the syntax-level file parsers.
-     */
-    fun syntaxLevelParses(): List<ComparedExample> =
-        catalog.metamodels().map { example ->
-            ComparedExample(
-                "${example.file} parsed",
-                example.file,
-                example.text,
-                { LegacyKmetaFileParser().parseString(it) },
-                { KmetaFileParser().parseString(it) }
-            )
-        } + catalog.models().map { example ->
-            ComparedExample(
-                "${example.file} parsed",
-                example.file,
-                example.text,
-                { LegacyKmodelFileParser().parseString(it) },
-                { KmodelFileParser().parseString(it) }
-            )
-        } + catalog.stateMachines().map { example ->
-            ComparedExample(
-                "${example.file} parsed",
-                example.file,
-                example.text,
-                { LegacyKstatesFileParser().parseString(it) },
-                { KStatesFileParser().parseString(it) }
-            )
-        }
 
     /**
      * Returns the root object of every KModel example as a JSON document, see [JsonDocuments], with the conversions

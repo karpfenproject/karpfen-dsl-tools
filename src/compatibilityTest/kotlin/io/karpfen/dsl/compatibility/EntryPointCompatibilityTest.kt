@@ -21,8 +21,7 @@ import kotlin.test.Test
 
 /**
  * Compares the entry points of the library besides the conversion of texts with those of version 1.0, see
- * [Comparison]: the conversion of files, of a single KModel object and of JSON documents and arrays, and the
- * syntax-level file parsers, which report syntax errors to another listener than version 1.0 but must read the same.
+ * [Comparison]: the conversion of files, of a single KModel object and of JSON documents and arrays.
  */
 class EntryPointCompatibilityTest {
 
@@ -39,24 +38,14 @@ class EntryPointCompatibilityTest {
     }
 
     /**
-     * The KModel examples and mutations of them convert into a single object as in version 1.0.
+     * The KModel examples and mutations of them convert into a single object as in version 1.0, or the current
+     * version rejects them with their errors.
      */
     @Test
     fun `single objects convert or fail as in version 1_0`() {
         val singleObjects = examples.singleObjects()
         comparison.inEveryLayout(singleObjects, NewOutcomes.of("kmodel"))
         comparison.onMutations(singleObjects, Mutator(Vocabularies.KMODEL), MUTATIONS_PER_FILE)
-    }
-
-    /**
-     * The examples of the three languages and mutations of them parse on the syntax level as in version 1.0.
-     */
-    @Test
-    fun `the file parsers read as in version 1_0`() {
-        val parses = examples.syntaxLevelParses()
-        val vocabulary = Vocabularies.KMETA + Vocabularies.KMODEL + Vocabularies.KSTATES
-        comparison.inEveryLayout(parses)
-        comparison.onMutations(parses, Mutator(vocabulary), MUTATIONS_PER_FILE)
     }
 
     /**

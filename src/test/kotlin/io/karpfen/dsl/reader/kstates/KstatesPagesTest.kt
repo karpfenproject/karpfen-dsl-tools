@@ -21,10 +21,7 @@ import io.karpfen.dsl.dsl.textual.KstatesDSLConverter
 import io.karpfen.dsl.fixtures.StructureDump
 import io.karpfen.dsl.grammar.kstates.KstatesLexer
 import io.karpfen.dsl.grammar.kstates.KstatesParser
-import io.karpfen.dsl.parser.KStatesFileParser
 import io.karpfen.dsl.parser.KstatesEntryRule
-import io.karpfen.dsl.parser.ParsedDoneCondition
-import io.karpfen.dsl.parser.ParsedTransition
 import io.karpfen.dsl.reader.ParseResult
 import io.karpfen.dsl.states.History
 import io.karpfen.dsl.states.StateMachine
@@ -113,7 +110,7 @@ class KstatesPagesTest {
         """
     )
 
-    /** A fragment reads with its name, no type, and its final states, in both parse paths. */
+    /** A fragment reads with its name, no type, and its final states. */
     @Test
     fun `a fragment reads with its name and its final states`() {
         val result = read(bulbTest)
@@ -127,15 +124,11 @@ class KstatesPagesTest {
         assertEquals(listOf(false, false, true, true), machine.states.map { it.isFinal })
         assertTrue(machine.states[3].entryBreakpoint)
         assertEquals("bulb test", result.sourceMap.nameRangeOf(machine)!!.textIn(bulbTest))
-        val file = KStatesFileParser().parseString(bulbTest)
-        assertTrue(file.isFragment)
-        assertEquals("bulb test", file.name)
-        assertEquals(listOf(false, false, true, true), file.states.map { it.isFinal })
     }
 
     /** A container state reads with its fragment, history, breakpoint and tick limit, and `DONE` as a clause. */
     @Test
-    fun `a container state and DONE read in both parse paths`() {
+    fun `a container state and DONE read`() {
         val result = read(lampWithTest)
         val machine = result.model!!
         val container = machine.states[1]
@@ -154,9 +147,6 @@ class KstatesPagesTest {
         val composite = assertIs<CompositeCondition>(transitions[2].condition)
         assertEquals(listOf(EventCondition::class, DoneCondition::class), composite.clauses.map { it::class })
         assertEquals("DONE", result.sourceMap.rangeOf(transitions[1].condition)!!.textIn(lampWithTest))
-        val file = KStatesFileParser().parseString(lampWithTest)
-        assertEquals("bulb test", file.states[1].fragment)
-        assertEquals(listOf(ParsedDoneCondition), (file.transitions[1] as ParsedTransition).condition)
     }
 
     /** The entry rule is chosen by the tokens before the first brace, and the lexer knows the five keywords. */

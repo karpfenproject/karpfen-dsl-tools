@@ -16,13 +16,12 @@
 package io.karpfen.dsl.dsl.textual
 
 import io.karpfen.dsl.meta.SimplePropertyType
-import io.karpfen.dsl.parser.KmetaFileParser
 import org.junit.jupiter.api.Assertions.assertTrue
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * Parses KMeta text and files with [KmetaFileParser] and [KmetaDSLConverter].
+ * Reads KMeta text and files with [KmetaDSLConverter].
  */
 class KmetaStringParserTest {
 
@@ -49,17 +48,6 @@ class KmetaStringParserTest {
                 has("persons", list("Person"))
             }
         """
-
-    /**
-     * The syntax-level parser reads all four type definitions.
-     */
-    @Test
-    fun testParseStringDefaultANTLRParserRuntime() {
-        val parser = KmetaFileParser()
-        val kmetaFile = parser.parseString(content.trimIndent())
-        assertEquals(kmetaFile.types.size, 4)
-        assertTrue(kmetaFile.types.map { it.name }.containsAll(listOf("Location", "Person", "World", "Robot")))
-    }
 
     /**
      * The converter turns the type definitions into class types with typed properties.

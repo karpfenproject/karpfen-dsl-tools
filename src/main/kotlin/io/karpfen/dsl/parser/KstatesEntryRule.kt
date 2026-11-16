@@ -30,8 +30,8 @@ import org.antlr.v4.runtime.TokenStream
  * left out, are `STATEMACHINE`, an optional string and `FRAGMENT`. Every other text, also an empty or broken one, is
  * read with `kstates_file`.
  *
- * Every tool that parses KStates text with the generated [KstatesParser] chooses the rule this way; the readers and the
- * throwing converter of the library do.
+ * Every tool that parses KStates text with the generated [KstatesParser] chooses the rule this way; the reader of the
+ * library does.
  */
 object KstatesEntryRule {
 

@@ -24,7 +24,7 @@ import org.antlr.v4.runtime.Lexer
 
 /**
  * How one karpfen language reads the value of a string literal and writes a value as a literal: the one home of
- * this rule, which the parse visitor, the reader and the printer of the language share.
+ * this rule, which the reader and the printer of the language share.
  *
  * The languages keep escape sequences such as `\"` as written instead of decoding them. Reading a literal only
  * strips quote characters at its edges, by a rule of each language, so the value is a part of the literal, which

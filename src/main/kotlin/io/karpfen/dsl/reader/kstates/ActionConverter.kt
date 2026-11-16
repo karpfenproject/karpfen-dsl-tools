@@ -98,7 +98,7 @@ internal class ActionConverter(
         if (rule.containsSyntaxError() || rule.action_operation() == null) {
             return null
         }
-        val operation = ActionRuleSyntax.operationOf(rule).operation
+        val operation = ActionRuleSyntax.operationOf(rule)
         val operandTokens = rule.presentTokens(KstatesParser.STRING)
         val operands = operandTokens.map { unquoted(it) }
         val rightSideContext = rule.action_right_side()

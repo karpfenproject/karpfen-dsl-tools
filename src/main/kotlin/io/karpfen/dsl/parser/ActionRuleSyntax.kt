@@ -19,8 +19,8 @@ import io.karpfen.dsl.grammar.kstates.KstatesParser
 import io.karpfen.dsl.states.actions.ActionOperationType
 
 /**
- * The syntax of KStates action rules that the parse visitor, the reader and the printer share: which operation a
- * rule names, the keyword an operation is written with, and the [Arity] each operation expects.
+ * The syntax of KStates action rules that the reader and the printer share: which operation a rule names, the keyword
+ * an operation is written with, and the [Arity] each operation expects.
  *
  * An operation expects the arity of its [ActionOperationType.operandCount]. A rule is written unary without a right
  * side, binary with one string before its right side and ternary with two.
@@ -30,21 +30,20 @@ internal object ActionRuleSyntax {
     /**
      * Returns the operation [rule] names; a rule whose operation keyword is none of the others names `EVENT`.
      *
-     * The operation context stays in the local `op`: a rule the parser had to recover from may lack it, and the
-     * resulting [NullPointerException] then names `op`, exactly as in version 1.0.
+     * The rule must hold its operation, which a rule without syntax errors does.
      */
-    fun operationOf(rule: KstatesParser.Action_ruleContext): ParsedActionOperationType {
+    fun operationOf(rule: KstatesParser.Action_ruleContext): ActionOperationType {
         val op = rule.action_operation()
         return when {
-            op.SET() != null -> ParsedActionOperationType.SET
-            op.APPEND() != null -> ParsedActionOperationType.APPEND
-            op.SETLIST() != null -> ParsedActionOperationType.SETLIST
-            op.DROPLIST() != null -> ParsedActionOperationType.DROPLIST
-            op.SETOBJ() != null -> ParsedActionOperationType.SETOBJ
-            op.APPENDOBJ() != null -> ParsedActionOperationType.APPENDOBJ
-            op.DROPOBJ() != null -> ParsedActionOperationType.DROPOBJ
-            op.EXCHANGE() != null -> ParsedActionOperationType.EXCHANGE
-            else -> ParsedActionOperationType.EVENT
+            op.SET() != null -> ActionOperationType.SET
+            op.APPEND() != null -> ActionOperationType.APPEND
+            op.SETLIST() != null -> ActionOperationType.SETLIST
+            op.DROPLIST() != null -> ActionOperationType.DROPLIST
+            op.SETOBJ() != null -> ActionOperationType.SETOBJ
+            op.APPENDOBJ() != null -> ActionOperationType.APPENDOBJ
+            op.DROPOBJ() != null -> ActionOperationType.DROPOBJ
+            op.EXCHANGE() != null -> ActionOperationType.EXCHANGE
+            else -> ActionOperationType.EVENT
         }
     }
 
@@ -74,4 +73,21 @@ internal object ActionRuleSyntax {
      */
     fun arityMismatch(operation: ActionOperationType, expected: Arity, written: Arity): String =
         "Operation $operation expects ${expected.usage}, but was called as ${written.usage}."
+}
+
+/**
+ * Number of operands an action operation is written with.
+ *
+ * @property usage The written form, used in error messages.
+ * @property operandCount The number of operands, as [ActionOperationType.operandCount] counts them.
+ */
+enum class Arity(val usage: String, val operandCount: Int) {
+    /** One operand, the target path. */
+    UNARY("OP(\"path\")", 1),
+
+    /** A target path and a value, or a path and the name of a state machine. */
+    BINARY("OP(\"path\", value)", 2),
+
+    /** A source path, a relation and a target. */
+    TERNARY("OP(\"source\", \"relation\", target)", 3)
 }

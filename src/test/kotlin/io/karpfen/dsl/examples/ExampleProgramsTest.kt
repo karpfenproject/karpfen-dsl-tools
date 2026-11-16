@@ -27,26 +27,28 @@ import kotlin.test.assertTrue
 class ExampleProgramsTest {
 
     /**
-     * The KMeta example prints the types it parsed.
+     * The KMeta example finds no problem and prints the types it read.
      */
     @Test
-    fun `the kmeta example prints the parsed types`() {
-        val console = run("io.karpfen.dsl.examples.KmetaParserExampleKt")
+    fun `the kmeta example prints the types it read`() {
+        val console = run("io.karpfen.dsl.examples.KmetaReaderExampleKt")
 
-        assertTrue(console.out.startsWith("Parsed 2 type(s):"), console.out)
-        assertTrue(console.out.contains("Type: Person") && console.out.contains("• zipCode: string"), console.out)
+        assertTrue(console.out.startsWith("No problems.\nRead 2 type(s), root type Person:\n"), console.out)
+        assertTrue(console.out.contains("Type: Person") && console.out.contains("      - zipCode: string"), console.out)
+        assertTrue(console.out.contains("      - friends: list(Person)"), console.out)
         assertEquals("", console.err)
     }
 
     /**
-     * The KModel example prints the objects it parsed.
+     * The KModel example finds no problem and prints the objects it read, the one a `knows` leads to by its id.
      */
     @Test
-    fun `the kmodel example prints the parsed objects`() {
-        val console = run("io.karpfen.dsl.examples.KmodelParserExampleKt")
+    fun `the kmodel example prints the objects it read`() {
+        val console = run("io.karpfen.dsl.examples.KmodelReaderExampleKt")
 
-        assertTrue(console.out.startsWith("Parsed 1 object(s)"), console.out)
-        assertTrue(console.out.contains("Object: make object \"APB 2101:Room\""), console.out)
+        assertTrue(console.out.startsWith("No problems.\nNo problems.\nRead 1 root object(s)\n"), console.out)
+        assertTrue(console.out.contains("Object \"APB 2101\" of type Room"), console.out)
+        assertTrue(console.out.contains("  - home knows \"dock\""), console.out)
         assertEquals("", console.err)
     }
 
