@@ -29,6 +29,10 @@ import org.antlr.v4.runtime.ParserRuleContext
  * Converts the state definitions of a KStates parse tree into [State]s with their nested states and records
  * where each state and each of its `ENTRY` and `DO` blocks is written.
  *
+ * A state marked `CONTAINER` gets the fragment after `USE`, the empty string without `USE`; a state marked `FINAL` is
+ * final. A state is recorded with the fragment name after `USE` and the target of its `TIMEOUT` as its operands, those
+ * it has, in this order. What a kind of state may not have is left to [PageChecks].
+ *
  * A state without a name is left out together with its nested states. A `DELAY` or `TIMEOUT` whose number of ticks
  * is missing or not whole is left out and, when the number is written, reported; so is a `TIMEOUT` without its
  * target state, which the parser already reported.
@@ -56,6 +60,9 @@ internal class StateConverter(
         val breakpoints = definition.state_breakpoint_block()?.state_breakpoint_definition()
         val tickLimit = definition.tick_limit_block()?.tick_limit_definition()
         val timeout = tickLimit?.timeout_definition()?.let { timeoutOf(it) }
+        val kind = definition.state_kind()
+        val fragmentToken = definition.fragment_use()?.presentToken(KstatesParser.STRING)
+        val isContainer = kind?.presentToken(KstatesParser.CONTAINER) != null
         val state = State(
             name = unquoted(nameToken),
             onEntry = definition.entry_block()?.let { entry -> actionBlockOf(entry.action_block(), entry) } ?: emptyBlock(),
@@ -68,11 +75,13 @@ internal class StateConverter(
             history = historyOf(definition.history_definition()),
             delay = tickLimit?.delay_definition()?.let { ticksOf("DELAY", it) },
             timeout = timeout?.first,
-            timeoutTo = timeout?.second
+            timeoutTo = timeout?.second,
+            fragment = if (isContainer) fragmentToken?.let { unquoted(it) } ?: "" else null,
+            isFinal = kind?.presentToken(KstatesParser.FINAL) != null
         )
         state.innerStates.addAll(convert(definition.state_definition(), state))
         val timeoutTarget = tickLimit?.timeout_definition()?.presentToken(KstatesParser.STRING)?.takeIf { timeout != null }
-        session.record(state, definition, nameToken, operands = listOfNotNull(timeoutTarget))
+        session.record(state, definition, nameToken, operands = listOfNotNull(fragmentToken, timeoutTarget))
         return state
     }
 

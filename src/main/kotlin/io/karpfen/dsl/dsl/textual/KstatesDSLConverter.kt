@@ -29,7 +29,9 @@ import java.io.File
 object KstatesDSLConverter {
 
     /**
-     * Parses KStates text and converts it into a [StateMachine].
+     * Parses KStates text and converts it into a [StateMachine], in each of the three forms: attached, attachable and
+     * fragment. Container states, final states and `DONE` are read as written; the rules about them are checked by
+     * the reader, see [io.karpfen.dsl.reader.kstates.KstatesReader], not here.
      *
      * @param content The KStates content as a string.
      * @return The parsed state machine.
@@ -46,7 +48,9 @@ object KstatesDSLConverter {
         val initialStates = InitialStates.of(stateObjects).size
         require(initialStates == 1) { InitialStates.countMessage(initialStates) }
 
-        return StateMachine(parsed.attachedToClass, stateObjects, transitions, macros, parsed.name, parsed.attachableTo)
+        return StateMachine(
+            parsed.attachedToClass, stateObjects, transitions, macros, parsed.name, parsed.attachableTo, parsed.isFragment
+        )
     }
 
     /**
@@ -88,6 +92,8 @@ object KstatesDSLConverter {
             delay = parsedState.delay,
             timeout = parsedState.timeout,
             timeoutTo = parsedState.timeoutTo,
+            fragment = parsedState.fragment,
+            isFinal = parsedState.isFinal,
         )
 
         for (inner in parsedState.innerStates) {
@@ -181,6 +187,7 @@ object KstatesDSLConverter {
             is ParsedEvalCondition -> EvalCondition(condition.code)
             is ParsedEventCondition -> EventCondition(condition.eventDomain, condition.eventValue)
             is ParsedValueCondition -> ValueCondition(condition.variableKey)
+            ParsedDoneCondition -> DoneCondition()
         }
     }
 

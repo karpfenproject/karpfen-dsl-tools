@@ -26,10 +26,11 @@ import io.karpfen.dsl.states.actions.ActionOperationType
  * @property states The top-level states, in definition order.
  * @property transitions The transitions of all kinds, in definition order.
  * @property macros The macro definitions, in definition order.
- * @property name The name of an attachable state machine, the empty string if the text lacks it; null for an attached
- * one.
+ * @property name The name of an attachable state machine or of a fragment, the empty string if the text lacks it; null
+ * for an attached one.
  * @property attachableTo The types after `ATTACHABLE TO`, in the order they are written; empty for an attached state
- * machine.
+ * machine and a fragment.
+ * @property isFragment True for a fragment, `STATEMACHINE "name" FRAGMENT`.
  */
 data class KstatesFile(
     val attachedToClass: String,
@@ -37,11 +38,12 @@ data class KstatesFile(
     val transitions: List<ParsedTransitionLike>,
     val macros: List<ParsedMacro>,
     val name: String? = null,
-    val attachableTo: List<String> = emptyList()
+    val attachableTo: List<String> = emptyList(),
+    val isFragment: Boolean = false
 )
 
 /**
- * A `STATE` definition with its action blocks and nested states.
+ * A `STATE` definition with its action blocks and nested states, also of a container state or a final state.
  *
  * @property name The state name.
  * @property isInitial True if the state is marked `INITIAL`.
@@ -54,6 +56,9 @@ data class KstatesFile(
  * @property onEntry The `ENTRY` block, or null if there is none.
  * @property onDo The `DO` block, or null if there is none.
  * @property innerStates The nested states, in definition order.
+ * @property fragment The name after `USE` of a container state, the empty string for `CONTAINER` without `USE`; null
+ * for a state without `CONTAINER`.
+ * @property isFinal True if the state is marked `FINAL`.
  */
 data class ParsedState(
     val name: String,
@@ -66,7 +71,9 @@ data class ParsedState(
     val timeoutTo: String?,
     val onEntry: ParsedActionBlock?,
     val onDo: ParsedActionBlock?,
-    val innerStates: List<ParsedState>
+    val innerStates: List<ParsedState>,
+    val fragment: String? = null,
+    val isFinal: Boolean = false
 )
 
 /**
@@ -301,6 +308,11 @@ data class ParsedEventCondition(val eventDomain: String, val eventValue: String)
  * @property variableKey The boolean variable.
  */
 data class ParsedValueCondition(val variableKey: String) : ParsedCondition()
+
+/**
+ * A `DONE` clause, which holds once the container states the transition leaves have reached a final state.
+ */
+data object ParsedDoneCondition : ParsedCondition()
 
 /**
  * A `MACRO "name" { TAKES ... RETURNS ... DEFINITION ... }` definition.

@@ -17,6 +17,7 @@ package io.karpfen.dsl.reader.kstates
 
 import io.karpfen.dsl.grammar.kstates.KstatesLexer
 import io.karpfen.dsl.grammar.kstates.KstatesParser
+import io.karpfen.dsl.parser.KstatesEntryRule
 import io.karpfen.dsl.parser.StringLiteralSyntax
 import io.karpfen.dsl.reader.LexerInput
 import io.karpfen.dsl.reader.ParseResult
@@ -27,6 +28,7 @@ import io.karpfen.dsl.states.KstatesFeature
 import io.karpfen.dsl.states.State
 import io.karpfen.dsl.states.StateMachine
 import org.antlr.v4.runtime.CommonTokenStream
+import org.antlr.v4.runtime.ParserRuleContext
 import org.slf4j.LoggerFactory
 
 /**
@@ -41,8 +43,9 @@ import org.slf4j.LoggerFactory
  * [HeaderConverter], every construct of a
  * [KstatesFeature] that is not among the switched-on features, see [FeatureCheck], which is still part of the state
  * machine, and what [ConsistencyChecks] finds: names defined twice, names of states and macros that are not defined,
- * macro calls with the wrong number of arguments, misplaced `EVENT` clauses, and the warnings about options without
- * effect and `EVAL` code that does not run as meant.
+ * macro calls with the wrong number of arguments, misplaced `EVENT` clauses, container states, final states, fragments
+ * and `DONE` clauses that break the rules of pages, see [PageChecks], and the warnings about options without effect and
+ * `EVAL` code that does not run as meant.
  * The count of initial states is left out when the `STATES` block is missing or contains a syntax error, since
  * the parser may have lost a state or its `INITIAL` while it recovered.
  *
@@ -63,17 +66,19 @@ class KstatesReader(private val switchedOn: Set<KstatesFeature> = KstatesFeature
     override fun read(text: String): ParseResult<StateMachine> =
         ReadingSession.read(LexerInput.asWritten(text), StringLiteralSyntax.KSTATES, logger) { session ->
             val tokens = tokensOf(session)
-            val machine = parse(session, tokens).statemachine()
+            val machine = KstatesEntryRule.machineOf(parse(session, tokens))
+            val statesBlock = machine?.getRuleContext(KstatesParser.States_blockContext::class.java, 0)
             val evalBodies = EvalBodies(session)
             val states = StateConverter(session, ActionConverter(session, evalBodies))
-                .convert(machine?.states_block()?.state_definition().orEmpty(), null)
+                .convert(statesBlock?.state_definition().orEmpty(), null)
             val transitions = TransitionConverter(session, ConditionConverter(session, evalBodies))
-                .convert(machine?.transitions_block()?.transition_definition().orEmpty())
-            val macros = MacroConverter(session, evalBodies).convert(machine?.macros_block()?.macro_definition().orEmpty())
-            checkInitialStates(machine?.states_block(), states, session)
+                .convert(machine?.getRuleContext(KstatesParser.Transitions_blockContext::class.java, 0)?.transition_definition().orEmpty())
+            val macros = MacroConverter(session, evalBodies)
+                .convert(machine?.getRuleContext(KstatesParser.Macros_blockContext::class.java, 0)?.macro_definition().orEmpty())
+            checkInitialStates(statesBlock, states, session)
             FeatureCheck(session, switchedOn).check(machine)
             val stateMachine = HeaderConverter(session).convert(machine, states, transitions, macros)
-            ConsistencyChecks(session).check(stateMachine, machine, tokens)
+            ConsistencyChecks(session).check(stateMachine, machine, statesBlock, tokens)
             stateMachine
         }
 
@@ -91,7 +96,10 @@ class KstatesReader(private val switchedOn: Set<KstatesFeature> = KstatesFeature
     private fun tokensOf(session: ReadingSession): CommonTokenStream =
         CommonTokenStream(session.reportingSyntaxErrors(KstatesLexer(session.charStream())))
 
-    /** Parses [tokens], the tokens of the text of [session], whose parser reports its syntax errors to the session. */
-    private fun parse(session: ReadingSession, tokens: CommonTokenStream): KstatesParser.Kstates_fileContext =
-        session.reportingSyntaxErrors(KstatesParser(tokens)).kstates_file()
+    /**
+     * Parses [tokens], the tokens of the text of [session], with the entry rule of its form, see [KstatesEntryRule];
+     * the parser reports its syntax errors to the session.
+     */
+    private fun parse(session: ReadingSession, tokens: CommonTokenStream): ParserRuleContext =
+        KstatesEntryRule.parse(session.reportingSyntaxErrors(KstatesParser(tokens)))
 }

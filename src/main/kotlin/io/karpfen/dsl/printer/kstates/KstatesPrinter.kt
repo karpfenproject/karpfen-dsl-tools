@@ -91,12 +91,15 @@ class KstatesPrinter internal constructor(
 
     /**
      * Returns the header of [machine] before its brace: `STATEMACHINE ATTACHED TO "Type"` for an attached state machine,
-     * `STATEMACHINE "name" ATTACHABLE TO "A", "B"` for an attachable one.
+     * `STATEMACHINE "name" ATTACHABLE TO "A", "B"` for an attachable one, `STATEMACHINE "name" FRAGMENT` for a fragment.
      *
      * @throws IllegalArgumentException If an attachable state machine has no type, which KStates cannot read back.
      */
     private fun headerOf(machine: StateMachine): String {
         val name = machine.name ?: return "STATEMACHINE ATTACHED TO ${syntax.quote(machine.attachedToClass)}"
+        if (machine.isFragment) {
+            return "STATEMACHINE ${syntax.quote(name)} FRAGMENT"
+        }
         require(machine.attachableTo.isNotEmpty()) { "The attachable state machine '$name' needs at least one type." }
         return "STATEMACHINE ${syntax.quote(name)} ATTACHABLE TO ${syntax.quoteAll(machine.attachableTo)}"
     }

@@ -25,7 +25,7 @@ import java.io.File
 
 /**
  * Parses KStates text into the syntax-level [KstatesFile] with the generated [KstatesLexer] and
- * [KstatesParser].
+ * [KstatesParser], with the entry rule [KstatesEntryRule] chooses for the text.
  *
  * Syntax errors go to [errorListener]; the parse recovers from them and continues.
  *
@@ -60,7 +60,7 @@ class KStatesFileParser(
         val tokens = CommonTokenStream(lexer)
         val parser = KstatesParser(tokens).apply { reportSyntaxErrorsTo(errorListener) }
 
-        val parseTree = parser.kstates_file()
+        val parseTree = KstatesEntryRule.parse(parser)
         val visitor = KstatesParseVisitor()
 
         return visitor.visit(parseTree) ?: KstatesFile("", emptyList(), emptyList(), emptyList())

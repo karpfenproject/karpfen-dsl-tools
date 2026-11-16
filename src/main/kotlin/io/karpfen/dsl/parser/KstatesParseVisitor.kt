@@ -49,6 +49,22 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
     }
 
     /**
+     * Reads a fragment, `STATEMACHINE "name" FRAGMENT { ... }`, with its name, which is empty if the text lacks it, and
+     * its states, transitions and macros.
+     *
+     * @throws IllegalArgumentException If an action rule is written with the wrong number of operands.
+     */
+    override fun visitFragment_file(ctx: KstatesParser.Fragment_fileContext): KstatesFile {
+        val machineCtx = ctx.fragment_machine()
+        val name = machineCtx.statemachine_name()?.STRING()?.let { unquote(it.text) } ?: ""
+        val states = machineCtx.states_block().state_definition().map { parseState(it) }
+        val transitions = machineCtx.transitions_block().transition_definition().map { parseTransition(it) }
+        val macros = machineCtx.macros_block()?.macro_definition()?.map { parseMacro(it) } ?: emptyList()
+
+        return KstatesFile("", states, transitions, macros, name, isFragment = true)
+    }
+
+    /**
      * Reads an attachable state machine, `STATEMACHINE "name" ATTACHABLE TO "A", "B" { ... }`, with its name, which is
      * empty if the text lacks it, its types and its states, transitions and macros.
      */
@@ -63,8 +79,8 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
     }
 
     /**
-     * Reads a state definition with its history, breakpoints and tick limit, its `ENTRY` and `DO` blocks and its
-     * nested states.
+     * Reads a state definition with its kind, `CONTAINER` with the fragment after `USE` or `FINAL`, its history,
+     * breakpoints and tick limit, its `ENTRY` and `DO` blocks and its nested states.
      */
     private fun parseState(ctx: KstatesParser.State_definitionContext): ParsedState {
         val name = unquote(ctx.STRING().text)
@@ -82,6 +98,8 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         val onEntry = ctx.entry_block()?.let { parseActionBlock(it.action_block()) }
         val onDo = ctx.do_block()?.let { parseActionBlock(it.action_block()) }
         val innerStates = ctx.state_definition().map { parseState(it) }.toMutableList()
+        val kind = ctx.state_kind()
+        val fragment = kind?.CONTAINER()?.let { ctx.fragment_use()?.STRING()?.text?.let { unquote(it) } ?: "" }
 
         return ParsedState(
             name = name,
@@ -94,7 +112,9 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
             timeoutTo = timeoutTo,
             onEntry = onEntry,
             onDo = onDo,
-            innerStates = innerStates
+            innerStates = innerStates,
+            fragment = fragment,
+            isFinal = kind?.FINAL() != null
         )
     }
 
@@ -234,8 +254,11 @@ class KstatesParseVisitor : KstatesBaseVisitor<KstatesFile>() {
         return ctx.condition_clause().map { parseConditionClause(it) }
     }
 
-    /** Reads one clause of a `CONDITION` block: an `EVAL` block, an `EVENT` or a `VALUE`. */
+    /** Reads one clause of a `CONDITION` block: an `EVAL` block, an `EVENT`, a `VALUE` or `DONE`. */
     private fun parseConditionClause(ctx: KstatesParser.Condition_clauseContext): ParsedCondition {
+        if (ctx.done_condition() != null) {
+            return ParsedDoneCondition
+        }
         if (ctx.eval_statement() != null) {
             val code = extractInnerBlockText(ctx.eval_statement().eval_code_block())
             return ParsedEvalCondition(code)
