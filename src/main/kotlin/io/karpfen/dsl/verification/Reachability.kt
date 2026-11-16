@@ -26,7 +26,8 @@ import io.karpfen.dsl.states.Transition
  *
  * The runtime runs a machine in a simple context, one stack of active states, or after a split in a parallel context,
  * one stack per target of the split. From a stack, every transition of a state on it may fire, and the timeout of a
- * state on it; a split may fire only in a simple context. A join fires in a parallel context with as many branches as
+ * state on it; a split may fire only in a simple context. Entering a container state goes down into it, see
+ * [StateTree.entered]. A join fires in a parallel context with as many branches as
  * it has source states, each source state active in a branch of its own, and leads back to a simple context. A history
  * only returns to states that were active before, so it reaches nothing new.
  *
@@ -60,14 +61,14 @@ internal class Reachability(private val machine: StateMachine, private val tree:
                 if (simpleStates.add(state.name)) {
                     pending.addAll(successorsOf(state))
                     splitsFrom(state).filter { it !in reachedRegions }.forEach { split ->
-                        val targets = split.toStates.mapNotNull { tree.stateNamed(it) }
+                        val targets = split.toStates.mapNotNull { name -> tree.stateNamed(name)?.let { tree.entered(it) } }
                         if (targets.size == 1) pending.add(targets.single()) else reachedRegions[split] = targets.map { closureOf(it) }
                     }
                 }
             }
             machine.joinTransitions().filter { it !in joins && canFire(it, reachedRegions.values) }.forEach { join ->
                 joins.add(join)
-                tree.stateNamed(join.toState)?.let { pending.add(it) }
+                tree.stateNamed(join.toState)?.let { pending.add(tree.entered(it)) }
             }
         }
         simple = simpleStates
@@ -92,8 +93,10 @@ internal class Reachability(private val machine: StateMachine, private val tree:
     private fun successorsOf(state: State): List<State> = tree.stackOf(state).flatMap { active ->
         val byTransition = machine.transitions.filterIsInstance<Transition>()
             .filter { it.fromState == active.name }
-            .mapNotNull { tree.stateNamed(it.toState) }
-        val byTimeout = listOfNotNull(active.timeoutTo?.takeIf { active.timeout != null }?.let { tree.stateNamed(it) })
+            .mapNotNull { transition -> tree.stateNamed(transition.toState)?.let { tree.entered(it) } }
+        val byTimeout = listOfNotNull(
+            active.timeoutTo?.takeIf { active.timeout != null }?.let { tree.stateNamed(it) }?.let { tree.entered(it) }
+        )
         byTransition + byTimeout
     }
 

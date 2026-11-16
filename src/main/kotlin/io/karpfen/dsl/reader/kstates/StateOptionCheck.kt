@@ -25,7 +25,8 @@ import org.antlr.v4.runtime.ParserRuleContext
 
 /**
  * Warns about the options of states and transitions that have no effect or hold each other back: a history on a state
- * without inner states, a `BREAKPOINT` block that names neither of its words, a `TICK LIMIT` block without a `DELAY`
+ * without inner states other than a container state, whose inner states come from its fragment, and a final state,
+ * which may carry no history at all, see [PageChecks], a `BREAKPOINT` block that names neither of its words, a `TICK LIMIT` block without a `DELAY`
  * and a `TIMEOUT`, and a `DELAY` longer than the `TIMEOUT` of the same block, which then fires only when the delay
  * has passed.
  *
@@ -56,6 +57,9 @@ internal class StateOptionCheck(private val session: ReadingSession) {
     /** Warns at the history of [state] if the state has no inner states. */
     private fun checkHistory(state: KstatesParser.State_definitionContext) {
         val history = state.history_definition() ?: return
+        if (state.state_kind()?.children.orEmpty().isNotEmpty()) {
+            return
+        }
         if (state.state_definition().isEmpty() && !state.containsSyntaxError()) {
             session.report(
                 DiagnosticCode.HISTORY_WITHOUT_INNER_STATES,

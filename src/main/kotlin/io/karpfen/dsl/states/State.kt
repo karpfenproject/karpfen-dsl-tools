@@ -23,6 +23,14 @@ import io.karpfen.dsl.states.actions.ActionBlock
  * States can be nested and can define entry and do action blocks. A state can also carry a [history], a tick limit
  * made of a [delay] and a [timeout], and breakpoints for a debugger.
  *
+ * Two kinds of states serve the composition of a state machine from fragments. A container state, `CONTAINER STATE
+ * "name" USE "fragment"`, names in [fragment] the fragment whose states run inside it; it has no actions of its own.
+ * In the text it has no inner states. After [io.karpfen.dsl.composition.StateMachineFlattener] resolved it, it holds
+ * copies of the states of the fragment as its inner states and keeps [fragment], so that a runtime can still tell that
+ * entering it goes down to [initialInnerState] and on along the start path of its fragment, see
+ * [InitialStates.enteredBelow]. A final state, `FINAL STATE "name"`, ends a fragment: once the active state inside a
+ * container is final, the condition `DONE` of a transition that leaves the container holds.
+ *
  * @property name The name identifier for this state.
  * @property onEntry Actions executed when entering this state.
  * @property onDo Actions executed while in this state.
@@ -35,6 +43,9 @@ import io.karpfen.dsl.states.actions.ActionBlock
  * @property delay The number of ticks the state stays active at least, or null without a `DELAY`.
  * @property timeout The number of ticks after which the state is left for [timeoutTo], or null without a `TIMEOUT`.
  * @property timeoutTo The name of the state a `TIMEOUT` leads to, or null without a `TIMEOUT`.
+ * @property fragment The name of the fragment a container state uses, the empty string for a container state whose
+ * text lacks it; null for every state that is no container state.
+ * @property isFinal True for a final state, `FINAL STATE`.
  */
 data class State(
     val name: String,
@@ -49,9 +60,26 @@ data class State(
     val delay: Long? = null,
     val timeout: Long? = null,
     val timeoutTo: String? = null,
+    val fragment: String? = null,
+    val isFinal: Boolean = false,
 ) {
+
+    /** True for a container state, `CONTAINER STATE "name" USE "fragment"`, see [fragment]. */
+    val isContainer: Boolean
+        get() = fragment != null
+
+    /**
+     * The inner state that a start path takes below this state, see [InitialStates]: the inner state that is marked
+     * `INITIAL` or holds the mark below it without passing through a container state, otherwise the first inner state;
+     * null for a state without inner states. For a flattened container state this is the outermost state of the start
+     * path of its fragment.
+     */
+    val initialInnerState: State?
+        get() = InitialStates.initialAmong(innerStates)
     override fun toString(): String =
         "State(name=$name, isInitial=$isInitial, entryBreakpoint=$entryBreakpoint, exitBreakpoint=$exitBreakpoint, " +
-            "history=$history, delay=$delay, timeout=$timeout, timeoutTo=$timeoutTo, innerStates=${innerStates.size}, " +
+            "history=$history, delay=$delay, timeout=$timeout, timeoutTo=$timeoutTo, " +
+            (fragment?.let { "fragment=$it, " } ?: "") + (if (isFinal) "isFinal=true, " else "") +
+            "innerStates=${innerStates.size}, " +
             "entryActions=${onEntry.items.size}, doActions=${onDo.items.size})"
 }

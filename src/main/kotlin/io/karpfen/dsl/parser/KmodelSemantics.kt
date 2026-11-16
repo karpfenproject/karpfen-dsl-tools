@@ -19,7 +19,7 @@ import io.karpfen.dsl.instance.DataObject
 import io.karpfen.dsl.meta.SimplePropertyType
 
 /**
- * How the statements of a KModel text become the values of a model, which the converter and the reader share: when
+ * How the statements of a KModel text become the values of a model, which the reader and the printer share: when
  * the statements of one key form a list, how a primitive value is read, and which objects a `knows` statement can
  * refer to by id.
  */

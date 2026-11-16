@@ -43,7 +43,7 @@ enum class KstatesFeature(val id: String, val displayName: String, val construct
     PARALLEL("parallel", "Splits and joins", "split or join");
 
     companion object {
-        /** Every feature; the default of a KStates reader, which then reads every text as the converter does. */
+        /** Every feature; the default of a KStates reader, and the features the KStates converter reads with. */
         val ALL: Set<KstatesFeature> = entries.toSet()
 
         /** Returns the feature whose [id] is [id], or null if no feature has it. */

@@ -15,15 +15,17 @@
  */
 package io.karpfen.dsl.dsl.textual
 
+import io.karpfen.dsl.diagnostics.DiagnosticCode
+import io.karpfen.dsl.reader.InvalidTextException
 import org.slf4j.LoggerFactory
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
+import kotlin.test.assertFailsWith
 
 /**
- * Tests that the converters leave the console to the application: model dumps are logged at debug level
- * and syntax errors are logged as warnings instead of being printed.
+ * Tests that the converters leave the console to the application: they neither print nor log what they read, and a
+ * syntax error is part of the exception they throw.
  *
  * The test logging backend writes to standard output at info level and above, so standard error only
  * receives what is printed directly.
@@ -53,16 +55,18 @@ class ConsoleOutputTest {
     }
 
     /**
-     * A syntax error is logged as a warning and never printed to standard error.
+     * A syntax error makes the converter throw, with the error in the exception, and nothing reaches the console.
      */
     @Test
-    fun `syntax errors are logged instead of printed`() {
+    fun `syntax errors are thrown instead of printed`() {
+        var rejection: InvalidTextException? = null
         val console = captureConsole {
-            KmetaDSLConverter.parseKmetaString("type \"A\" \"first\" { prop(\"x\", \"number\") ) }")
+            rejection = assertFailsWith<InvalidTextException> {
+                KmetaDSLConverter.parseKmetaString("type \"A\" \"first\" { prop(\"x\", \"number\") ) }")
+            }
         }
 
-        assertEquals("", console.err)
-        assertTrue(console.out.contains("WARN"))
-        assertTrue(console.out.contains("KMeta syntax error at line 1:"))
+        assertEquals(ConsoleOutput("", ""), console)
+        assertEquals(listOf(DiagnosticCode.SYNTAX_ERROR), rejection?.errors?.map { it.code })
     }
 }

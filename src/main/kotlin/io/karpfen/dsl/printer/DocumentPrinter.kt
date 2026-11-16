@@ -17,7 +17,7 @@ package io.karpfen.dsl.printer
 
 /**
  * Writes the element a whole document of one karpfen language holds as text, the reverse of reading the
- * document with the matching converter.
+ * document with the matching reader.
  *
  * The text uses the canonical layout of the karpfen languages: four spaces per indentation level, one
  * statement per line, blocks that open on the line of their header, `{ }` for a block without content, and

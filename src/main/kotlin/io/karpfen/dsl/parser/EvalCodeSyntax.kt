@@ -18,8 +18,7 @@ package io.karpfen.dsl.parser
 import io.karpfen.dsl.grammar.kstates.KstatesParser
 
 /**
- * Which source text is the code of a KStates `EVAL { ... }` body, as the parse visitor and the reader read it and
- * the printer writes it.
+ * Which source text is the code of a KStates `EVAL { ... }` body, as the reader reads it and the printer writes it.
  *
  * The body spans the text from its first to its last token between the braces, with the comments and the whitespace
  * in between. The code is that text without the whitespace at its edges; a body without tokens holds empty code.

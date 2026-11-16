@@ -15,11 +15,10 @@
  */
 package io.karpfen.dsl.reader
 
-import io.karpfen.dsl.dsl.textual.KmodelDSLConverter
 import io.karpfen.dsl.fixtures.ExampleCatalog
-import io.karpfen.dsl.fixtures.StructureDump
 import io.karpfen.dsl.instance.ClassTypeAtomicPropertyObject
 import io.karpfen.dsl.instance.ClassTypeListPropertyObject
+import io.karpfen.dsl.instance.Model
 import io.karpfen.dsl.instance.SimpleListPropertyObject
 import io.karpfen.dsl.meta.AssociationType
 import io.karpfen.dsl.reader.kmeta.KmetaReader
@@ -38,16 +37,16 @@ class ExampleSourceMapTest {
     private val catalog = ExampleCatalog()
 
     /**
-     * The readers report nothing for the examples and build the converted models.
+     * The readers report nothing for the examples and build a model of each.
      */
     @Test
-    fun `the examples read without diagnostics into the converted models`() {
+    fun `the examples read without diagnostics`() {
         val examples = ReaderUnderTest.all()
         for (example in examples) {
             val result = example.reader.read(example.text)
 
             assertEquals(emptyList(), result.diagnostics, "$example")
-            assertEquals(example.convertedStructureOf(example.text), StructureDump.of(result.model), "$example")
+            assertTrue(result.model != null, "$example")
         }
         assertEquals(24, examples.size)
     }
@@ -90,7 +89,7 @@ class ExampleSourceMapTest {
         for (example in catalog.models()) {
             val result = KmodelReader(example.metamodel).read(example.text)
             val checker = LocationChecker(example.text, result.sourceMap)
-            val objects = KmodelDSLConverter.collectAllObjects(result.model!!.objects)
+            val objects = Model.collectAllObjects(result.model!!.objects)
 
             for (dataObject in objects) {
                 checker.expect(dataObject, "object ${dataObject.id}", "make object", dataObject.id)

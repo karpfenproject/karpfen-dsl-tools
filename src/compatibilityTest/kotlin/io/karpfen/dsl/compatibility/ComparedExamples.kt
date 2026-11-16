@@ -23,23 +23,17 @@ import io.karpfen.dsl.fixtures.ExampleCatalog
 import io.karpfen.dsl.fixtures.MetamodelExample
 import io.karpfen.dsl.fixtures.ModelExample
 import io.karpfen.dsl.meta.Metamodel
-import io.karpfen.dsl.parser.KStatesFileParser
-import io.karpfen.dsl.parser.KmetaFileParser
-import io.karpfen.dsl.parser.KmodelFileParser
 import java.io.File
 import dsl.textual.JsonToModelConverter as LegacyJsonConverter
 import dsl.textual.KmetaDSLConverter as LegacyKmetaConverter
 import dsl.textual.KmodelDSLConverter as LegacyKmodelConverter
 import dsl.textual.KstatesDSLConverter as LegacyKstatesConverter
 import meta.Metamodel as LegacyMetamodel
-import parser.KStatesFileParser as LegacyKstatesFileParser
-import parser.KmetaFileParser as LegacyKmetaFileParser
-import parser.KmodelFileParser as LegacyKmodelFileParser
 
 /**
  * The entry points of both versions the compatibility tests compare, each paired with the examples of [catalog] it
  * reads: the throwing converters of the three languages for texts and for files, the conversion of a single KModel
- * object, the syntax-level file parsers and the conversion of JSON documents.
+ * object and the conversion of JSON documents.
  *
  * @param catalog The examples.
  * @param documents Where the conversions of files find the texts they read.
@@ -57,6 +51,7 @@ class ComparedExamples(
         val legacyBaseTypes = legacyBaseTypesOf(example)
         ComparedExample(
             example.toString(),
+            example.file,
             example.text,
             { LegacyKmetaConverter.parseKmetaString(it, legacyBaseTypes) },
             { example.parse(it) }
@@ -70,6 +65,7 @@ class ComparedExamples(
         val legacyMetamodel = legacyDomainNextTo(example.file)
         ComparedExample(
             example.toString(),
+            example.file,
             example.text,
             { LegacyKmodelConverter.parseKmodelString(it, legacyMetamodel) },
             { example.parse(it) }
@@ -82,6 +78,7 @@ class ComparedExamples(
     fun kstatesConversions(): List<ComparedExample> = catalog.stateMachines().map { example ->
         ComparedExample(
             example.toString(),
+            example.file,
             example.text,
             { LegacyKstatesConverter.parseKstatesString(it) },
             { example.parse(it) }
@@ -96,6 +93,7 @@ class ComparedExamples(
         catalog.metamodels().map { example ->
             ComparedExample(
                 "${example.file} as a file",
+                example.file,
                 example.text,
                 { LegacyKmetaConverter.parseKmetaFile(documents.holding(it, "kmeta")) },
                 { KmetaDSLConverter.parseKmetaFile(documents.holding(it, "kmeta")) }
@@ -104,6 +102,7 @@ class ComparedExamples(
             val legacyMetamodel = legacyDomainNextTo(example.file)
             ComparedExample(
                 "${example.file} as a file",
+                example.file,
                 example.text,
                 { LegacyKmodelConverter.parseKmodelFile(documents.holding(it, "kmodel"), legacyMetamodel) },
                 { KmodelDSLConverter.parseKmodelFile(documents.holding(it, "kmodel"), example.metamodel) }
@@ -111,6 +110,7 @@ class ComparedExamples(
         } + catalog.stateMachines().map { example ->
             ComparedExample(
                 "${example.file} as a file",
+                example.file,
                 example.text,
                 { LegacyKstatesConverter.parseKstatesFile(documents.holding(it, "kstates")) },
                 { KstatesDSLConverter.parseKstatesFile(documents.holding(it, "kstates")) }
@@ -124,38 +124,12 @@ class ComparedExamples(
         val legacyMetamodel = legacyDomainNextTo(example.file)
         ComparedExample(
             "${example.file} as a single object",
+            example.file,
             example.text,
             { LegacyKmodelConverter.parseSingleObject(it, legacyMetamodel) },
             { KmodelDSLConverter.parseSingleObject(it, example.metamodel) }
         )
     }
-
-    /**
-     * Returns the examples of all three languages with the syntax-level file parsers.
-     */
-    fun syntaxLevelParses(): List<ComparedExample> =
-        catalog.metamodels().map { example ->
-            ComparedExample(
-                "${example.file} parsed",
-                example.text,
-                { LegacyKmetaFileParser().parseString(it) },
-                { KmetaFileParser().parseString(it) }
-            )
-        } + catalog.models().map { example ->
-            ComparedExample(
-                "${example.file} parsed",
-                example.text,
-                { LegacyKmodelFileParser().parseString(it) },
-                { KmodelFileParser().parseString(it) }
-            )
-        } + catalog.stateMachines().map { example ->
-            ComparedExample(
-                "${example.file} parsed",
-                example.text,
-                { LegacyKstatesFileParser().parseString(it) },
-                { KStatesFileParser().parseString(it) }
-            )
-        }
 
     /**
      * Returns the root object of every KModel example as a JSON document, see [JsonDocuments], with the conversions
@@ -167,6 +141,7 @@ class ComparedExamples(
         val typeName = root.ofType.name
         ComparedExample(
             "${example.file} as JSON",
+            example.file,
             JsonDocuments.of(root),
             { LegacyJsonConverter(legacyMetamodel).toDataObject(it, typeName) },
             { JsonToModelConverter(example.metamodel).toDataObject(it, typeName) }
@@ -183,23 +158,25 @@ class ComparedExamples(
             val root = example.parse().objects.single()
             val array = "[${JsonDocuments.of(root)}]"
             val name = "${example.file} as a JSON array"
-            jsonListExample(name, array, root.ofType.name, legacyMetamodel, example.metamodel)
+            jsonListExample(name, example.file, array, root.ofType.name, legacyMetamodel, example.metamodel)
         }
         val anyModel = catalog.models().first()
         val primitiveLists = PRIMITIVE_ARRAYS.map { (type, array) ->
-            jsonListExample("an array of $type", array, type, legacyDomainNextTo(anyModel.file), anyModel.metamodel)
+            jsonListExample("an array of $type", null, array, type, legacyDomainNextTo(anyModel.file), anyModel.metamodel)
         }
         return objectLists + primitiveLists
     }
 
     private fun jsonListExample(
         name: String,
+        file: File?,
         array: String,
         elementType: String,
         legacyMetamodel: LegacyMetamodel,
         metamodel: Metamodel
     ) = ComparedExample(
         name,
+        file,
         array,
         { LegacyJsonConverter(legacyMetamodel).toList(it, elementType) },
         { JsonToModelConverter(metamodel).toList(it, elementType) }

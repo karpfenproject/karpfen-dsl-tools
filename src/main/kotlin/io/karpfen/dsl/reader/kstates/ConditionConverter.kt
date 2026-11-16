@@ -23,6 +23,7 @@ import io.karpfen.dsl.reader.presentToken
 import io.karpfen.dsl.reader.presentTokens
 import io.karpfen.dsl.states.conditions.CompositeCondition
 import io.karpfen.dsl.states.conditions.Condition
+import io.karpfen.dsl.states.conditions.DoneCondition
 import io.karpfen.dsl.states.conditions.EvalCondition
 import io.karpfen.dsl.states.conditions.EventCondition
 import io.karpfen.dsl.states.conditions.ValueCondition
@@ -53,12 +54,15 @@ internal class ConditionConverter(
     }
 
     /**
-     * Converts one clause, an `EVAL` block, an `EVENT` or a `VALUE`; null for a clause that contains a syntax error or
-     * lacks a string.
+     * Converts one clause, an `EVAL` block, an `EVENT`, a `VALUE` or `DONE`; null for a clause that contains a syntax
+     * error or lacks a string.
      */
     private fun convertClause(clause: KstatesParser.Condition_clauseContext): Condition? {
         if (clause.containsSyntaxError()) {
             return null
+        }
+        if (clause.done_condition() != null) {
+            return DoneCondition().also { session.record(it, clause) }
         }
         clause.eval_statement()?.let { statement ->
             val body = evalBodies.read(statement)

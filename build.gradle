@@ -43,8 +43,8 @@ repositories {
 /**
  * The ANTLR tool only generates the parsers during the build. The runtime is part of the API, because the generated
  * lexers and parsers are public, and so are `org.json`, which `JsonToModelConverter` accepts, and the SLF4J API,
- * whose `Logger` `LoggingSyntaxErrorListener` takes. The library ships no logging backend; the tests log through
- * slf4j-simple.
+ * which the readers log through and whose loggers a consumer configures by name. The library ships no logging backend;
+ * the tests log through slf4j-simple.
  */
 dependencies {
     antlr "org.antlr:antlr4:$antlrVersion"

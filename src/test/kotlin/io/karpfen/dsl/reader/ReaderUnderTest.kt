@@ -15,16 +15,13 @@
  */
 package io.karpfen.dsl.reader
 
-import io.karpfen.dsl.dsl.textual.captureConsole
 import io.karpfen.dsl.fixtures.ExampleCatalog
-import io.karpfen.dsl.fixtures.StructureDump
 import io.karpfen.dsl.reader.kmeta.KmetaReader
 import io.karpfen.dsl.reader.kmodel.KmodelReader
 import io.karpfen.dsl.reader.kstates.KstatesReader
 
 /**
- * An example file together with the tolerant reader and the throwing converter of its language, set up with the
- * same base types or metamodel.
+ * An example file together with the reader of its language, set up with its base types or metamodel.
  *
  * @property path The path of the example file.
  * @property text The content of the example file.
@@ -33,25 +30,8 @@ import io.karpfen.dsl.reader.kstates.KstatesReader
 class ReaderUnderTest(
     val path: String,
     val text: String,
-    val reader: TextReader<Any>,
-    private val converter: (String) -> Any?
+    val reader: TextReader<Any>
 ) {
-
-    /**
-     * Returns the structure of the model the throwing converter builds from [content], or null if it throws; the
-     * converter's log output is discarded.
-     */
-    fun convertedStructureOf(content: String): String? {
-        var structure: String? = null
-        captureConsole {
-            structure = try {
-                StructureDump.of(converter(content))
-            } catch (failure: Exception) {
-                null
-            }
-        }
-        return structure
-    }
 
     override fun toString(): String = path
 
@@ -62,21 +42,21 @@ class ReaderUnderTest(
          * Returns the KMeta examples, an event definition with the types of its domain metamodel as base types.
          */
         fun kmeta(catalog: ExampleCatalog = ExampleCatalog()): List<ReaderUnderTest> = catalog.metamodels().map {
-            ReaderUnderTest(it.toString(), it.text, KmetaReader(it.baseTypes)) { content -> it.parse(content) }
+            ReaderUnderTest(it.toString(), it.text, KmetaReader(it.baseTypes))
         }
 
         /**
          * Returns the KModel examples with the domain metamodel of their directory.
          */
         fun kmodel(catalog: ExampleCatalog = ExampleCatalog()): List<ReaderUnderTest> = catalog.models().map {
-            ReaderUnderTest(it.toString(), it.text, KmodelReader(it.metamodel)) { content -> it.parse(content) }
+            ReaderUnderTest(it.toString(), it.text, KmodelReader(it.metamodel))
         }
 
         /**
          * Returns the KStates examples.
          */
         fun kstates(catalog: ExampleCatalog = ExampleCatalog()): List<ReaderUnderTest> = catalog.stateMachines().map {
-            ReaderUnderTest(it.toString(), it.text, KstatesReader()) { content -> it.parse(content) }
+            ReaderUnderTest(it.toString(), it.text, KstatesReader())
         }
 
         /**

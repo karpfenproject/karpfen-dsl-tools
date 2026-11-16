@@ -16,7 +16,6 @@
 package io.karpfen.dsl.reader
 
 import io.karpfen.dsl.dsl.textual.KmetaDSLConverter
-import io.karpfen.dsl.dsl.textual.KmodelDSLConverter
 import io.karpfen.dsl.fixtures.StructureDump
 import io.karpfen.dsl.instance.Model
 import io.karpfen.dsl.meta.Metamodel
@@ -26,13 +25,13 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * Tests that the KMeta and KModel readers read the text their converters read, which trim the indentation all lines
- * share and make every line break `\n`, while the ranges they report refer to the text as written.
+ * Tests that the KMeta and KModel readers read a text as [String.trimIndent] leaves it, with the indentation all lines
+ * share trimmed and every line break made `\n`, while the ranges they report refer to the text as written.
  *
  * A string literal that an escaped line break continues on the next line shows the difference: its value loses the
  * trimmed indentation, and an escaped `\r\n` is one line break.
  */
-class ConverterTextAgreementTest {
+class IndentationTrimmingTest {
 
     private val metamodel = KmetaDSLConverter.parseKmetaString("type \"Root\" \"r\" { prop(\"name\", \"string\") }")
 
@@ -40,7 +39,7 @@ class ConverterTextAgreementTest {
      * In a KMeta text whose lines are all indented, the continued literal holds the trimmed indentation.
      */
     @Test
-    fun `an indented kmeta text reads as the converter reads it`() {
+    fun `an indented kmeta text reads as its trimmed form`() {
         assertKmetaAgrees("  type \"A\" \"line\\\n    two\" { prop(\"x\", \"number\") }\n")
     }
 
@@ -48,7 +47,7 @@ class ConverterTextAgreementTest {
      * In a KMeta text with `\r\n` line breaks, an escaped line break continues the literal.
      */
     @Test
-    fun `a kmeta text with crlf line breaks reads as the converter reads it`() {
+    fun `a kmeta text with crlf line breaks reads as its trimmed form`() {
         val text = "type \"A\" \"line\\\r\ntwo\" {\r\n  prop(\"x\", \"number\")\r\n}\r\n"
         val result = assertKmetaAgrees(text)
 
@@ -61,7 +60,7 @@ class ConverterTextAgreementTest {
      * In a KModel text whose lines are all indented, the continued literal holds the trimmed indentation.
      */
     @Test
-    fun `an indented kmodel text reads as the converter reads it`() {
+    fun `an indented kmodel text reads as its trimmed form`() {
         assertKmodelAgrees("  make object \"r\":\"Root\" {\n    prop(\"name\") -> \"a\\\n    b\"\n  }\n")
     }
 
@@ -69,7 +68,7 @@ class ConverterTextAgreementTest {
      * In a KModel text with `\r\n` line breaks, an escaped line break continues the literal.
      */
     @Test
-    fun `a kmodel text with crlf line breaks reads as the converter reads it`() {
+    fun `a kmodel text with crlf line breaks reads as its trimmed form`() {
         val text = "make object \"r\":\"Root\" {\r\n  prop(\"name\") -> \"a\\\r\n  b\"\r\n}"
         val result = assertKmodelAgrees(text)
 
@@ -79,15 +78,14 @@ class ConverterTextAgreementTest {
     private fun assertKmetaAgrees(text: String): ParseResult<Metamodel> {
         val result = KmetaReader().read(text)
         assertEquals(emptyList(), result.diagnostics)
-        assertEquals(StructureDump.of(KmetaDSLConverter.parseKmetaString(text)), StructureDump.of(result.model))
+        assertEquals(StructureDump.of(KmetaReader().read(text.trimIndent()).model), StructureDump.of(result.model))
         return result
     }
 
     private fun assertKmodelAgrees(text: String): ParseResult<Model> {
         val result = KmodelReader(metamodel).read(text)
         assertEquals(emptyList(), result.diagnostics)
-        val converted = KmodelDSLConverter.parseKmodelString(text, metamodel)
-        assertEquals(StructureDump.of(converted), StructureDump.of(result.model))
+        assertEquals(StructureDump.of(KmodelReader(metamodel).read(text.trimIndent()).model), StructureDump.of(result.model))
         return result
     }
 }

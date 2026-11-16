@@ -33,7 +33,8 @@ internal class StateWriter(
 
     /**
      * Writes [state] as `STATE "name" { ... }`, with `INITIAL` and its history in front, or as `STATE "name" { }`
-     * when it has nothing inside. Inside, the `BREAKPOINT` block comes first on one line, then the `TICK LIMIT`
+     * when it has nothing inside. A container state is written as `CONTAINER STATE "name" USE "fragment"` and a final
+     * state as `FINAL STATE "name"`, each with whatever it holds. Inside, the `BREAKPOINT` block comes first on one line, then the `TICK LIMIT`
      * block with its `DELAY` before its `TIMEOUT`, then the actions and the inner states.
      *
      * @throws IllegalArgumentException If a name, path or value cannot be written as a string literal, an action
@@ -42,7 +43,13 @@ internal class StateWriter(
      */
     fun write(state: State, writer: CodeWriter) {
         val initial = if (state.isInitial) "INITIAL " else ""
-        writer.block("$initial${StateOptionSyntax.historyPrefix(state.history)}STATE ${syntax.quote(state.name)}") {
+        val kind = when {
+            state.isContainer -> "CONTAINER "
+            state.isFinal -> "FINAL "
+            else -> ""
+        }
+        val use = state.fragment?.let { " USE ${syntax.quote(it)}" } ?: ""
+        writer.block("$initial${StateOptionSyntax.historyPrefix(state.history)}${kind}STATE ${syntax.quote(state.name)}$use") {
             StateOptionSyntax.breakpointBlock("ENTRY" to state.entryBreakpoint, "EXIT" to state.exitBreakpoint)?.let { writer.line(it) }
             writeTickLimit(state, writer)
             actions.writeSection("ENTRY", state.onEntry, writer)

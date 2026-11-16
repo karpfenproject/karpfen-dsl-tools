@@ -52,8 +52,7 @@ sources jar and the POM. It reads the credentials from the Gradle properties `Gi
 `./gradlew publishToMavenLocal` publishes the same files to the local Maven repository in `~/.m2`.
 
 The API dependencies are the ANTLR runtime 4.13.1, because the generated lexers and parsers are public, `org.json`,
-because `JsonToModelConverter` takes JSON objects, and the SLF4J API, because `LoggingSyntaxErrorListener` takes a
-logger.
+because `JsonToModelConverter` takes JSON objects, and the SLF4J API, which the readers log through.
 
 Version 2.0.0 moved every package below `io.karpfen.dsl`: a package `P` of version 1.0 is now `io.karpfen.dsl.P`, and
 the generated packages `kmeta`, `kmodel` and `kstates` are now `io.karpfen.dsl.grammar.kmeta`, `.kmodel` and `.kstates`.

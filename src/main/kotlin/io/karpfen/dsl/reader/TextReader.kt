@@ -18,18 +18,16 @@ package io.karpfen.dsl.reader
 /**
  * Reads the text of one karpfen language into a model without ever throwing.
  *
- * Unlike the converters of `io.karpfen.dsl.dsl.textual`, which stop at the first problem, a reader reports
- * every problem as a [io.karpfen.dsl.diagnostics.Diagnostic] at the place where it occurs and keeps going, so
- * that text in the middle of being typed still yields a partial model. Everything a reader needs besides the
- * text, such as the metamodel of a KModel text, is passed to its constructor; a reader keeps no state between
- * reads, so one reader may serve several threads.
+ * A reader reports every problem as a [io.karpfen.dsl.diagnostics.Diagnostic] at the place where it occurs and keeps
+ * going, so that text in the middle of being typed still yields a partial model. Everything a reader needs besides the
+ * text, such as the metamodel of a KModel text, is passed to its constructor; a reader keeps no state between reads,
+ * so one reader may serve several threads.
  *
- * The converters are not built on the readers: they keep the behaviour of version 1.0 down to the exceptions
- * they throw on broken text, null pointer exceptions included, which a reader that keeps going cannot reproduce.
- * A reader reads the text its converter reads, the KMeta and KModel readers with the common indentation trimmed,
- * while its ranges refer to the text as written. Where a reader finds no error, it builds the same model as the
- * converter, and where the converter throws, the reader reports an error; the reader tests check both on thousands
- * of mutated examples.
+ * The readers are the one implementation of reading in the library and hold every rule of their language. The
+ * converters of `io.karpfen.dsl.dsl.textual` read through them and throw for a text with errors, see
+ * [ParseResult.modelOrThrow]. The KMeta and KModel readers read the text with its common indentation trimmed, see
+ * [LexerInput], while their ranges refer to the text as written. A text without errors gives the model that version
+ * 1.0 of the library gave for it; the compatibility tests check that on thousands of mutated examples.
  *
  * Should a reader fail nevertheless, through a defect or on nesting deeper than its parser can recurse, it reports
  * a [io.karpfen.dsl.diagnostics.DiagnosticCode.READER_FAILURE] and logs the failure through SLF4J, below

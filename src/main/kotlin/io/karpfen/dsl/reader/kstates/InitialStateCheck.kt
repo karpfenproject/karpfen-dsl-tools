@@ -22,8 +22,7 @@ import io.karpfen.dsl.states.InitialStates
 import io.karpfen.dsl.states.State
 
 /**
- * Checks that a state machine marks exactly one state, at any depth, as `INITIAL`, with the message of the
- * throwing converter, see [InitialStates].
+ * Checks that a state machine marks exactly one state, at any depth, as `INITIAL`, see [InitialStates].
  *
  * Several initial states are each reported at their name; no initial state at all is reported at the range
  * that stands for the states as a whole.

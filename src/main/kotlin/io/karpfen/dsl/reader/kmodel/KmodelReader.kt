@@ -15,7 +15,6 @@
  */
 package io.karpfen.dsl.reader.kmodel
 
-import io.karpfen.dsl.dsl.textual.KmodelDSLConverter
 import io.karpfen.dsl.grammar.kmodel.KmodelLexer
 import io.karpfen.dsl.grammar.kmodel.KmodelParser
 import io.karpfen.dsl.instance.DataObject
@@ -32,9 +31,9 @@ import org.slf4j.LoggerFactory
 /**
  * Reads KModel text into a [Model] of [metamodel] without throwing, see [TextReader].
  *
- * A text without errors yields the model that [KmodelDSLConverter.parseKmodelString] builds from it, with
- * every `knows` reference resolved. Like the converter, the reader reads the text with its common indentation
- * trimmed, see [LexerInput.withIndentTrimmed]. The reader reports syntax errors, objects of unknown class types,
+ * A KModel text is one object with the objects embedded in it, so the model holds that one root object. A text
+ * without errors yields the complete model, with every `knows` reference resolved. The reader reads the text with its
+ * common indentation trimmed, see [LexerInput.withIndentTrimmed]. The reader reports syntax errors, objects of unknown class types,
  * unknown properties and relations, `has` and `knows` used for the other kind of relation, values that are
  * not numbers for number properties, values other than `true` and `false` for boolean properties, several values for
  * a property or relation that is not declared as a list, two objects with the same id, and `knows` references to
@@ -86,10 +85,10 @@ class KmodelReader(private val metamodel: Metamodel) : TextReader<Model> {
 
     /**
      * Collects the objects `knows` may refer to: the objects outside the model, followed by the model objects in
-     * the order of the throwing converter. Of several objects with the same id the last one wins, so a model
-     * object wins over an object outside the model, and among model objects the converter decides.
+     * depth-first order, see [Model.collectAllObjects]. Of several objects with the same id the last one wins, so a
+     * model object wins over an object outside the model, and among model objects the one written last.
      */
     private fun referableObjects(rootObjects: MutableList<DataObject>, detachedObjects: List<DataObject>): List<DataObject> =
-        detachedObjects.flatMap { KmodelDSLConverter.collectAllObjects(mutableListOf(it)) } +
-            KmodelDSLConverter.collectAllObjects(rootObjects)
+        detachedObjects.flatMap { Model.collectAllObjects(listOf(it)) } +
+            Model.collectAllObjects(rootObjects)
 }

@@ -20,8 +20,8 @@ import io.karpfen.dsl.states.conditions.Condition
 import io.karpfen.dsl.states.conditions.ValueCondition
 
 /**
- * How the clauses of a KStates `CONDITION` block make up the condition of a transition, which the converter and the
- * reader build and the printer takes apart again.
+ * How the clauses of a KStates `CONDITION` block make up the condition of a transition, which the reader builds and the
+ * printer and the verification take apart again.
  *
  * A transition without clauses, written without a `CONDITION` block, holds the always-true condition
  * `VALUE("true")`. A single clause is the condition itself, and several clauses form a [CompositeCondition] that

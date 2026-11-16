@@ -36,7 +36,7 @@ import java.util.IdentityHashMap
  *   several statements form a list), and the [io.karpfen.dsl.instance.ObjectReference] of each `has` and
  *   `knows` statement (named by the id of the object it refers to).
  * - KStates: the [io.karpfen.dsl.states.StateMachine] (an attached one named by its type, an attachable one named by
- *   its name, with its types as its operands), every
+ *   its name, with its types as its operands, a fragment named by its name), every
  *   [io.karpfen.dsl.states.State], the `ENTRY` and `DO` blocks and the bodies of `IF IN SCOPE` and `WITH`
  *   blocks as [io.karpfen.dsl.states.actions.ActionBlock]s, every action item and the right side of every
  *   rule, the [io.karpfen.dsl.states.actions.AttachClause] of a rule (the whole clause from `ATTACH` on, without a name;
@@ -63,6 +63,11 @@ class SourceMap internal constructor(locations: IdentityHashMap<Any, List<Source
 
     /** The locations of every element, keyed by identity. */
     private val locations = IdentityHashMap(locations)
+
+    /** The offset just behind the last range of any location, 0 for a map without locations. */
+    internal val endOffset: Int by lazy {
+        locations.values.flatten().maxOfOrNull { it.range.end.offset } ?: 0
+    }
 
     /** The number of elements that have a location. */
     val size: Int

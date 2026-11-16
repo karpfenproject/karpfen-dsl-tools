@@ -17,10 +17,11 @@ package io.karpfen.dsl.compatibility
 
 import io.karpfen.dsl.dsl.textual.captureConsole
 import io.karpfen.dsl.fixtures.StructureDump
+import io.karpfen.dsl.reader.InvalidTextException
 
 /**
- * What a throwing converter made of a text, in a form that compares equal between version 1.0 and the current
- * version.
+ * What an entry point made of a text, in a form that compares equal between version 1.0 and the current version,
+ * except for [Rejected], which only the current version has.
  */
 sealed interface Outcome {
 
@@ -41,6 +42,14 @@ sealed interface Outcome {
      */
     data class Failed(val exceptionType: String, val message: String?) : Outcome
 
+    /**
+     * A converter of the current version rejected the text, since the reader found errors in it, see
+     * [InvalidTextException].
+     *
+     * @property codes The ids of the codes of the errors, each once, in the order of their first position.
+     */
+    data class Rejected(val codes: List<String>) : Outcome
+
     /** Runs conversions. */
     companion object {
 
@@ -52,6 +61,8 @@ sealed interface Outcome {
             captureConsole {
                 outcome = try {
                     Converted(StructureDump.of(conversion(), FieldsSinceVersion1::isUnused))
+                } catch (rejection: InvalidTextException) {
+                    Rejected(rejection.errors.map { it.code.id }.distinct())
                 } catch (failure: Exception) {
                     failedWith(failure)
                 } catch (failure: StackOverflowError) {

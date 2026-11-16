@@ -73,9 +73,15 @@ internal class MacroDefinitionCheck(private val session: ReadingSession) {
  * A call is matched with the first macro of its name, as the runtime does. The check is left out for a text with a
  * syntax error, since the parser may have lost a macro or one of its `TAKES`. It only reports.
  *
+ * A fragment, and a state machine with a container state, is part of a composition whose macros form one set, see
+ * [io.karpfen.dsl.composition.StateMachineFlattener]. A call in such a text may name a macro that another file of the
+ * composition defines, so a call of a macro the text does not define is not reported there, neither as unknown nor for
+ * its number of arguments; the verification of the project checks it against the whole composition.
+ *
  * @param session The read the calls belong to; it holds their locations and receives the problems.
+ * @param foreignMacrosAllowed True if calls may name macros other files define, see above.
  */
-internal class MacroCallCheck(private val session: ReadingSession) {
+internal class MacroCallCheck(private val session: ReadingSession, private val foreignMacrosAllowed: Boolean = false) {
 
     /**
      * Checks [calls], the `MACRO(...)` calls of the text, and the `@name(...)` calls in [evalBodies], the elements
@@ -102,7 +108,7 @@ internal class MacroCallCheck(private val session: ReadingSession) {
         val range = TextSpans.rangeWithin(codeRange, code, call.start, call.nameEnd)
         val count = call.argumentCount
         if (count == null) {
-            if (call.name !in macrosByName) reportUnknown(call.name, range)
+            if (call.name !in macrosByName && !foreignMacrosAllowed) reportUnknown(call.name, range)
             return
         }
         checkCall(call.name, count, macrosByName, range, fallsBack = false)
@@ -121,26 +127,10 @@ internal class MacroCallCheck(private val session: ReadingSession) {
     ) {
         val macro = macrosByName[name]
         if (macro == null) {
-            reportUnknown(name, range)
+            if (!foreignMacrosAllowed) reportUnknown(name, range)
             return
         }
-        if (fallsBack && argumentCount < macro.takes.size) {
-            val missing = macro.takes.drop(argumentCount).joinToString(", ") { "'${it.paramName}'" }
-            session.report(
-                DiagnosticCode.MISSING_MACRO_ARGUMENTS,
-                range,
-                "Macro '$name' takes ${macro.takes.size} ${plural(macro.takes.size)}, but the call passes " +
-                    "$argumentCount; the runtime reads each missing one from the path named like its parameter, " +
-                    "here $missing"
-            )
-        } else if (macro.takes.size != argumentCount) {
-            session.report(
-                DiagnosticCode.MACRO_ARGUMENT_COUNT,
-                range,
-                "Macro '$name' takes ${macro.takes.size} ${plural(macro.takes.size)}, but the call passes " +
-                    "$argumentCount; pass one argument per TAKES"
-            )
-        }
+        MacroArgumentCount.problemOf(macro, argumentCount, fallsBack)?.let { (code, message) -> session.report(code, range, message) }
     }
 
     /** Reports a call of the macro [name], which the text does not define, at [range]. */
@@ -150,6 +140,33 @@ internal class MacroCallCheck(private val session: ReadingSession) {
             range,
             "No macro is named '$name'; define it in the MACROS block or check the spelling"
         )
+    }
+}
+
+/**
+ * The rule for the number of arguments of a macro call, which the reader checks for the calls of the macros of a text
+ * and the verification of a project for the calls of macros that another file of a composition defines.
+ */
+internal object MacroArgumentCount {
+
+    /**
+     * Returns the kind and the message of the problem of a call of [macro] with [argumentCount] arguments, or null if
+     * the number fits; if [fallsBack], the runtime reads a missing argument from the path named like its parameter.
+     */
+    fun problemOf(macro: Macro, argumentCount: Int, fallsBack: Boolean): Pair<DiagnosticCode, String>? {
+        val name = macro.name
+        val takes = macro.takes.size
+        return when {
+            fallsBack && argumentCount < takes -> {
+                val missing = macro.takes.drop(argumentCount).joinToString(", ") { "'${it.paramName}'" }
+                DiagnosticCode.MISSING_MACRO_ARGUMENTS to "Macro '$name' takes $takes ${plural(takes)}, but the call " +
+                    "passes $argumentCount; the runtime reads each missing one from the path named like its parameter, " +
+                    "here $missing"
+            }
+            takes != argumentCount -> DiagnosticCode.MACRO_ARGUMENT_COUNT to
+                "Macro '$name' takes $takes ${plural(takes)}, but the call passes $argumentCount; pass one argument per TAKES"
+            else -> null
+        }
     }
 
     /** Returns the word for [count] arguments. */

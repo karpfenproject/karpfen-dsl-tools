@@ -24,13 +24,12 @@ import io.karpfen.dsl.parser.KmodelSemantics
 import io.karpfen.dsl.reader.ReadingSession
 
 /**
- * Turns the checked `prop` statements of one object into its [SimplePropertyObject]s, the way the throwing
- * converter does: the statements of one key form a single value or a list, and each value is read by the type of
- * its property, see [KmodelSemantics].
+ * Turns the checked `prop` statements of one object into its [SimplePropertyObject]s: the statements of one key form a
+ * single value or a list, and each value is read by the type of its property, see [KmodelSemantics].
  *
  * A value that is not a number for a number property is left out, and reported if its statement surely belongs to the
- * object. A value of a boolean property other than `true` and `false` is read as false, as the converter reads it, and
- * reported likewise.
+ * object. A value of a boolean property other than `true` and `false` is read as false, see [KmodelSemantics.valueOf],
+ * and reported likewise.
  *
  * @param session The read the statements belong to.
  */
@@ -66,8 +65,8 @@ internal class PropertyAssignments(private val session: ReadingSession) {
     }
 
     /**
-     * Reads the value of [statement] the way the throwing converter does; returns null for a value that is not a
-     * number for a number property, and reports it if the statement belongs to the object.
+     * Reads the value of [statement], see [KmodelSemantics.valueOf]; returns null for a value that is not a number for
+     * a number property, and reports it if the statement belongs to the object.
      */
     private fun valueOf(statement: PropStatement): Any? = try {
         checkBoolean(statement)
@@ -85,8 +84,8 @@ internal class PropertyAssignments(private val session: ReadingSession) {
 
     /**
      * Reports the value of [statement] if its property is a boolean and the value is neither `true` nor `false`, see
-     * [KmodelSemantics.isBooleanText], unless the statement may belong to another object; the value stays as the
-     * converter reads it.
+     * [KmodelSemantics.isBooleanText], unless the statement may belong to another object; the value stays as
+     * [KmodelSemantics.valueOf] reads it.
      */
     private fun checkBoolean(statement: PropStatement) {
         val isBoolean = statement.property.propertyType == SimplePropertyType.BOOLEAN

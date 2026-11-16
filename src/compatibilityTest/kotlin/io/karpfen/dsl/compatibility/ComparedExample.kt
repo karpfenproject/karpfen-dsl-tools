@@ -15,18 +15,22 @@
  */
 package io.karpfen.dsl.compatibility
 
+import java.io.File
+
 /**
  * An example text with one entry point of each version that reads it, such as the throwing converter of its
  * language, once of version 1.0 and once of the current version, each set up with base types or a metamodel of its
  * own version.
  *
  * @property path The path of the example file, or a name for a text that is no file.
+ * @property file The example file the text stems from, null for a text that stems from none.
  * @property text The example text.
  * @property legacy Reads a text with version 1.0.
  * @property current Reads a text with the current version.
  */
 class ComparedExample(
     val path: String,
+    val file: File?,
     val text: String,
     private val legacy: (String) -> Any?,
     private val current: (String) -> Any?

@@ -16,7 +16,7 @@
 package io.karpfen.dsl.states
 
 /**
- * Represents a hierarchical state machine definition in one of the two forms of KStates.
+ * Represents a hierarchical state machine definition in one of the three forms of KStates.
  *
  * An attached state machine, `STATEMACHINE ATTACHED TO "Lamp"`, has no name and one type; a run attaches it to one
  * object of that type by the key of the object. An attachable state machine, `STATEMACHINE "blinking" ATTACHABLE TO
@@ -25,15 +25,21 @@ package io.karpfen.dsl.states
  * for an object an `EXCHANGE` names it for. The form is told by [name]: null for the attached form, a string,
  * possibly empty in a text that lacks it, for the attachable form.
  *
+ * A fragment, `STATEMACHINE "bulb test" FRAGMENT`, is the third form: a state machine with a name and without a type,
+ * which is never attached to an object. It runs only inside the container states that use it by its name, once a
+ * composition is flattened, see [io.karpfen.dsl.composition.StateMachineFlattener]. It is told by [isFragment]; its
+ * [name] is set as for the attachable form, and [attachableTo] is empty.
+ *
  * @property attachedToClass The name of the type an attached state machine is attached to; the empty string for an
  * attachable state machine, whose types are [attachableTo].
  * @property states List of top-level states defined in this state machine.
  * @property transitions List of state transitions with conditions.
  * @property macros List of macro definitions for use in actions and conditions.
- * @property name The name of an attachable state machine, by which `behaves after`, `ATTACH` and `EXCHANGE` name it;
- * null for an attached state machine.
+ * @property name The name of an attachable state machine, by which `behaves after`, `ATTACH` and `EXCHANGE` name it, or
+ * of a fragment, by which container states use it; null for an attached state machine.
  * @property attachableTo The types an attachable state machine may be attached to, in the order they are written;
- * empty for an attached state machine.
+ * empty for an attached state machine and a fragment.
+ * @property isFragment True for a fragment, `STATEMACHINE "name" FRAGMENT`.
  */
 data class StateMachine(
     val attachedToClass: String,
@@ -41,19 +47,28 @@ data class StateMachine(
     val transitions: MutableList<TransitionLike>,
     val macros: MutableList<Macro>,
     val name: String? = null,
-    val attachableTo: List<String> = emptyList()
+    val attachableTo: List<String> = emptyList(),
+    val isFragment: Boolean = false
     ) {
 
-    /** True for the attachable form, `STATEMACHINE "name" ATTACHABLE TO ...`, false for the attached form. */
+    /**
+     * True for the attachable form, `STATEMACHINE "name" ATTACHABLE TO ...`, false for the attached form and for a
+     * fragment.
+     */
     val isAttachable: Boolean
-        get() = name != null
+        get() = name != null && !isFragment
 
     /**
      * The types the state machine may run on: [attachableTo] for an attachable state machine, the single
-     * [attachedToClass] for an attached one.
+     * [attachedToClass] for an attached one, none for a fragment, which runs on the object of the state machine that
+     * uses it.
      */
     val types: List<String>
-        get() = if (isAttachable) attachableTo else listOf(attachedToClass)
+        get() = when {
+            isFragment -> emptyList()
+            isAttachable -> attachableTo
+            else -> listOf(attachedToClass)
+        }
 
     /**
      * The normal and split transitions that leave [stateName], in definition order. These are the
@@ -70,11 +85,15 @@ data class StateMachine(
     fun joinTransitions(): List<JoinTransition> = transitions.filterIsInstance<JoinTransition>()
 
     override fun toString(): String {
-        val header = if (isAttachable) "name=$name, attachableTo=$attachableTo" else "attachedToClass=$attachedToClass"
+        val header = when {
+            isFragment -> "name=$name, fragment"
+            isAttachable -> "name=$name, attachableTo=$attachableTo"
+            else -> "attachedToClass=$attachedToClass"
+        }
         return "StateMachine($header, states=${states.size}, transitions=${transitions.size}, macros=${macros.size})"
     }
 
-    /** Builds state machines of the attachable form. */
+    /** Builds state machines of the attachable form and fragments. */
     companion object {
 
         /**
@@ -87,5 +106,15 @@ data class StateMachine(
             transitions: MutableList<TransitionLike>,
             macros: MutableList<Macro>
         ): StateMachine = StateMachine("", states, transitions, macros, name, attachableTo)
+
+        /**
+         * Returns a fragment named [name], which container states use by this name.
+         */
+        fun fragment(
+            name: String,
+            states: MutableList<State>,
+            transitions: MutableList<TransitionLike>,
+            macros: MutableList<Macro>
+        ): StateMachine = StateMachine("", states, transitions, macros, name, emptyList(), isFragment = true)
     }
 }

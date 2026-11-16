@@ -29,13 +29,12 @@ import kotlin.test.assertTrue
 import kotlin.test.fail
 
 /**
- * Tests that the readers never throw, whatever the text, and agree with the throwing converters.
+ * Tests that the readers never throw, whatever the text.
  *
  * Thousands of deterministic mutations of the example files, every example in every [TextLayout] and every prefix of
  * an example stand in for text in the middle of being typed. On each, the reader must neither throw nor fail
- * internally, and every range it reports or records must be a proper range of the text. Where the reader finds no
- * error, the throwing converter must build a model of the same structure; where the converter throws, the reader
- * must report an error.
+ * internally, and every range it reports or records must be a proper range of the text. That the readers build the
+ * models of version 1.0 for texts without errors, the compatibility tests check.
  */
 class ReaderRobustnessTest {
 
@@ -43,7 +42,7 @@ class ReaderRobustnessTest {
      * Mutated KMeta texts, domain metamodels and event definitions.
      */
     @Test
-    fun `the kmeta reader never throws and agrees with the converter`() {
+    fun `the kmeta reader never throws`() {
         checkMutations(ReaderUnderTest.kmeta(), Mutator(Vocabularies.KMETA))
     }
 
@@ -51,7 +50,7 @@ class ReaderRobustnessTest {
      * Mutated KModel texts.
      */
     @Test
-    fun `the kmodel reader never throws and agrees with the converter`() {
+    fun `the kmodel reader never throws`() {
         checkMutations(ReaderUnderTest.kmodel(), Mutator(Vocabularies.KMODEL))
     }
 
@@ -59,16 +58,16 @@ class ReaderRobustnessTest {
      * Mutated KStates texts.
      */
     @Test
-    fun `the kstates reader never throws and agrees with the converter`() {
+    fun `the kstates reader never throws`() {
         checkMutations(ReaderUnderTest.kstates(), Mutator(Vocabularies.KSTATES))
     }
 
     /**
-     * Every example in every layout, and texts without any content, which the converters of KMeta and KModel read
-     * with their common indentation trimmed and their line breaks made uniform.
+     * Every example in every layout, and texts without any content, which the readers of KMeta and KModel read with
+     * their common indentation trimmed and their line breaks made uniform.
      */
     @Test
-    fun `the readers read every example in every layout as the converters do`() {
+    fun `the readers read every example in every layout`() {
         val problems = ReaderUnderTest.all().flatMap { subject ->
             val layouts = TextLayout.entries.map { "$subject in $it" to it.apply(subject.text) }
             val degenerate = TextLayout.DEGENERATE_TEXTS.map { "<${StructureDump.of(it)}> as $subject" to it }
@@ -150,33 +149,21 @@ class ReaderRobustnessTest {
     }
 
     /**
-     * Reads [text] with the reader of [subject] and finds why that is a problem, see [problemOf], or how it
-     * disagrees with the converter, see [disagreementOf].
+     * Reads [text] with the reader of [subject] and finds why that is a problem, see [problemOf].
      */
     private fun readingOf(subject: ReaderUnderTest, text: String): Reading {
         var result: ParseResult<Any>? = null
         val readProblem = problemOf(text) { subject.reader.read(text).also { result = it } }
-        return Reading(result, readProblem ?: result?.let { disagreementOf(it, subject.convertedStructureOf(text)) })
+        return Reading(result, readProblem)
     }
 
     /**
      * One read of a text.
      *
      * @property result What the reader read, null if it threw.
-     * @property problem Why the read is a problem or disagrees with the converter, null if it is fine.
+     * @property problem Why the read is a problem, null if it is fine.
      */
     private class Reading(val result: ParseResult<Any>?, val problem: String?)
-
-    /**
-     * Describes how the reader result and the structure the converter built, null if the converter threw,
-     * disagree; null if they agree.
-     */
-    private fun disagreementOf(result: ParseResult<Any>, convertedStructure: String?): String? = when {
-        convertedStructure == null && !result.hasErrors -> "the converter throws, but the reader reports no error"
-        convertedStructure != null && !result.hasErrors && StructureDump.of(result.model) != convertedStructure ->
-            "the reader reports no error, but its model differs from the converted one"
-        else -> null
-    }
 
     /**
      * Describes why reading [text] with [read] is a problem: it throws, fails internally, or a range of a diagnostic

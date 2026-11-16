@@ -60,6 +60,20 @@ class GraphVerificationTest {
         )
     }
 
+    /**
+     * The start goes to the marked state through the states around it, even when they are not the first of their level,
+     * so here the first state is the one that is never active.
+     */
+    @Test
+    fun `the start goes to a marked inner state of a later state`() {
+        val states = """
+            STATE "off" { }
+            STATE "on" { STATE "full" { } INITIAL STATE "dimmed" { } }
+        """
+
+        assertEquals(listOf(UNREACHABLE_STATE to "off"), marked(states, "TRANSITION \"dimmed\" -> \"full\" { }"))
+    }
+
     /** The start enters the initial state of each level, here an inner one, and a join leads to its target. */
     @Test
     fun `the initial states and the target of a firing join are reached`() {

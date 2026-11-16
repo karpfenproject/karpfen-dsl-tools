@@ -19,7 +19,7 @@ import io.karpfen.dsl.meta.ClassType
 import io.karpfen.dsl.meta.Metamodel
 
 /**
- * How the types of a KMeta text make up a metamodel, which the converter and the reader share.
+ * How the types of a KMeta text make up a metamodel, as the reader builds it.
  */
 internal object KmetaSemantics {
 

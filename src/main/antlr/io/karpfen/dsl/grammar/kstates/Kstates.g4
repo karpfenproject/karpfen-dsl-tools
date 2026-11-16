@@ -23,12 +23,23 @@ kstates_file
     : statemachine EOF
     ;
 
+// A fragment, `STATEMACHINE "name" FRAGMENT`, is read with an entry rule of its own. A tool chooses the rule by the
+// tokens in front of the first brace, see io.karpfen.dsl.parser.KstatesEntryRule, so that the attached and the
+// attachable form keep their rule and recover from errors exactly as before.
+fragment_file
+    : fragment_machine EOF
+    ;
+
 // Two forms share one header: `STATEMACHINE ATTACHED TO "T"` and `STATEMACHINE "name" ATTACHABLE TO "A", "B"`.
 // The grammar accepts a name and further types with either keyword; the reader reports a name or a second type of
 // an attached state machine and an attachable one without a name. The optional parts stand in rules of their own,
 // so that a missing keyword or brace of the header is recovered from exactly as in a grammar without them.
 statemachine
     : STATEMACHINE statemachine_name (ATTACHED | ATTACHABLE) TO STRING further_types LBRACE states_block transitions_block macros_block? RBRACE
+    ;
+
+fragment_machine
+    : STATEMACHINE statemachine_name FRAGMENT LBRACE states_block transitions_block macros_block? RBRACE
     ;
 
 statemachine_name
@@ -43,8 +54,20 @@ states_block
     : STATES LBRACE state_definition* RBRACE
     ;
 
+// A container state, `CONTAINER STATE "name" USE "fragment"`, and a final state, `FINAL STATE "name"`, share the rule
+// of a state. The kind and the fragment stand in rules of their own that may be empty, so that a state without them
+// recovers from errors exactly as before. The grammar takes every part in every kind of state; the reader reports
+// the parts a kind does not have.
 state_definition
-    : INITIAL? history_definition? STATE STRING LBRACE state_breakpoint_block? tick_limit_block? entry_block? do_block? state_definition* RBRACE
+    : INITIAL? history_definition? state_kind STATE STRING fragment_use LBRACE state_breakpoint_block? tick_limit_block? entry_block? do_block? state_definition* RBRACE
+    ;
+
+state_kind
+    : (CONTAINER | FINAL)?
+    ;
+
+fragment_use
+    : (USE STRING)?
     ;
 
 history_definition
@@ -196,6 +219,7 @@ condition_clause
     : event_condition
     | eval_statement
     | value_condition
+    | done_condition
     ;
 
 event_condition
@@ -204,6 +228,10 @@ event_condition
 
 value_condition
     : VALUE LPAREN STRING RPAREN
+    ;
+
+done_condition
+    : DONE
     ;
 
 macros_block
@@ -304,6 +332,11 @@ SCOPE           : 'SCOPE' ;
 ATTACHABLE      : 'ATTACHABLE' ;
 ATTACH          : 'ATTACH' | 'attach' ;
 EXCHANGE        : 'EXCHANGE' | 'exchange' ;
+FRAGMENT        : 'FRAGMENT' ;
+CONTAINER       : 'CONTAINER' ;
+USE             : 'USE' ;
+FINAL           : 'FINAL' ;
+DONE            : 'DONE' ;
 
 ARROW           : '->' ;
 LBRACE          : '{' ;
@@ -320,5 +353,10 @@ NUMBER       : [0-9]+ ('.' [0-9]+)? ;
 
 WS           : [ \t\r\n]+ -> channel(HIDDEN) ;
 LINE_COMMENT : '//' ~[\r\n]* -> channel(HIDDEN) ;
+
+// A byte order mark, which editors on Windows write at the start of a file, is skipped there, so that a text that
+// starts with one reads like the same text without it. Anywhere else the char stays what it is without this rule.
+BYTE_ORDER_MARK : '\uFEFF' {_tokenStartCharIndex == 0}? -> skip ;
+
 SYMBOL       : . ;
 

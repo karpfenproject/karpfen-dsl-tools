@@ -22,8 +22,8 @@ import io.karpfen.dsl.parser.KmodelSemantics
 import io.karpfen.dsl.reader.ReadingSession
 
 /**
- * Resolves `knows` references to the objects they name by id, the way the throwing converter does, and
- * reports those it cannot resolve at the id.
+ * Resolves `knows` references to the objects they name by id, see [io.karpfen.dsl.parser.KmodelSemantics.referableById],
+ * and reports those it cannot resolve at the id.
  *
  * A reference is resolved in place, so its location in the source map stays valid. An unresolvable entry of a
  * list is removed from the list, so that the list can still be read; a single unresolvable reference stays,

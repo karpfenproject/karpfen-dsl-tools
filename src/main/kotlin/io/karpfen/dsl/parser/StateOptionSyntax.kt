@@ -18,8 +18,8 @@ package io.karpfen.dsl.parser
 import io.karpfen.dsl.states.History
 
 /**
- * The syntax of what a KStates state carries besides its actions and inner states, shared by the parse visitor,
- * the reader and the printer: its history, its tick limit and its breakpoints.
+ * The syntax of what a KStates state carries besides its actions and inner states, shared by the reader and the
+ * printer: its history, its tick limit and its breakpoints.
  *
  * A history is written in front of `STATE` as `SHALLOW HISTORY` or `DEEP HISTORY`. A tick limit is the block
  * `TICK LIMIT { DELAY: 3 TICKS TIMEOUT: AFTER 10 TICKS TRANSITION TO "state" }` with either part or both, in any

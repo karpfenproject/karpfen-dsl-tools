@@ -158,7 +158,10 @@ enum class DiagnosticCode(val id: String, val severity: Severity) {
     /** The code of a KStates `EVAL` has no `return`, so it yields no value. */
     EVAL_WITHOUT_RETURN("kstates.eval-without-return", Severity.WARNING),
 
-    /** A KStates state machine is `ATTACHABLE TO` types but has no name, which `behaves after`, `ATTACH` and `EXCHANGE` need. */
+    /**
+     * A KStates state machine is `ATTACHABLE TO` types but has no name, which `behaves after`, `ATTACH` and `EXCHANGE`
+     * need, or is a `FRAGMENT` without the name by which container states use it. An empty name counts as no name.
+     */
     MISSING_STATE_MACHINE_NAME("kstates.missing-state-machine-name", Severity.ERROR),
 
     /**
@@ -169,6 +172,39 @@ enum class DiagnosticCode(val id: String, val severity: Severity) {
 
     /** A KStates state machine names the same type twice after `ATTACHABLE TO`. */
     REPEATED_ATTACHABLE_TYPE("kstates.repeated-attachable-type", Severity.ERROR),
+
+    /**
+     * A KStates `CONTAINER STATE` lacks the `USE "fragment"` after its name or names an empty fragment name, or a state
+     * that is no container state has a `USE`.
+     */
+    CONTAINER_USE("kstates.container-use", Severity.ERROR),
+
+    /** A KStates container state has an `ENTRY` or `DO` block or inner states; its content comes from its fragment. */
+    CONTAINER_STATE_CONTENT("kstates.container-state-content", Severity.ERROR),
+
+    /**
+     * A KStates `FINAL STATE` holds more than a `BREAKPOINT` block: a `TICK LIMIT`, actions or inner states, or it is
+     * marked `INITIAL` or has a history.
+     */
+    FINAL_STATE_CONTENT("kstates.final-state-content", Severity.ERROR),
+
+    /** A KStates `FINAL STATE` stands in a state machine that is no fragment, or below the top level of a fragment. */
+    MISPLACED_FINAL_STATE("kstates.misplaced-final-state", Severity.ERROR),
+
+    /** A KStates fragment has no `FINAL STATE` at its top level. */
+    FRAGMENT_WITHOUT_FINAL_STATE("kstates.fragment-without-final-state", Severity.ERROR),
+
+    /** A KStates transition, split or join leaves a final state, which has no outgoing transitions. */
+    TRANSITION_FROM_FINAL_STATE("kstates.transition-from-final-state", Severity.ERROR),
+
+    /**
+     * A KStates `DONE` clause stands on a `TRANSITION` or `SPLIT` whose source is no container state, or on a `JOIN` of
+     * which no source is a container state.
+     */
+    MISPLACED_DONE("kstates.misplaced-done", Severity.ERROR),
+
+    /** A container state of a KStates fragment uses the fragment itself. */
+    FRAGMENT_USES_ITSELF("kstates.fragment-uses-itself", Severity.ERROR),
 
     /** A state machine is `ATTACHED TO`, or `ATTACHABLE TO`, a class type that the metamodel of the project does not define. */
     UNKNOWN_ATTACHED_TYPE("project.unknown-attached-type", Severity.ERROR),
@@ -221,7 +257,7 @@ enum class DiagnosticCode(val id: String, val severity: Severity) {
     /** A state machine reads a property that the model gives no value, on the way from the object it runs on, and that no action writes. */
     UNSET_PROPERTY("project.unset-property", Severity.WARNING),
 
-    /** Two attachable state machines of a project have the same name. */
+    /** Two named state machines of a project, attachable ones or fragments, have the same name. */
     DUPLICATE_STATE_MACHINE_NAME("project.duplicate-state-machine-name", Severity.ERROR),
 
     /** A `behaves after`, an `ATTACH` or an `EXCHANGE` names a state machine that no attachable state machine of the project is called. */
@@ -241,6 +277,30 @@ enum class DiagnosticCode(val id: String, val severity: Severity) {
 
     /** A type of the event metamodel has `behaves after`, but events have no state machines. */
     BEHAVES_AFTER_IN_EVENTS("project.behaves-after-in-events", Severity.ERROR),
+
+    /** A `behaves after`, an `ATTACH` or an `EXCHANGE` names a fragment, which is never attached to an object. */
+    ATTACHED_FRAGMENT("project.attached-fragment", Severity.ERROR),
+
+    /** A container state uses a name that no state machine of the project has. */
+    UNKNOWN_FRAGMENT("project.unknown-fragment", Severity.ERROR),
+
+    /** A container state uses a state machine that is no fragment. */
+    NOT_A_FRAGMENT("project.not-a-fragment", Severity.ERROR),
+
+    /** A container state uses a fragment that contains, directly or through other fragments, the state itself. */
+    FRAGMENT_CYCLE("project.fragment-cycle", Severity.ERROR),
+
+    /** The qualified name of a state of a flattened composition is the name of another state of it. */
+    QUALIFIED_NAME_CLASH("project.qualified-name-clash", Severity.ERROR),
+
+    /** Two files of a composition define macros of the same name that differ. */
+    CONFLICTING_MACROS("project.conflicting-macros", Severity.ERROR),
+
+    /** A macro call in a fragment or in a state machine with container states names a macro no file of its composition defines. */
+    UNKNOWN_COMPOSED_MACRO("project.unknown-macro", Severity.ERROR),
+
+    /** A macro call names a macro that only another file of its composition defines; each file should define the macros it calls. */
+    MACRO_FROM_OTHER_FILE("project.macro-from-other-file", Severity.WARNING),
 
     /**
      * The reader failed and could not build a model: on nesting deeper than the parser can recurse, or through a

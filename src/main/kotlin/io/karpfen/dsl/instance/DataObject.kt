@@ -21,7 +21,7 @@ import io.karpfen.dsl.meta.ClassType
  * An object of a model: an instance of a class type with its property values and relations.
  *
  * The constructor does not check the given properties and relations against the class type; the
- * converters and builders create them from the metamodel.
+ * readers and builders create them from the metamodel.
  *
  * @property ofType The class type this object instantiates.
  * @property id The identifier of this object, empty for anonymous objects.

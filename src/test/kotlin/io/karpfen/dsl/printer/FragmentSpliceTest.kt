@@ -19,6 +19,7 @@ import io.karpfen.dsl.dsl.textual.KmetaDSLConverter
 import io.karpfen.dsl.dsl.textual.KmodelDSLConverter
 import io.karpfen.dsl.fixtures.ExampleCatalog
 import io.karpfen.dsl.fixtures.TextLayout
+import io.karpfen.dsl.instance.Model
 import io.karpfen.dsl.printer.kmeta.KmetaPrinter
 import io.karpfen.dsl.printer.kmeta.structure
 import io.karpfen.dsl.printer.kmodel.KmodelPrinter
@@ -90,7 +91,7 @@ class FragmentSpliceTest {
                 val model = read.model?.takeUnless { read.hasErrors } ?: return@forEach
                 val structureOf = { content: String -> KmodelDSLConverter.parseKmodelString(content, metamodel).structure() }
                 val shared = sharedIndentationOf(text)
-                KmodelDSLConverter.collectAllObjects(model.objects).forEach { obj ->
+                Model.collectAllObjects(model.objects).forEach { obj ->
                     val range = read.sourceMap.rangeOf(obj)!!
                     assertSpliceKeeps(structureOf(text), text, range, structureOf) { printer.printObject(obj, it, shared) }
                     spliced += 1

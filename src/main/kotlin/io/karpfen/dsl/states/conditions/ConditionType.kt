@@ -29,5 +29,8 @@ enum class ConditionType {
     VALUE,
 
     /** An ordered sequence of clauses that must all hold, see [CompositeCondition]. */
-    COMPOSITE
+    COMPOSITE,
+
+    /** Holds when the container states a transition leaves have reached a final state, see [DoneCondition]. */
+    DONE
 }

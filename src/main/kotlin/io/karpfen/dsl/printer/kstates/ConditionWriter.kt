@@ -19,6 +19,7 @@ import io.karpfen.dsl.parser.ConditionClauses
 import io.karpfen.dsl.printer.CodeWriter
 import io.karpfen.dsl.states.conditions.CompositeCondition
 import io.karpfen.dsl.states.conditions.Condition
+import io.karpfen.dsl.states.conditions.DoneCondition
 import io.karpfen.dsl.states.conditions.EvalCondition
 import io.karpfen.dsl.states.conditions.EventCondition
 import io.karpfen.dsl.states.conditions.ValueCondition
@@ -45,7 +46,7 @@ internal class ConditionWriter(private val syntax: KstatesSyntax) {
     }
 
     /**
-     * Returns one clause: `EVENT("domain", "event")`, `VALUE("variable")` or an `EVAL` block.
+     * Returns one clause: `EVENT("domain", "event")`, `VALUE("variable")`, an `EVAL` block or `DONE`.
      *
      * @throws IllegalArgumentException If [clause] is of none of these kinds.
      */
@@ -53,6 +54,7 @@ internal class ConditionWriter(private val syntax: KstatesSyntax) {
         is EventCondition -> "EVENT(${syntax.quoteAll(listOf(clause.eventDomain, clause.eventValue))})"
         is ValueCondition -> "VALUE(${syntax.quote(clause.boolVariable)})"
         is EvalCondition -> syntax.eval(clause.code, writer)
+        is DoneCondition -> "DONE"
         else -> throw IllegalArgumentException("Unsupported kind of condition: ${clause.conditionType}")
     }
 }

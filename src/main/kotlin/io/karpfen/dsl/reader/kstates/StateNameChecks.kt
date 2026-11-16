@@ -120,6 +120,11 @@ internal class StateReferenceCheck(private val session: ReadingSession) {
         return names.mapIndexed { index, name -> StateMention(transition, name, index) }
     }
 
-    /** Returns the state the `TIMEOUT` of [state] leads to, or null without a timeout. */
-    private fun timeoutOf(state: State): StateMention? = state.timeoutTo?.let { StateMention(state, it, 0) }
+    /**
+     * Returns the state the `TIMEOUT` of [state] leads to, or null without a timeout; its target is the last operand
+     * of the state, after the fragment a container state uses.
+     */
+    private fun timeoutOf(state: State): StateMention? = state.timeoutTo?.let {
+        StateMention(state, it, session.locationOf(state)?.operandRanges?.lastIndex ?: 0)
+    }
 }

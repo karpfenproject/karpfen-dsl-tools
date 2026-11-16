@@ -20,7 +20,7 @@ package io.karpfen.dsl.diagnostics
  */
 enum class Severity {
 
-    /** The text is wrong: the throwing converters reject it, or the reader cannot read it as written. */
+    /** The text is wrong: the reader cannot read it as written, and the converters reject it. */
     ERROR,
 
     /** The text is accepted but very likely not what was meant. */

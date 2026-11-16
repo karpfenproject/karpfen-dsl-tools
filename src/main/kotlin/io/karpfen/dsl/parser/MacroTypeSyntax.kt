@@ -16,8 +16,8 @@
 package io.karpfen.dsl.parser
 
 /**
- * How a KStates macro holds the type of a `TAKES` or `RETURNS` directive as a string, which the parse visitor and
- * the reader build and the printer takes apart again.
+ * How a KStates macro holds the type of a `TAKES` or `RETURNS` directive as a string, which the reader builds and the
+ * printer takes apart again.
  *
  * A type written as a string literal, `"number"`, is held as its value, `number`. A type written as a typed call,
  * `list("Obstacle")`, or as a reference, `reference("Obstacle")`, is held as the call with the value of its type

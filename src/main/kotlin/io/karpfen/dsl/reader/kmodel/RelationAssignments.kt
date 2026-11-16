@@ -25,8 +25,8 @@ import io.karpfen.dsl.reader.ReadingSession
 import io.karpfen.dsl.source.SourceLocation
 
 /**
- * Turns the checked `has` and `knows` statements of one object into its [ClassTypePropertyObject]s, the way the
- * throwing converter does: the statements of one key form a single reference or a list, see [KmodelSemantics].
+ * Turns the checked `has` and `knows` statements of one object into its [ClassTypePropertyObject]s: the statements of
+ * one key form a single reference or a list, see [KmodelSemantics].
  *
  * A `has` reference points to its embedded object right away; a `knows` reference names its object by id and
  * is handed to [pendingLinks] for resolution.

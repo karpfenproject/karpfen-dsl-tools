@@ -18,7 +18,7 @@ package io.karpfen.dsl.parser
 import io.karpfen.dsl.meta.SimplePropertyType
 
 /**
- * The words of KMeta that the converter, the readers and the printers share: the primitive property types by their
+ * The words of KMeta that the readers, the printers and the JSON converter share: the primitive property types by their
  * names, which [SimplePropertyType.keyword] holds. The keyword of each kind of relation is
  * [io.karpfen.dsl.meta.AssociationType.keyword].
  */

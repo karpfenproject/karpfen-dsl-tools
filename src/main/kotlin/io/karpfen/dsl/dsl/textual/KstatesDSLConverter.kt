@@ -15,50 +15,45 @@
  */
 package io.karpfen.dsl.dsl.textual
 
-import io.karpfen.dsl.parser.*
 import io.karpfen.dsl.printer.kstates.KstatesPrinter
-import io.karpfen.dsl.states.*
-import io.karpfen.dsl.states.actions.*
-import io.karpfen.dsl.states.conditions.*
-import io.karpfen.dsl.states.macros.*
+import io.karpfen.dsl.reader.InvalidTextException
+import io.karpfen.dsl.reader.kstates.KstatesReader
+import io.karpfen.dsl.states.KstatesFeature
+import io.karpfen.dsl.states.StateMachine
 import java.io.File
 
 /**
- * Converts KStates text and files into [StateMachine]s.
+ * Converts KStates text and files into [StateMachine]s, and state machines back into text.
+ *
+ * The converter is the throwing form of [KstatesReader] with every optional feature switched on, see
+ * [KstatesFeature.ALL], for a text that is expected to be right: it reads through the reader, so every rule of KStates
+ * holds here as there, the rules of fragments, container states, final states and `DONE` included, and returns the
+ * state machine of a text without errors or throws an [InvalidTextException] with all errors of the text. Warnings do
+ * not make it throw. A tool that shows the problems of a text, that must go on with a text that has errors, or that
+ * switches optional features off, uses the reader.
  */
 object KstatesDSLConverter {
 
     /**
-     * Parses KStates text and converts it into a [StateMachine].
+     * Reads KStates text into a [StateMachine], in each of the three forms: attached, attachable and fragment, see
+     * [KstatesReader].
      *
      * @param content The KStates content as a string.
-     * @return The parsed state machine.
-     * @throws IllegalArgumentException If the state machine does not have exactly one initial state or an
-     * action rule is written with the wrong number of operands.
+     * @return The state machine.
+     * @throws InvalidTextException If the text has at least one error, such as a syntax error, a state machine without
+     * exactly one initial state, an action rule written with the wrong number of operands, a name defined twice, or a
+     * final state outside a fragment.
      */
-    fun parseKstatesString(content: String): StateMachine {
-        val parsed = KStatesFileParser().parseString(content)
-
-        val stateObjects = parsed.states.map { convertState(it, null) }.toMutableList()
-        val transitions = parsed.transitions.map { convertTransition(it) }.toMutableList()
-        val macros = parsed.macros.map { convertMacro(it) }.toMutableList()
-
-        val initialStates = InitialStates.of(stateObjects).size
-        require(initialStates == 1) { InitialStates.countMessage(initialStates) }
-
-        return StateMachine(parsed.attachedToClass, stateObjects, transitions, macros, parsed.name, parsed.attachableTo)
-    }
+    fun parseKstatesString(content: String): StateMachine = KstatesReader().read(content).modelOrThrow()
 
     /**
-     * Parses the KStates file at [filePath] and converts it into a [StateMachine], see [parseKstatesString].
+     * Reads the KStates file at [filePath] into a [StateMachine], see [parseKstatesString].
      *
-     * @param filePath The path to the KStates file to parse.
-     * @return The parsed state machine.
+     * @param filePath The path to the KStates file to read.
+     * @return The state machine.
+     * @throws InvalidTextException If the text of the file has at least one error; its message names the file.
      */
-    fun parseKstatesFile(filePath: String): StateMachine {
-        val content = File(filePath).readText()
-        return parseKstatesString(content)
-    }
+    fun parseKstatesFile(filePath: String): StateMachine = KstatesReader().read(File(filePath).readText()).modelOrThrow(filePath)
 
     /**
      * Converts a [StateMachine] back into KStates text in the canonical layout, with the code of its `EVAL`
@@ -70,127 +65,4 @@ object KstatesDSLConverter {
      * or the state machine holds something KStates cannot express.
      */
     fun convertToKstatesString(stateMachine: StateMachine): String = KstatesPrinter().print(stateMachine)
-
-    /**
-     * Converts a parsed state and, recursively, its nested states, linking each to its [outerState].
-     */
-    private fun convertState(parsedState: ParsedState, outerState: State?): State {
-        val state = State(
-            name = parsedState.name,
-            onEntry = convertActionBlock(parsedState.onEntry),
-            onDo = convertActionBlock(parsedState.onDo),
-            innerStates = mutableListOf(),
-            outerState = outerState,
-            isInitial = parsedState.isInitial,
-            entryBreakpoint = parsedState.entryBreakpoint,
-            exitBreakpoint = parsedState.exitBreakpoint,
-            history = parsedState.history,
-            delay = parsedState.delay,
-            timeout = parsedState.timeout,
-            timeoutTo = parsedState.timeoutTo,
-        )
-
-        for (inner in parsedState.innerStates) {
-            state.innerStates.add(convertState(inner, state))
-        }
-
-        return state
-    }
-
-    /** Converts the items of an action block; a missing block becomes an empty one. */
-    private fun convertActionBlock(block: ParsedActionBlock?): ActionBlock {
-        val items = block?.items?.map { convertActionItem(it) } ?: emptyList()
-        return ActionBlock(items.toMutableList())
-    }
-
-    /** Converts an action rule, an `IF IN SCOPE` block or a `WITH` block. */
-    private fun convertActionItem(item: ParsedActionItem): ActionItem {
-        return when (item) {
-            is ParsedActionRuleItem -> convertActionRule(item.rule)
-            is ParsedInScopeBlock -> InScopeBlock(
-                paths = item.paths,
-                body = convertActionBlock(item.body)
-            )
-            is ParsedWithBlock -> WithBlock(
-                macro = MacroActionRightSide(item.macroName, item.args),
-                name = item.name,
-                body = convertActionBlock(item.body)
-            )
-        }
-    }
-
-    /** Converts an action rule with its operands and its `ATTACH` clause. */
-    private fun convertActionRule(action: ParsedActionRule): ActionRule {
-        return ActionRule(
-            operationType = action.operationType.operation,
-            leftSide = action.leftSide,
-            secondSide = action.secondSide,
-            rightSide = action.rightSide?.let { convertActionRightSide(it) },
-            attach = action.attach?.let { AttachClause(convertActionRightSide(it)) }
-        )
-    }
-
-    /** Converts the right side of a rule: a macro call, the code of an `EVAL` block or a literal value. */
-    private fun convertActionRightSide(rightSide: ParsedActionRightSide): ActionRightSide {
-        return when (rightSide) {
-            is ParsedMacroActionRightSide -> MacroActionRightSide(rightSide.macroName, rightSide.args)
-            is ParsedEvalActionRightSide -> EvalActionRightSide(rightSide.code)
-            is ParsedValueActionRightSide -> ValueActionRightSide(rightSide.value)
-        }
-    }
-
-    /** Converts a transition of any of the three kinds with its condition. */
-    private fun convertTransition(transition: ParsedTransitionLike): TransitionLike {
-        return when (transition) {
-            is ParsedTransition -> Transition(
-                fromState = transition.fromState,
-                toState = transition.toState,
-                allowLoops = transition.allowLoops,
-                startBreakpoint = transition.startBreakpoint,
-                endBreakpoint = transition.endBreakpoint,
-                condition = convertCondition(transition.condition)
-            )
-            is ParsedSplitTransition -> SplitTransition(
-                fromState = transition.fromState,
-                toStates = transition.toStates,
-                allowLoops = transition.allowLoops,
-                startBreakpoint = transition.startBreakpoint,
-                endBreakpoint = transition.endBreakpoint,
-                condition = convertCondition(transition.condition)
-            )
-            is ParsedJoinTransition -> JoinTransition(
-                fromStates = transition.fromStates,
-                toState = transition.toState,
-                allowLoops = transition.allowLoops,
-                startBreakpoint = transition.startBreakpoint,
-                endBreakpoint = transition.endBreakpoint,
-                condition = convertCondition(transition.condition)
-            )
-        }
-    }
-
-    /**
-     * Converts the ordered clauses of a CONDITION block into a single [Condition], see [ConditionClauses].
-     */
-    private fun convertCondition(clauses: List<ParsedCondition>): Condition =
-        ConditionClauses.conditionOf(clauses.map { convertLeafCondition(it) })
-
-    /** Converts one clause of a `CONDITION` block. */
-    private fun convertLeafCondition(condition: ParsedCondition): Condition {
-        return when (condition) {
-            is ParsedEvalCondition -> EvalCondition(condition.code)
-            is ParsedEventCondition -> EventCondition(condition.eventDomain, condition.eventValue)
-            is ParsedValueCondition -> ValueCondition(condition.variableKey)
-        }
-    }
-
-    /** Converts a macro with its directives and the code of its definition. */
-    private fun convertMacro(macro: ParsedMacro): Macro {
-        return Macro(
-            name = macro.name,
-            takes = macro.takes.map { TakesDirective(it.paramName, it.paramType) },
-            returns = ReturnsDirective(macro.returns.returnType),
-            definition = Definition(CodeBlock(macro.definitionCode))
-        )
-    }
 }
