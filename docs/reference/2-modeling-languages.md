@@ -30,7 +30,7 @@ name. When an event lets the state machine change state, the state machine can r
 
 The library checks each text on its own while it reads it. It also checks the state machines of a project against the
 metamodels and the model. Every problem it reports is listed with its code in [2.4 Checks](2.4-checks.md). Kotlin
-programs read, check and write the texts with the classes that [2.5 Using the library](2.5-library.md) presents.
+programs read, check and write the texts with the library that [2.5 Using the library](2.5-library.md) introduces.
 
 The three languages follow the same lexical rules, apart from the differences in the table below. Spaces, tabs and line
 breaks between the parts of a text carry no meaning, and the writer is free to lay out a text as they like. A comment

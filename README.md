@@ -18,11 +18,13 @@ The reference of the languages and of the library is chapter 2 of the karpfen re
 | [2.2 KModel](docs/reference/2.2-kmodel.md) | Objects, keys, values, embedded objects and references. |
 | [2.3 KStates](docs/reference/2.3-kstates.md) | States, actions, transitions, events, macros, the optional features and the management of state machines. |
 | [2.4 Checks](docs/reference/2.4-checks.md) | Every problem the readers and the verifier report, with its code. |
-| [2.5 Using the library](docs/reference/2.5-library.md) | Reading, checking, printing and building models from Kotlin code. |
+| [2.5 Using the library](docs/reference/2.5-library.md) | What the library offers to JVM programs and how a build gets it. |
 
 The table of all chapters, with the runtime and the IDE, is in the
 [README of the reference in karpfen-IDE](https://github.com/karpfenproject/karpfen-IDE/blob/main/docs/reference/README.md).
-The grammars are in `src/main/antlr`, and the KDoc on the declarations describes the API in detail.
+The complete description of the library for programmers, with Kotlin examples, is
+[docs/library.md](docs/library.md). The grammars are in `src/main/antlr`, and the KDoc on the declarations describes
+the API in detail.
 
 ## Building
 
