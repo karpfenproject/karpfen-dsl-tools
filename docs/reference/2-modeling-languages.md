@@ -1,9 +1,9 @@
 # 2 Modeling languages
 
 karpfen has three textual languages. KMeta describes the types of a domain: what a lamp, a bulb and a switch are, which
-values they carry and how they belong together. KModel describes objects of those types and their values. KStates
-describes a state machine. A state machine is attached to a type and runs on one object of that type, where it reads and
-changes the model.
+values they carry and how they belong together. KModel describes the objects of those types and gives them their
+values. KStates describes a state machine. A state machine is attached to a type and runs on one object of that type,
+and it reads and changes the model starting from that object.
 
 | File | Language | Content |
 |---|---|---|
@@ -12,42 +12,53 @@ changes the model.
 | `.kstates` | [2.3 KStates](2.3-kstates.md) | One state machine, attached to a type of the metamodel or attachable to several. |
 
 A project has one domain metamodel, one model and any number of state machines. A model is read against its
-metamodel: every object is of a type the metamodel defines, and every value fits a property of that type. A state
-machine names its type after `ATTACHED TO`. Which object of the model it runs on is decided when the project runs, by
-the object's key, see
+metamodel. Every object must be of a type that the metamodel defines, and every value must fit a property of that type.
+
+A state machine names its type after `ATTACHED TO`. The object of the model it runs on is not written in the state
+machine. It is chosen by its key when the project runs, as described for the runtime in
 [3.3 Running the runtime](https://github.com/karpfenproject/karpfen-runtime/blob/main/docs/reference/3.3-running-the-runtime.md)
-and [4.5 Running](https://github.com/karpfenproject/karpfen-IDE/blob/main/docs/reference/4.5-running.md). An attachable
-state machine has a name instead, and objects get instances of it through their types and through the actions of other
-state machines, see
-[2.3.11 State machine management and lifecycle](2.3-kstates.md#2311-state-machine-management-and-lifecycle).
+and for the IDE in [4.5 Running](https://github.com/karpfenproject/karpfen-IDE/blob/main/docs/reference/4.5-running.md).
+An attachable state machine is not attached to an object by a key. It has a name, and objects get instances of it in
+the two ways of
+[2.3.11 State machine management and lifecycle](2.3-kstates.md#2311-state-machine-management-and-lifecycle): through
+their types and through the actions of other state machines.
 
-A project may have a second `.kmeta` file, the event metamodel. Each of its types is one event, and the properties of
-the type are the payload the event carries, see [2.1.7 Event definitions](2.1-kmeta.md#217-event-definitions). A state
-machine waits for an event by its domain and its name, and reads the payload of the event that let it change state.
+A project may have a second `.kmeta` file, the event metamodel, which is written as
+[2.1.7 Event definitions](2.1-kmeta.md#217-event-definitions) shows. Each of its types defines one event, and the
+properties of the type are the payload that the event carries. A state machine waits for an event by its domain and its
+name. When an event lets the state machine change state, the state machine can read the payload of that event.
 
-The library checks each text on its own while it reads it, and it checks the state machines of a project against the
-metamodels and the model. [2.4 Checks](2.4-checks.md) lists every problem it reports.
-[2.5 Using the library](2.5-library.md) shows how to read, check and write the texts from Kotlin code.
+The library checks each text on its own while it reads it. It also checks the state machines of a project against the
+metamodels and the model. Every problem it reports is listed with its code in [2.4 Checks](2.4-checks.md). Kotlin
+programs read, check and write the texts with the classes that [2.5 Using the library](2.5-library.md) presents.
 
-The three languages share their lexical rules. Spaces, tabs and line breaks between the parts of a text are free, so the
-layout of a text is up to the writer. A comment starts with `//` and runs to the end of the line. It may stand wherever
-a space may stand, also at the end of a line. There is no other kind of comment. Keywords are case sensitive. Names,
-keys and values are string literals between quotes, and so are numbers and booleans. The only numbers outside quotes are
-the tick counts of KStates.
+The three languages follow the same lexical rules, apart from the differences in the table below. Spaces, tabs and line
+breaks between the parts of a text carry no meaning, and the writer is free to lay out a text as they like. A comment
+starts with `//` and runs to the end of the line. It may stand wherever a space may stand, also at the end of a line,
+and there is no other kind of comment. Keywords are case sensitive. Names, keys and values are string literals between
+quotes. This holds for numbers and booleans as well, and the only numbers written without quotes are the tick counts of
+KStates.
 
 | Rule | KMeta | KModel | KStates |
 |---|---|---|---|
 | Quotes of a string | `"` | `"` or `'` | `"`, and `'` only inside `EVAL` code |
-| Spelling of the keywords | lower case | lower case | upper case; the action operations and `WITH` and `AS` also lower case; `reference` only lower case |
+| Spelling of the keywords | lower case | lower case | upper case, some also in lower case, `reference` only in lower case |
 | Quote characters the reader removes from the edges of a value | every `"` | every `"` and `'` | one pair of `'` directly inside the `"` |
 
-A string ends on its line: it cannot hold a line break. Inside a string, a backslash and the character after it belong
-to the string, so `\"` does not end it. The value keeps both characters as written: `"say \"hi\""` is not turned into
-`say "hi"`. Since the readers remove quote characters at the edges of a value, a value should not start or end with a
-quote character. In KStates, `"'on'"` and `"on"` are the same value.
+In KStates the operations `SET`, `SETLIST`, `DROPLIST`, `APPEND`, `SETOBJ`, `APPENDOBJ`, `DROPOBJ` and `EXCHANGE`
+and the keywords `ATTACH`, `WITH` and `AS` may also be written in lower case, such as `set` or `attach`. `EVENT` has
+only its upper case form, as an operation and as a clause of a condition. `reference` has only its lower case form.
+Every other keyword of KStates is written in upper case only.
 
-The lamp is the example of this chapter. A room holds a lamp and a wall switch. The lamp holds a bulb and knows the
-switch it is wired to. The metamodel has four types:
+Inside a string a backslash and the character after it belong together. Because of this rule `\"` does not end a string,
+and a line break directly after a backslash stays inside it. A line break without a backslash in front cannot stand in a
+string. The value keeps both characters of such a pair as written: `"say \"hi\""` is not turned into `say "hi"`, and an
+escaped line break leaves the backslash and the line break in the value. Since the readers remove quote characters at
+the edges of a value, a value should not start or end with a quote character. In KStates, `"'on'"` and `"on"` are the
+same value.
+
+The examples of this chapter are about a lamp in a living room. The room holds the lamp and a wall switch, and the lamp
+holds a bulb and knows the switch it is wired to. The metamodel has four types.
 
 ```kmeta
 // The types of the lamp example.
@@ -71,7 +82,8 @@ type "Room" "The room the lamp stands in" {
 }
 ```
 
-The model is a living room. Every object has a key, such as `"lamp"`, by which a `knows` relation and a run refer to it:
+The model is the living room. Every object has a key, such as `"lamp"`. A `knows` relation refers to an object by its
+key, and a run uses the key in the same way to name the object that a state machine runs on.
 
 ```kmodel
 make object "living room":"Room" {
@@ -90,9 +102,9 @@ make object "living room":"Room" {
 }
 ```
 
-The state machine of the lamp runs on the object `"lamp"`. It starts in the state `off`. An event `press` in the domain
-`switch` turns the lamp on, and the next one turns it off again. On entering a state, the state machine writes the mode and
-the values of the bulb:
+The state machine of the lamp runs on the object `"lamp"` and starts in the state `off`. An event `press` in the
+domain `switch` turns the lamp on, and the next `press` turns it off again. Whenever the state machine enters a state,
+it writes the mode of the lamp and the values of the bulb.
 
 ```kstates
 STATEMACHINE ATTACHED TO "Lamp" {
@@ -123,7 +135,8 @@ STATEMACHINE ATTACHED TO "Lamp" {
 }
 ```
 
-The paths `"mode"` and `"bulb->watts"` start at the object the state machine runs on, the lamp. `$(bulb->maxWatts)` in
-the `EVAL` code is the current value of that property, 40 here. The sections of this chapter extend these three texts.
-The full lamp project is the walkthrough of the IDE, see
-[1 Getting started](https://github.com/karpfenproject/karpfen-IDE/blob/main/docs/reference/1-getting-started.md).
+The paths `"mode"` and `"bulb->watts"` start at the lamp, because the lamp is the object the state machine runs on. In
+the `EVAL` code, `$(bulb->maxWatts)` stands for the current value of that property. In this model it is 40.
+
+The sections of this chapter extend these three texts. The complete lamp example project is the walkthrough of the IDE
+in [1 Getting started](https://github.com/karpfenproject/karpfen-IDE/blob/main/docs/reference/1-getting-started.md).
