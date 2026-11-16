@@ -178,6 +178,26 @@ class KstatesPagesTest {
         assertTrue(result.model.isFragment)
     }
 
+    /** A fragment with an empty name has no name either, and the empty string is marked. */
+    @Test
+    fun `a fragment with an empty name needs a name`() {
+        val text = bulbTest.replace("\"bulb test\" FRAGMENT", "\"\" FRAGMENT")
+        val result = read(text)
+
+        assertEquals(listOf(DiagnosticCode.MISSING_STATE_MACHINE_NAME to "\"\""), marked(text, result.diagnostics))
+        assertEquals("", result.model!!.name)
+    }
+
+    /** A container state that uses an empty name names no fragment, and the empty string is marked. */
+    @Test
+    fun `a container state cannot use an empty name`() {
+        val text = lampWithTest.replace("USE \"bulb test\"", "USE \"\"")
+        val result = read(text)
+
+        assertEquals(listOf(DiagnosticCode.CONTAINER_USE to "\"\""), marked(text, result.diagnostics))
+        assertEquals("", result.model!!.states[1].fragment)
+    }
+
     /** A fragment needs exactly one initial state and at least one final state at its top level. */
     @Test
     fun `a fragment needs an initial state and a final state`() {

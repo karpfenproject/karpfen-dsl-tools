@@ -15,12 +15,16 @@
  */
 package io.karpfen.dsl.verification
 
+import io.karpfen.dsl.composition.FlatteningProblem
+import io.karpfen.dsl.composition.FlatteningResult
+import io.karpfen.dsl.composition.StateMachineFlattener
 import io.karpfen.dsl.diagnostics.Diagnostic
 import io.karpfen.dsl.diagnostics.DiagnosticCode
 import io.karpfen.dsl.reader.kmeta.KmetaReader
 import io.karpfen.dsl.reader.kstates.KstatesReader
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
@@ -175,7 +179,7 @@ class PagesVerificationTest {
         val calling = fragment(
             "calling",
             "INITIAL STATE \"a\" { ENTRY {\nSET(\"bulb->watts\", MACRO(\"half\", \"bulb->maxWatts\"))\n" +
-                "SET(\"bulb->watts\", MACRO(\"half\", \"bulb->maxWatts\", \"bulb->watts\"))\n" +
+                "SET(\"bulb->watts\", MACRO(\"half\"))\n" +
                 "SET(\"bulb->watts\", EVAL { return @half(1) })\n} }\nFINAL STATE \"done\" { }",
             "TRANSITION \"a\" -> \"done\" { }"
         )
@@ -186,7 +190,7 @@ class PagesVerificationTest {
             listOf(
                 DiagnosticCode.MACRO_FROM_OTHER_FILE to "half",
                 DiagnosticCode.MACRO_FROM_OTHER_FILE to "half",
-                DiagnosticCode.MACRO_ARGUMENT_COUNT to "half",
+                DiagnosticCode.MISSING_MACRO_ARGUMENTS to "half",
                 DiagnosticCode.MACRO_FROM_OTHER_FILE to "@half"
             ),
             project.marked(1)
@@ -196,7 +200,84 @@ class PagesVerificationTest {
                 "define the macros a file calls in the file itself",
             project.of(1).first().message
         )
-        assertEquals(3, project.findings.warnings.size)
+        assertEquals(4, project.findings.warnings.size)
+    }
+
+    /**
+     * A call whose arguments do not fit the macro that another file of the composition defines prevents the
+     * flattening, and the verification reports it once at the call, with the code and the message of the reader: too
+     * many arguments by `MACRO(...)`, too few and too many by `@name(...)`. Too few by `MACRO(...)` is the warning of
+     * the reader, see the test of the macros of other files.
+     */
+    @Test
+    fun `a call whose arguments do not fit a macro of another file is an error`() {
+        val calling = fragment(
+            "calling",
+            "INITIAL STATE \"a\" { ENTRY {\nSET(\"bulb->watts\", MACRO(\"half\", \"bulb->maxWatts\", \"bulb->watts\"))\n" +
+                "SET(\"bulb->watts\", EVAL { return @half() })\n" +
+                "SET(\"bulb->watts\", EVAL { return @half(1, 2) })\n} }\nFINAL STATE \"done\" { }",
+            "TRANSITION \"a\" -> \"done\" { }"
+        )
+        val lampText = lampUsing("first" to "calling", "second" to "calling", macros = macro("half"))
+        val project = Project(lampText, calling)
+
+        assertEquals(emptyList(), project.of(0))
+        assertEquals(
+            listOf(
+                DiagnosticCode.MACRO_ARGUMENT_COUNT to "half",
+                DiagnosticCode.MACRO_ARGUMENT_COUNT to "@half",
+                DiagnosticCode.MACRO_ARGUMENT_COUNT to "@half"
+            ),
+            project.marked(1)
+        )
+        assertEquals(
+            "Macro 'half' takes 1 argument, but the call passes 2; pass one argument per TAKES",
+            project.of(1).first().message
+        )
+
+        val lamp = KstatesReader().read(lampText).model!!
+        val fragment = KstatesReader().read(calling).model!!
+        val result = assertIs<FlatteningResult.NotFlattened>(StateMachineFlattener.flatten(lamp, listOf(fragment)))
+        assertEquals(
+            listOf(2, 0, 2),
+            result.problems.map { assertIs<FlatteningProblem.MacroArgumentMismatch>(it).argumentCount }
+        )
+        assertEquals(
+            "In fragment 'calling': Macro 'half' takes 1 argument, but the call passes 2; pass one argument per TAKES",
+            result.problems.first().message
+        )
+    }
+
+    /**
+     * A fragment that calls a macro only its host defines reports no unknown macro while the host cannot be read, and
+     * neither does a host that calls a macro only its fragment defines while the fragment cannot be read.
+     */
+    @Test
+    fun `an unknown macro is not reported while a file cannot be read`() {
+        val calling = fragment(
+            "calling",
+            "INITIAL STATE \"a\" { ENTRY { SET(\"bulb->watts\", MACRO(\"half\", \"bulb->maxWatts\")) } }\n" +
+                "FINAL STATE \"done\" { }",
+            "TRANSITION \"a\" -> \"done\" { }"
+        )
+        val brokenHost = lampUsing("t" to "calling", macros = macro("half")).replace("STATES {", "STATES { )")
+        val hostBroken = Project(brokenHost, calling)
+        assertTrue(hostBroken.inputs[0].read.hasErrors)
+        assertEquals(emptyList(), hostBroken.of(1))
+
+        val defining = fragment(
+            "defining",
+            "INITIAL STATE \"a\" { }\nFINAL STATE \"done\" { }",
+            "TRANSITION \"a\" -> \"done\" { }",
+            macro("half")
+        ).replace("STATES {", "STATES { )")
+        val host = lampUsing("t" to "defining").replace(
+            "INITIAL STATE \"off\" { }",
+            "INITIAL STATE \"off\" { ENTRY { SET(\"bulb->watts\", MACRO(\"half\", \"bulb->maxWatts\")) } }"
+        )
+        val fragmentBroken = Project(host, defining)
+        assertTrue(fragmentBroken.inputs[1].read.hasErrors)
+        assertEquals(emptyList(), fragmentBroken.of(0))
     }
 
     /**

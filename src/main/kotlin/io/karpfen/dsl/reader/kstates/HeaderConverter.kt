@@ -66,8 +66,8 @@ internal class HeaderConverter(private val session: ReadingSession) {
     }
 
     /**
-     * Returns the fragment [machine] with [states], [transitions] and [macros], named by its name or the empty string,
-     * which is reported at `FRAGMENT`.
+     * Returns the fragment [machine] with [states], [transitions] and [macros], named by its name or the empty string. A
+     * missing name is reported at `FRAGMENT`, an empty one at the empty string.
      */
     private fun convertFragment(
         machine: KstatesParser.Fragment_machineContext,
@@ -85,6 +85,7 @@ internal class HeaderConverter(private val session: ReadingSession) {
                     "the fragment by this name"
             )
         }
+        reportIfEmpty(nameToken, "A fragment needs a name that is not empty; container states use the fragment by this name")
         val stateMachine = StateMachine.fragment(nameToken?.let { unquoted(it) } ?: "", states, transitions, macros)
         session.record(stateMachine, machine, nameToken)
         return stateMachine
@@ -142,8 +143,8 @@ internal class HeaderConverter(private val session: ReadingSession) {
     }
 
     /**
-     * Reports an attachable state machine without the name [nameToken], at its keyword [attachable], and each of
-     * [typeTokens] that repeats an earlier type.
+     * Reports an attachable state machine without the name [nameToken] at its keyword [attachable], one with an empty
+     * name at the empty string, and each of [typeTokens] that repeats an earlier type.
      */
     private fun checkAttachable(attachable: TerminalNode, nameToken: TerminalNode?, typeTokens: List<TerminalNode>) {
         if (nameToken == null) {
@@ -153,12 +154,23 @@ internal class HeaderConverter(private val session: ReadingSession) {
                 "An attachable state machine needs a name, written as a string between STATEMACHINE and ATTACHABLE"
             )
         }
+        reportIfEmpty(nameToken, "An attachable state machine needs a name that is not empty; ATTACH and EXCHANGE use it")
         for (repetition in typeTokens.repetitionsBy { unquoted(it) }) {
             session.report(
                 DiagnosticCode.REPEATED_ATTACHABLE_TYPE,
                 session.valueProblemRangeOf(repetition.element),
                 "The type '${unquoted(repetition.element)}' is listed twice; each type may be listed once"
             )
+        }
+    }
+
+    /**
+     * Reports the name [nameToken] of a state machine as missing, described by [message], if it is written as an empty
+     * string; an empty name names nothing.
+     */
+    private fun reportIfEmpty(nameToken: TerminalNode?, message: String) {
+        if (nameToken != null && unquoted(nameToken).isEmpty()) {
+            session.report(DiagnosticCode.MISSING_STATE_MACHINE_NAME, session.valueProblemRangeOf(nameToken), message)
         }
     }
 }

@@ -15,7 +15,9 @@
  */
 package io.karpfen.dsl.composition
 
+import io.karpfen.dsl.diagnostics.Severity
 import io.karpfen.dsl.parser.EvalCodeReferences
+import io.karpfen.dsl.reader.kstates.MacroArgumentCount
 import io.karpfen.dsl.states.Macro
 import io.karpfen.dsl.states.State
 import io.karpfen.dsl.states.StateMachine
@@ -46,7 +48,8 @@ import java.util.IdentityHashMap
  *
  * The flattening fails with every problem it finds, see [FlatteningProblem]: a container state that uses a name no state
  * machine has, or a state machine that is no fragment; a fragment that contains itself; a flattened name that two
- * states have; two different macros of one name; and a macro call that no file of the composition defines.
+ * states have; two different macros of one name; a macro call that no file of the composition defines; and a macro call
+ * whose number of arguments does not fit the macro it names.
  *
  * The flattening is a pure function: it neither changes its input nor keeps anything between calls. It is the one
  * implementation of the composition that the verification of a project, the runtime and the IDE use.
@@ -218,19 +221,52 @@ object StateMachineFlattener {
             return set.values.map { it.first }
         }
 
-        /** Records a [FlatteningProblem.UnknownMacro] for each call in a file of the composition that [macros] lack. */
+        /**
+         * Records a [FlatteningProblem.UnknownMacro] for each call in a file of the composition that [macros] lack, and a
+         * [FlatteningProblem.MacroArgumentMismatch] for each call whose arguments do not fit the macro of [macros] it
+         * names.
+         */
         private fun checkMacroCalls(macros: List<Macro>) {
-            val names = macros.map { it.name }.toSet()
+            val byName = macros.associateBy { it.name }
             for (machine in compositionSources) {
                 val contents = StateMachineContents(machine)
-                contents.macroCalls.filter { it.macroName !in names }.forEach {
-                    problems.add(FlatteningProblem.UnknownMacro(machine, it, it.macroName, null))
-                }
-                for ((holder, code) in contents.evalBodies) {
-                    EvalCodeReferences.macroCallsIn(code).filter { it.name !in names }.forEach {
-                        problems.add(FlatteningProblem.UnknownMacro(machine, holder, it.name, it.start until it.nameEnd))
+                for (call in contents.macroCalls) {
+                    val macro = byName[call.macroName]
+                    if (macro == null) {
+                        problems.add(FlatteningProblem.UnknownMacro(machine, call, call.macroName, null))
+                    } else {
+                        checkArguments(machine, call, macro, call.args.size, fallsBack = true, codeSpan = null)
                     }
                 }
+                for ((holder, code) in contents.evalBodies) {
+                    for (call in EvalCodeReferences.macroCallsIn(code)) {
+                        val span = call.start until call.nameEnd
+                        val macro = byName[call.name]
+                        if (macro == null) {
+                            problems.add(FlatteningProblem.UnknownMacro(machine, holder, call.name, span))
+                        } else {
+                            call.argumentCount?.let { checkArguments(machine, holder, macro, it, fallsBack = false, span) }
+                        }
+                    }
+                }
+            }
+        }
+
+        /**
+         * Records a [FlatteningProblem.MacroArgumentMismatch] if [argumentCount] arguments of [call] in [machine] do not
+         * fit [macro], see [MacroArgumentCount]; if [fallsBack], the call is a `MACRO(...)` call, which may pass fewer.
+         */
+        private fun checkArguments(
+            machine: StateMachine,
+            call: Any,
+            macro: Macro,
+            argumentCount: Int,
+            fallsBack: Boolean,
+            codeSpan: IntRange?
+        ) {
+            val (code, detail) = MacroArgumentCount.problemOf(macro, argumentCount, fallsBack) ?: return
+            if (code.severity == Severity.ERROR) {
+                problems.add(FlatteningProblem.MacroArgumentMismatch(machine, call, macro, argumentCount, codeSpan, detail))
             }
         }
 
@@ -251,7 +287,11 @@ object StateMachineFlattener {
         }
 
         /** Returns the part of the code [problem] marks, or null for a problem that marks no code. */
-        private fun codeSpanOf(problem: FlatteningProblem): IntRange? = (problem as? FlatteningProblem.UnknownMacro)?.codeSpan
+        private fun codeSpanOf(problem: FlatteningProblem): IntRange? = when (problem) {
+            is FlatteningProblem.UnknownMacro -> problem.codeSpan
+            is FlatteningProblem.MacroArgumentMismatch -> problem.codeSpan
+            else -> null
+        }
 
         /** Returns true if [first] and [second] define the same macro, see [StateMachineFlattener]. */
         private fun sameMacro(first: Macro, second: Macro): Boolean =

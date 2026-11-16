@@ -33,7 +33,8 @@ import org.antlr.v4.runtime.tree.TerminalNode
 /**
  * Checks the rules of pages in a single KStates text: container states, final states, fragments and `DONE`.
  *
- * - A `CONTAINER STATE` names its fragment with `USE "fragment"` and has no `ENTRY` or `DO` block and no inner states;
+ * - A `CONTAINER STATE` names its fragment with `USE "fragment"`, a name that is not empty, and has no `ENTRY` or `DO`
+ *   block and no inner states;
  *   a breakpoint block and a tick limit are fine. Only a container state has `USE`.
  * - A `FINAL STATE` stands at the top level of a fragment and holds a breakpoint block at most: no tick limit, no
  *   actions, no inner states, no `INITIAL` and no history. No transition, split or join leaves it.
@@ -90,6 +91,14 @@ internal class PageChecks(private val session: ReadingSession) {
                 DiagnosticCode.CONTAINER_USE,
                 keyword,
                 "A container state names the fragment it runs: write USE \"fragment\" after the name of the state"
+            )
+        }
+        val usedName = definition.fragment_use()?.presentToken(KstatesParser.STRING)
+        if (usedName != null && unquoted(usedName).isEmpty()) {
+            session.report(
+                DiagnosticCode.CONTAINER_USE,
+                session.valueProblemRangeOf(usedName),
+                "The name after USE is empty; a container state names the fragment it runs"
             )
         }
         val actions = listOfNotNull(

@@ -160,7 +160,7 @@ enum class DiagnosticCode(val id: String, val severity: Severity) {
 
     /**
      * A KStates state machine is `ATTACHABLE TO` types but has no name, which `behaves after`, `ATTACH` and `EXCHANGE`
-     * need, or is a `FRAGMENT` without the name by which container states use it.
+     * need, or is a `FRAGMENT` without the name by which container states use it. An empty name counts as no name.
      */
     MISSING_STATE_MACHINE_NAME("kstates.missing-state-machine-name", Severity.ERROR),
 
@@ -174,8 +174,8 @@ enum class DiagnosticCode(val id: String, val severity: Severity) {
     REPEATED_ATTACHABLE_TYPE("kstates.repeated-attachable-type", Severity.ERROR),
 
     /**
-     * A KStates `CONTAINER STATE` lacks the `USE "fragment"` after its name, or a state that is no container state has
-     * one.
+     * A KStates `CONTAINER STATE` lacks the `USE "fragment"` after its name or names an empty fragment name, or a state
+     * that is no container state has a `USE`.
      */
     CONTAINER_USE("kstates.container-use", Severity.ERROR),
 

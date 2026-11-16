@@ -28,8 +28,10 @@ import io.karpfen.dsl.states.StateMachineContents
 /**
  * Warns about the macro calls of a flattened composition that only another file of the composition resolves: a file
  * may call any macro of the composition, but each file should define the macros it calls, so that it reads on its own.
- * Such a call is checked for its number of arguments here, since the reader of its file cannot find the macro, with the
- * rule the reader applies to the calls of the macros of its own text, see [MacroArgumentCount].
+ * A number of arguments that does not fit the macro prevents the flattening, see
+ * [io.karpfen.dsl.composition.FlatteningProblem.MacroArgumentMismatch]. What remains for a flattened composition is the
+ * warning about a `MACRO(...)` call with fewer arguments than the macro takes, by the rule the reader applies to the
+ * calls of the macros of its own text, see [MacroArgumentCount].
  *
  * The problems are reported at the call: a `MACRO(...)` call at the macro name, an `@name(...)` call at the name in the
  * code.

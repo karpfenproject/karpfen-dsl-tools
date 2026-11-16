@@ -28,13 +28,16 @@ import io.karpfen.dsl.states.macros.CodeBlock
 /**
  * Reports the problems that prevent a composition from flattening, each in the text of the state machine where it
  * stands: an unknown fragment, a state machine that is no fragment and a cycle at the name after `USE` of the container
- * state, a name clash at the state, two different macros of one name at the later definition, and an unknown macro at
- * the call, for an `@name(...)` call at the name in the code.
+ * state, a name clash at the state, two different macros of one name at the later definition, and an unknown macro and
+ * a call whose arguments do not fit its macro at the call, for an `@name(...)` call at the name in the code. A call
+ * whose arguments do not fit is reported with the code and the message the reader gives a call of a macro of its own
+ * text.
  *
  * A problem the reader of that text reports already is left out: a cycle of a fragment that uses itself directly, two
- * different macros of one name in the same text, and an unknown macro in a text that is neither a fragment nor has a
- * container state, and a container state without a fragment name. An unknown fragment is reported only if every state
- * machine of the project could be read, since the missing one might be a state machine with a syntax error.
+ * different macros of one name in the same text, an unknown macro in a text that is neither a fragment nor has a
+ * container state, a call whose arguments do not fit a macro of its own text, and a container state without a fragment
+ * name. An unknown fragment and an unknown macro are reported only if every state machine of the project could be
+ * read, since the missing one might be in a state machine with a syntax error.
  *
  * One instance serves all compositions of a project, so that a cycle of fragments is reported once, at the place the
  * first composition that runs into it finds, although every composition that starts on the cycle closes it at another
@@ -56,7 +59,7 @@ internal class FlatteningProblems(private val isAllRead: Boolean) {
         for (problem in problems.filter { isReported(it, withMacros) }) {
             val input = findings.inputOf(problem.machine)
             val report = MachineReport(input.read.sourceMap)
-            report.report(codeOf(problem), rangeOf(problem, report), problem.message)
+            report.report(codeOf(problem), rangeOf(problem, report), messageOf(problem))
             findings.add(input, report.diagnostics)
         }
     }
@@ -66,8 +69,15 @@ internal class FlatteningProblems(private val isAllRead: Boolean) {
         is FlatteningProblem.UnknownFragment -> isAllRead && problem.fragmentName.isNotEmpty()
         is FlatteningProblem.FragmentCycle -> problem.cycle.size > 1 && reportedCycles.add(problem.cycle.toSet())
         is FlatteningProblem.ConflictingMacros -> problem.machine !== problem.otherMachine
-        is FlatteningProblem.UnknownMacro -> withMacros && isInComposition(problem.machine)
+        is FlatteningProblem.UnknownMacro -> isAllRead && withMacros && isInComposition(problem.machine)
+        is FlatteningProblem.MacroArgumentMismatch -> problem.machine.macros.none { it.name == problem.macro.name }
         is FlatteningProblem.NotAFragment, is FlatteningProblem.NameClash -> true
+    }
+
+    /** Returns the message of [problem]: for a call whose arguments do not fit, the one of the reader. */
+    private fun messageOf(problem: FlatteningProblem): String = when (problem) {
+        is FlatteningProblem.MacroArgumentMismatch -> problem.detail
+        else -> problem.message
     }
 
     /** Returns true if [machine] is a fragment or has a container state, so that its reader lets unknown macros pass. */
@@ -82,26 +92,33 @@ internal class FlatteningProblems(private val isAllRead: Boolean) {
         is FlatteningProblem.NameClash -> DiagnosticCode.QUALIFIED_NAME_CLASH
         is FlatteningProblem.ConflictingMacros -> DiagnosticCode.CONFLICTING_MACROS
         is FlatteningProblem.UnknownMacro -> DiagnosticCode.UNKNOWN_COMPOSED_MACRO
+        is FlatteningProblem.MacroArgumentMismatch -> DiagnosticCode.MACRO_ARGUMENT_COUNT
     }
 
     /** Returns where [problem] is marked, found with [report]: see [FlatteningProblems]. */
     private fun rangeOf(problem: FlatteningProblem, report: MachineReport): SourceRange = when (problem) {
         is FlatteningProblem.UnknownFragment, is FlatteningProblem.NotAFragment, is FlatteningProblem.FragmentCycle ->
             report.operandRangeOf(problem.element, 0)
-        is FlatteningProblem.UnknownMacro -> codeRangeOf(problem, report) ?: report.rangeOf(problem.call)
+        is FlatteningProblem.UnknownMacro ->
+            codeRangeOf(problem.call, problem.codeSpan, report) ?: report.rangeOf(problem.call)
+        is FlatteningProblem.MacroArgumentMismatch ->
+            codeRangeOf(problem.call, problem.codeSpan, report) ?: report.rangeOf(problem.call)
         else -> report.rangeOf(problem.element)
     }
 
-    /** Returns the range of the name of the `@name(...)` call of [problem] in its code, or null for another call. */
-    private fun codeRangeOf(problem: FlatteningProblem.UnknownMacro, report: MachineReport): SourceRange? {
-        val span = problem.codeSpan ?: return null
-        val code = when (val holder = problem.call) {
+    /**
+     * Returns the range of the part [codeSpan] of the code that [call] holds, the name of an `@name(...)` call, or null
+     * for another call.
+     */
+    private fun codeRangeOf(call: Any, codeSpan: IntRange?, report: MachineReport): SourceRange? {
+        val span = codeSpan ?: return null
+        val code = when (val holder = call) {
             is EvalActionRightSide -> holder.code
             is EvalCondition -> holder.code
             is CodeBlock -> holder.code
             else -> return null
         }
-        val codeRange = report.codeRangeOf(problem.call) ?: return null
+        val codeRange = report.codeRangeOf(call) ?: return null
         return TextSpans.rangeWithin(codeRange, code, span.first, span.last + 1)
     }
 }

@@ -109,6 +109,17 @@ class KstatesAttachmentTest {
         assertEquals(listOf("Bulb"), result.model.attachableTo)
     }
 
+    /** An attachable state machine with an empty name has no name either, and the empty string is marked. */
+    @Test
+    fun `an attachable state machine with an empty name needs a name`() {
+        val text = machine("\"\" ATTACHABLE TO \"Bulb\"")
+        val result = read(text)
+
+        assertEquals(listOf(DiagnosticCode.MISSING_STATE_MACHINE_NAME), result.diagnostics.map { it.code })
+        assertEquals("\"\"", result.diagnostics.single().range.textIn(text))
+        assertEquals("", result.model!!.name)
+    }
+
     /** A header without a type is a syntax error, for either form. */
     @Test
     fun `a state machine needs a type`() {

@@ -132,6 +132,27 @@ sealed class FlatteningProblem {
             get() = "No file of the composition of ${describe(machine)} defines a macro named '$macroName'"
     }
 
+    /**
+     * A call in [machine] names the macro [macro], which a file of the composition defines, with [argumentCount]
+     * arguments, a number that does not fit the macro by the rule the reader applies to the calls of the macros of its
+     * own text: a call passes one argument per `TAKES`, and only a `MACRO(...)` call may pass fewer, since the runtime
+     * reads each missing one from the path named like its parameter. [call] and [codeSpan] are as for [UnknownMacro].
+     *
+     * [detail] is the description of the call as the reader words it, [message] the same with the state machine named.
+     */
+    class MacroArgumentMismatch(
+        override val machine: StateMachine,
+        val call: Any,
+        val macro: Macro,
+        val argumentCount: Int,
+        val codeSpan: IntRange?,
+        val detail: String
+    ) : FlatteningProblem() {
+        override val element: Any get() = call
+        override val message: String
+            get() = "In ${describe(machine)}: $detail"
+    }
+
     /** Describes state machines in messages. */
     internal companion object {
 
