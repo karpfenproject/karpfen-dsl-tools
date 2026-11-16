@@ -19,8 +19,8 @@ import io.karpfen.dsl.composition.FlatteningResult
 import io.karpfen.dsl.composition.StateMachineFlattener
 import io.karpfen.dsl.diagnostics.Diagnostic
 import io.karpfen.dsl.diagnostics.DiagnosticCode
-import io.karpfen.dsl.dsl.textual.KmodelDSLConverter
 import io.karpfen.dsl.instance.DataObject
+import io.karpfen.dsl.instance.Model
 import io.karpfen.dsl.reader.ParseResult
 import io.karpfen.dsl.source.SourceLocation
 import io.karpfen.dsl.states.StateMachine
@@ -96,7 +96,7 @@ class ProjectVerifier {
     /** Checks the state machines and the metamodels of [input] and returns the problems found in each text. */
     fun verify(input: ProjectInput): ProjectFindings {
         val types = typesOf(input)
-        val objects = input.model?.takeIf { !it.hasErrors }?.model?.let { KmodelDSLConverter.collectAllObjects(it.objects).toList() }
+        val objects = input.model?.takeIf { !it.hasErrors }?.model?.let { Model.collectAllObjects(it.objects).toList() }
         val writtenKeys = input.stateMachines.mapNotNull { it.read.model }.flatMap { writtenKeysOf(it) }.toSet()
         val attachables = attachablesOf(input.stateMachines)
         val eventFieldCheck = EventFieldCheck(hasEventMetamodel = input.events != null)

@@ -127,7 +127,7 @@ class StringLiteralSyntaxTest {
     @Test
     fun `kmodel values survive a round trip through the parser`() {
         val metamodel = KmetaDSLConverter.parseKmetaString(
-            """type "Point" "A point" { prop("label", "string") knows("buddy", "Point") }"""
+            """type "Point" "A point" { prop("label", list("string")) knows("buddy", "Point") }"""
         )
         val text = """make object 'p"1':"Point" { prop("label") -> 'He said "go" now' """ +
             """prop("label") -> "say \"hi\"" knows("buddy") -> 'p"1' }"""

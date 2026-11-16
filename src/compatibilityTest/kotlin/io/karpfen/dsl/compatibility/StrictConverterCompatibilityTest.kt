@@ -26,9 +26,9 @@ import kotlin.test.assertTrue
  * repository into the `reference` source set; its classes live in the old root packages.
  *
  * Both versions convert the example files, in every layout of the tests, and thousands of deterministic mutations of
- * them, see [Comparison]. Many of the exceptions both versions must agree on are null pointer exceptions the JVM
- * raises itself, whose messages it would drop once the throwing code is compiled as hot; the `compatibilityTest`
- * task therefore runs with `-XX:-OmitStackTraceInFastThrow`, which keeps them.
+ * them, see [Comparison]: a text the current version converts gives the model of version 1.0, and a text it rejects
+ * has an error. Where version 1.0 converts an example in a layout that the current version rejects, [NewOutcomes]
+ * names it.
  */
 class StrictConverterCompatibilityTest {
 
@@ -37,16 +37,17 @@ class StrictConverterCompatibilityTest {
     private val comparison = Comparison()
 
     /**
-     * Every example file converts with version 1.0, and to the same model with both versions in every layout.
+     * Every example file converts with both versions to the same model, and so it does in every layout but those
+     * of [NewOutcomes].
      */
     @Test
     fun `the examples convert as in version 1_0`() {
         val all = examples.kmetaConversions() + examples.kmodelConversions() + examples.kstatesConversions()
-        val asWritten = comparison.assertAgree(all.map { Comparison.Case(it.path, it, it.text) })
+        val asWritten = comparison.assertAgree(all.map { Comparison.Case(it.path, it, it.text, null) })
 
         assertTrue(asWritten.all { it is Outcome.Converted }, "An example does not convert")
         assertEquals(24, all.size)
-        comparison.inEveryLayout(all)
+        comparison.inEveryLayout(all, NewOutcomes.ALL)
     }
 
     /**

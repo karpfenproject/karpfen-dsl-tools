@@ -16,7 +16,6 @@
 package io.karpfen.dsl.reader.kstates
 
 import io.karpfen.dsl.diagnostics.DiagnosticCode
-import io.karpfen.dsl.dsl.textual.KstatesDSLConverter
 import io.karpfen.dsl.printer.kstates.KstatesPrinter
 import io.karpfen.dsl.reader.ParseResult
 import io.karpfen.dsl.states.Transition
@@ -26,7 +25,6 @@ import io.karpfen.dsl.states.conditions.EvalCondition
 import io.karpfen.dsl.states.conditions.ValueCondition
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
@@ -37,8 +35,7 @@ import kotlin.test.assertTrue
 class KstatesReaderDiagnosticsTest {
 
     /**
-     * A state machine without an initial state is reported at the `STATES` keyword, with the message of the
-     * throwing converter.
+     * A state machine without an initial state is reported at the `STATES` keyword.
      */
     @Test
     fun `a missing initial state is reported at the states keyword`() {
@@ -48,7 +45,7 @@ class KstatesReaderDiagnosticsTest {
 
         assertCodes(listOf(DiagnosticCode.INITIAL_STATE_COUNT), result)
         assertEquals("STATES", result.diagnostics.single().range.textIn(text))
-        assertEquals(converterMessageFor(text), result.diagnostics.single().message)
+        assertEquals("Exactly one state must be marked as INITIAL, but found 0.", result.diagnostics.single().message)
     }
 
     /**
@@ -62,12 +59,12 @@ class KstatesReaderDiagnosticsTest {
 
         assertCodes(List(3) { DiagnosticCode.INITIAL_STATE_COUNT }, result)
         assertEquals(listOf("a", "inner", "b"), result.diagnostics.map { it.range.textIn(text) })
-        assertEquals(converterMessageFor(text), result.diagnostics.first().message)
+        assertEquals("Exactly one state must be marked as INITIAL, but found 3.", result.diagnostics.first().message)
     }
 
     /**
-     * Rules with the wrong number of operands are reported at the rule, with the message of the throwing
-     * converter, and left out; the correct rules around them stay.
+     * Rules with the wrong number of operands are reported at the rule, with the arity expected and the arity
+     * written, and left out; the correct rules around them stay.
      */
     @Test
     fun `action rules of the wrong arity are reported at the rule`() {
@@ -81,9 +78,14 @@ class KstatesReaderDiagnosticsTest {
 
         assertCodes(List(3) { DiagnosticCode.ACTION_ARITY }, result)
         assertEquals(rules, result.diagnostics.map { it.range.textIn(text) })
-        rules.zip(result.diagnostics).forEach { (rule, diagnostic) ->
-            assertEquals(converterMessageFor(machine(states = "INITIAL STATE \"a\" { ENTRY { $rule } }")), diagnostic.message)
-        }
+        assertEquals(
+            listOf(
+                "Operation SET expects OP(\"path\", value), but was called as OP(\"path\").",
+                "Operation DROPLIST expects OP(\"path\"), but was called as OP(\"path\", value).",
+                "Operation SETOBJ expects OP(\"source\", \"relation\", target), but was called as OP(\"path\", value)."
+            ),
+            result.diagnostics.map { it.message }
+        )
         val kept = result.model!!.states.single().onEntry.items.map { (it as ActionRule).operationType.name }
         assertEquals(listOf("APPEND", "DROPOBJ"), kept)
     }
@@ -177,9 +179,6 @@ class KstatesReaderDiagnosticsTest {
     private fun machine(states: String, transitions: String = ""): String =
         "STATEMACHINE ATTACHED TO \"Robot\" {\n    STATES {\n" + states.prependIndent("        ") +
             "\n    }\n    TRANSITIONS {\n" + transitions.prependIndent("        ") + "\n    }\n}\n"
-
-    private fun converterMessageFor(text: String): String? =
-        assertFailsWith<IllegalArgumentException> { KstatesDSLConverter.parseKstatesString(text) }.message
 
     private fun assertCodes(expected: List<DiagnosticCode>, result: ParseResult<*>) {
         assertEquals(expected, result.diagnostics.map { it.code }, result.diagnostics.joinToString("\n"))

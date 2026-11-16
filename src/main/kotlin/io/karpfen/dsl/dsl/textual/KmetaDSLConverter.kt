@@ -15,75 +15,50 @@
  */
 package io.karpfen.dsl.dsl.textual
 
-import io.karpfen.dsl.meta.AssociationType
-import io.karpfen.dsl.meta.BehavesAfter
 import io.karpfen.dsl.meta.ClassType
-import io.karpfen.dsl.meta.ClassTypeProperty
-import io.karpfen.dsl.meta.ClassTypeReference
 import io.karpfen.dsl.meta.Metamodel
-import io.karpfen.dsl.meta.SimpleProperty
-import io.karpfen.dsl.parser.KmetaFileParser
-import io.karpfen.dsl.parser.KmetaSemantics
-import io.karpfen.dsl.parser.KmetaVocabulary
-import io.karpfen.dsl.parser.ListValue
-import io.karpfen.dsl.parser.Rule
-import io.karpfen.dsl.parser.RuleValue
-import io.karpfen.dsl.parser.StringValue
-import io.karpfen.dsl.parser.TypeDefinition
 import io.karpfen.dsl.printer.kmeta.KmetaPrinter
-import org.slf4j.LoggerFactory
+import io.karpfen.dsl.reader.InvalidTextException
+import io.karpfen.dsl.reader.kmeta.KmetaReader
 import java.io.File
 
 /**
- * Converts KMeta text and files into [Metamodel]s.
+ * Converts KMeta text and files into [Metamodel]s, and metamodels back into text.
  *
- * The parsed types are logged at debug level.
+ * The converter is the throwing form of [KmetaReader], for a text that is expected to be right: it reads through the
+ * reader, so every rule of KMeta holds here as there, and returns the metamodel of a text without errors or throws an
+ * [InvalidTextException] with all errors of the text. Warnings do not make it throw. A tool that shows the problems
+ * of a text, or that must go on with a text that has errors, uses the reader.
  */
 object KmetaDSLConverter {
 
-    /** Receives the types and properties converted, at debug level. */
-    private val logger = LoggerFactory.getLogger(KmetaDSLConverter::class.java)
-
     /**
-     * Parses KMeta text and converts it into a [Metamodel].
+     * Reads KMeta text into a [Metamodel], see [KmetaReader].
      *
-     * The last type defined in [content] becomes the root class type of the metamodel, see [KmetaSemantics].
-     *
-     * [baseTypes] are class types that are already known from another metamodel and may be referenced
-     * by the types in this file but are not redefined here. This is what lets an EVENTS.kmeta describe
-     * event payloads that embed or link to domain types (e.g. an event carrying a `Vector`) without
-     * duplicating those definitions. The base types are also included in the resulting metamodel so
-     * that nested references resolve when the payload is later turned into objects.
+     * The last type defined in [content] becomes the root class type of the metamodel. [baseTypes] are class types
+     * that are already known from another metamodel and may be referenced by the types in this file but are not
+     * redefined here. This is what lets an EVENTS.kmeta describe event payloads that embed or link to domain types,
+     * such as an event carrying a `Vector`, without duplicating those definitions. The base types are also included
+     * in the resulting metamodel, after the types of the text, so that nested references resolve when the payload is
+     * later turned into objects.
      *
      * @param content The KMeta content as a string.
      * @param baseTypes Already-resolved class types that may be referenced but are not defined here.
-     * @return The parsed metamodel.
-     * @throws IllegalArgumentException If a property has an unknown primitive type, a relation refers to an
-     * unknown class type, or [content] defines no type at all.
+     * @return The metamodel.
+     * @throws InvalidTextException If the text has at least one error, such as a syntax error, a property of an
+     * unknown primitive type, a relation to an unknown class type, a type defined twice, or no type at all.
      */
-    fun parseKmetaString(content: String, baseTypes: List<ClassType> = emptyList()): Metamodel {
-        val parsedFile = KmetaFileParser().parseString(content.trimIndent())
-        val classTypes = parsedFile.types.map { toClassType(it) }
-
-        resolveReferences(classTypes, classTypes + baseTypes)
-
-        if (classTypes.isEmpty()) {
-            throw IllegalArgumentException("KMeta content does not define any types")
-        }
-
-        return KmetaSemantics.metamodelOf(classTypes, baseTypes)
-    }
+    fun parseKmetaString(content: String, baseTypes: List<ClassType> = emptyList()): Metamodel =
+        KmetaReader(baseTypes).read(content).modelOrThrow()
 
     /**
-     * Parses the KMeta file at [filePath] and converts it into a [Metamodel], see [parseKmetaString].
+     * Reads the KMeta file at [filePath] into a [Metamodel] without base types, see [parseKmetaString].
      *
-     * @param filePath The path to the KMeta file to parse.
-     * @return The parsed metamodel.
+     * @param filePath The path to the KMeta file to read.
+     * @return The metamodel.
+     * @throws InvalidTextException If the text of the file has at least one error; its message names the file.
      */
-    fun parseKmetaFile(filePath: String): Metamodel {
-        val content = File(filePath).readText()
-        return parseKmetaString(content)
-    }
+    fun parseKmetaFile(filePath: String): Metamodel = KmetaReader().read(File(filePath).readText()).modelOrThrow(filePath)
 
     /**
      * Converts a [Metamodel] back into KMeta text in the canonical layout, with all its class types, the root
@@ -94,66 +69,4 @@ object KmetaDSLConverter {
      * @throws IllegalArgumentException If a name or a description cannot be written as a KMeta string literal.
      */
     fun convertToKmetaString(metamodel: Metamodel): String = KmetaPrinter().print(metamodel)
-
-    /**
-     * Converts one type definition into a [ClassType] whose relations are not resolved yet.
-     */
-    private fun toClassType(definition: TypeDefinition): ClassType {
-        logger.debug("Type {}: {}", definition.name, definition.description)
-        val simpleProperties = definition.props.map { toSimpleProperty(it) }
-        val embedded = definition.has.map { toClassTypeProperty(it, AssociationType.EMBEDDED) }
-        val linked = definition.knows.map { toClassTypeProperty(it, AssociationType.LINK) }
-        val behavesAfter = definition.behavesAfter?.let { BehavesAfter(it) }
-        return ClassType(definition.name, definition.description, simpleProperties, embedded + linked, behavesAfter)
-    }
-
-    /**
-     * Converts a `prop` rule into a property of one of the primitive types.
-     *
-     * @throws IllegalArgumentException If the rule names another type.
-     */
-    private fun toSimpleProperty(rule: Rule): SimpleProperty {
-        val typeName = typeNameOf(rule.value)
-        logger.debug("  prop {}: {}", rule.key, rule.value)
-        val propertyType = KmetaVocabulary.primitiveTypeNamed(typeName)
-            ?: throw IllegalArgumentException("Unknown rule value type for prop '${rule.key}'")
-        return SimpleProperty(rule.key, propertyType, rule.value is ListValue)
-    }
-
-    /** Converts a `has` or `knows` rule into a relation of [associationType] whose target type is not resolved yet. */
-    private fun toClassTypeProperty(rule: Rule, associationType: AssociationType): ClassTypeProperty {
-        val property = ClassTypeProperty(
-            rule.key,
-            ClassTypeReference(associationType, typeNameOf(rule.value)),
-            rule.value is ListValue,
-            associationType
-        )
-        logger.debug("  {} {}", associationType, property)
-        return property
-    }
-
-    /** Returns the type name of a rule, written as `"T"` or as `list("T")`. */
-    private fun typeNameOf(value: RuleValue): String = when (value) {
-        is StringValue -> value.value
-        is ListValue -> value.value
-    }
-
-    /**
-     * Resolves the class type references of the relations of [classTypes] against [resolvableTypes], the
-     * types of this file and the supplied base types.
-     *
-     * @throws IllegalArgumentException If a relation refers to a class type that is not resolvable.
-     */
-    private fun resolveReferences(classTypes: List<ClassType>, resolvableTypes: List<ClassType>) {
-        for (classType in classTypes) {
-            for (classTypeProp in classType.objectProperties) {
-                val reference = classTypeProp.reference
-                val targetClassType = resolvableTypes.find { it.name == reference.classTypeName }
-                    ?: throw IllegalArgumentException(
-                        "Unknown target class type '${reference.classTypeName}' for property"
-                    )
-                reference.classType = targetClassType
-            }
-        }
-    }
 }

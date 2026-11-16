@@ -40,6 +40,10 @@ class KstatesModelManipulationTest {
                 }
             }
             TRANSITIONS { }
+            MACROS {
+                MACRO "m" { RETURNS("number") DEFINITION { EVAL { return 1 } } }
+                MACRO "opposite" { TAKES("a", "number") TAKES("b", "number") RETURNS("number") DEFINITION { EVAL { return $(a) } } }
+            }
         }
     """.trimIndent()
 

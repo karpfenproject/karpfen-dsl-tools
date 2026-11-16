@@ -18,6 +18,7 @@ package io.karpfen.dsl.reader.kstates
 import io.karpfen.dsl.diagnostics.DiagnosticCode
 import io.karpfen.dsl.dsl.textual.KstatesDSLConverter
 import io.karpfen.dsl.printer.kstates.KstatesPrinter
+import io.karpfen.dsl.reader.InvalidTextException
 import io.karpfen.dsl.states.History
 import io.karpfen.dsl.states.JoinTransition
 import io.karpfen.dsl.states.SplitTransition
@@ -99,7 +100,7 @@ class KstatesStateOptionsTest {
 
     /**
      * A number of ticks that is not whole is reported at the number, and the reader leaves the delay or the
-     * whole timeout out. The throwing converter reads such a state without the ticks, as version 1.0 does.
+     * whole timeout out. The throwing converter rejects the text with both errors.
      */
     @Test
     fun `a number of ticks that is not whole is reported and left out`() {
@@ -114,8 +115,8 @@ class KstatesStateOptionsTest {
         assertEquals("The DELAY of a TICK LIMIT counts whole ticks, but was written as 1.5.", result.diagnostics.first().message)
         assertEquals(listOf(History.NONE, false, false, null, null, null), optionsOf(result.model!!.states.first()))
 
-        val converted = KstatesDSLConverter.parseKstatesString(text).states.first()
-        assertEquals(listOf(null, null, "b"), listOf(converted.delay, converted.timeout, converted.timeoutTo))
+        val rejection = assertFailsWith<InvalidTextException> { KstatesDSLConverter.parseKstatesString(text) }
+        assertEquals(result.errors, rejection.errors)
     }
 
     /**

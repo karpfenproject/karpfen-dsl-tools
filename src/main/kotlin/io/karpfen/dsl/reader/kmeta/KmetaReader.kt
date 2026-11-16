@@ -32,10 +32,9 @@ import org.slf4j.LoggerFactory
 /**
  * Reads KMeta text into a [Metamodel] without throwing, see [TextReader].
  *
- * A text without errors yields the metamodel that
- * [io.karpfen.dsl.dsl.textual.KmetaDSLConverter.parseKmetaString] builds from it: the types of the text
- * followed by the base types, with the last type of the text as root. Like the converter, the reader reads the text
- * with its common indentation trimmed, see [LexerInput.withIndentTrimmed]. The reader reports syntax errors, a
+ * A text without errors yields the complete metamodel: the types of the text followed by the base types, with the last
+ * type of the text as root. [io.karpfen.dsl.dsl.textual.KmetaDSLConverter] is the throwing form of this reader. The
+ * reader reads the text with its common indentation trimmed, see [LexerInput.withIndentTrimmed]. The reader reports syntax errors, a
  * `prop` of a type other than `string`, `number` and `boolean` at that type, a relation to an unknown class
  * type at the type name, a type defined twice and a key defined twice in one type at the later name, and
  * a text without any type, which yields no model. Whether the state machine a `behaves after` names exists, and fits the type, only

@@ -35,7 +35,7 @@ class EntryPointCompatibilityTest {
      */
     @Test
     fun `files convert as in version 1_0`() {
-        comparison.inEveryLayout(examples.fileConversions())
+        comparison.inEveryLayout(examples.fileConversions(), NewOutcomes.ALL)
     }
 
     /**
@@ -44,7 +44,7 @@ class EntryPointCompatibilityTest {
     @Test
     fun `single objects convert or fail as in version 1_0`() {
         val singleObjects = examples.singleObjects()
-        comparison.inEveryLayout(singleObjects)
+        comparison.inEveryLayout(singleObjects, NewOutcomes.of("kmodel"))
         comparison.onMutations(singleObjects, Mutator(Vocabularies.KMODEL), MUTATIONS_PER_FILE)
     }
 

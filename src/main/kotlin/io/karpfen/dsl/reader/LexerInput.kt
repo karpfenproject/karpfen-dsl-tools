@@ -19,11 +19,11 @@ package io.karpfen.dsl.reader
  * The text a reader hands to its lexer, made from the text being read, together with the way back from the
  * offsets of the one to those of the other.
  *
- * A reader builds the model its converter builds, so it lexes the text its converter parses. The converters of
- * KMeta and KModel parse the text with [String.trimIndent] applied, which drops a blank first and last line, cuts the
- * indentation all other lines share and turns every line break into `\n`; this changes the value of a string literal
- * that an escaped line break continues on the next line, and makes an escaped `\r\n` one token. The KStates converter
- * parses the text as written. The ranges a reader reports always refer to the text as written.
+ * The readers of KMeta and KModel lex the text with [String.trimIndent] applied, which drops a blank first and last
+ * line, cuts the indentation all other lines share and turns every line break into `\n`, as version 1.0 of the library
+ * read these languages; this changes the value of a string literal that an escaped line break continues on the next
+ * line, and makes an escaped `\r\n` one token. The KStates reader lexes the text as written. The ranges a reader
+ * reports always refer to the text as written.
  *
  * @property source The text being read.
  * @property lexed The text the lexer reads.
@@ -63,13 +63,13 @@ internal class LexerInput private constructor(
     companion object {
 
         /**
-         * Returns the input that lexes [text] as written, as the KStates converter parses it.
+         * Returns the input that lexes [text] as written, as the KStates reader reads it.
          */
         fun asWritten(text: String): LexerInput = LexerInput(text, text, null, null)
 
         /**
          * Returns the input that lexes [text] with its common indentation trimmed the way [String.trimIndent]
-         * trims it, as the KMeta and KModel converters parse it.
+         * trims it, as the KMeta and KModel readers read it.
          */
         fun withIndentTrimmed(text: String): LexerInput = IndentTrimming(text).input()
     }

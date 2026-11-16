@@ -30,7 +30,7 @@ import io.karpfen.dsl.source.SourceRange
 internal class EvalBody(val code: String, val codeRange: SourceRange)
 
 /**
- * Reads the code of `EVAL { ... }` statements the way the throwing converter does, see [EvalCodeSyntax].
+ * Reads the code of `EVAL { ... }` statements, see [EvalCodeSyntax].
  *
  * @param session The read the statements belong to.
  */

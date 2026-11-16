@@ -188,9 +188,9 @@ dependencies {
 }
 
 /**
- * Compares the converters with those of version 1.0, see the `reference` source set. Many of the exceptions both
- * versions must agree on are null pointer exceptions the JVM raises itself, whose messages it drops once the
- * throwing code is compiled as hot, unless `OmitStackTraceInFastThrow` is off.
+ * Compares the converters with those of version 1.0, see the `reference` source set. Version 1.0 fails on many broken
+ * texts with null pointer exceptions the JVM raises itself, whose messages a failure of the comparison shows. The JVM
+ * drops these messages once the throwing code is compiled as hot, unless `OmitStackTraceInFastThrow` is off.
  */
 tasks.register('compatibilityTest', Test) {
     description = "Compares the converters with those of version 1.0, built from commit ${referenceCommit}."

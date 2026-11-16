@@ -34,10 +34,9 @@ import org.slf4j.LoggerFactory
 /**
  * Reads KStates text into a [StateMachine] without throwing, see [TextReader].
  *
- * A text without errors yields the state machine that
- * [io.karpfen.dsl.dsl.textual.KstatesDSLConverter.parseKstatesString] builds from it; like the converter, the
- * reader reads the text as written, with one exception: a `DELAY` or `TIMEOUT` whose number of ticks is not whole
- * is reported and left out, where the converter keeps the state without the ticks. The reader reports syntax errors,
+ * A text without errors yields the complete state machine. [io.karpfen.dsl.dsl.textual.KstatesDSLConverter] is the
+ * throwing form of this reader with every feature switched on. The reader reads the text as written. A `DELAY` or
+ * `TIMEOUT` whose number of ticks is not whole is reported and left out. The reader reports syntax errors,
  * action rules written with another number of operands than their operation expects, numbers of ticks that are not
  * whole, a state machine that does not mark exactly one state as `INITIAL`, a header that does not fit its form, see
  * [HeaderConverter], every construct of a
@@ -54,8 +53,8 @@ import org.slf4j.LoggerFactory
  * error or has the wrong number of operands. A transition whose condition clauses are all left out becomes
  * unconditional; a macro without a readable returns directive or definition gets an empty one.
  *
- * @param switchedOn The optional features the text may use. Every feature is on by default, so the reader then
- * reports what the converter rejects and nothing more.
+ * @param switchedOn The optional features the text may use. Every feature is on by default, so that the reader then
+ * reports no construct of a feature.
  */
 class KstatesReader(private val switchedOn: Set<KstatesFeature> = KstatesFeature.ALL) : TextReader<StateMachine> {
 
