@@ -15,6 +15,7 @@
  */
 package io.karpfen.dsl.verification
 
+import io.karpfen.dsl.states.InitialStates
 import io.karpfen.dsl.states.State
 import io.karpfen.dsl.states.StateMachine
 
@@ -24,9 +25,8 @@ import io.karpfen.dsl.states.StateMachine
  *
  * A stack lists a state and all its outer states, the outermost first. The runtime enters a state by the stack of its
  * outer states and itself, without entering an inner state, except for a container state of a flattened composition,
- * which it enters down to its [State.initialInnerState], and further down while that is a container state again; the
- * start enters the initial state of each level: the first state marked `INITIAL`, otherwise the first state, down to a
- * state without inner states.
+ * which it enters along the start path of its fragment, see [InitialStates.enteredBelow]; the start enters the start
+ * path of the state machine, see [InitialStates.startPath].
  *
  * @param machine The state machine.
  */
@@ -42,7 +42,7 @@ internal class StateTree(machine: StateMachine) {
     private val outerOf: Map<String, State> = states.flatMap { outer -> outer.innerStates.map { it.name to outer } }.toMap()
 
     /** The innermost state of the stack the runtime starts with, or null for a machine without states. */
-    val initial: State? = initialOf(machine.states)
+    val initial: State? = InitialStates.startPath(machine).lastOrNull()
 
     /** Returns the state named [name], or null. */
     fun stateNamed(name: String): State? = byName[name]
@@ -55,12 +55,10 @@ internal class StateTree(machine: StateMachine) {
 
     /**
      * Returns the innermost state a branch rests on after entering [state]: [state] itself, or for a container state
-     * with inner states its initial inner state, entered the same way.
+     * with inner states the innermost state of the start path of its fragment.
      */
-    fun entered(state: State): State {
-        val inner = state.initialInnerState?.takeIf { state.isContainer } ?: return state
-        return entered(inner)
-    }
+    fun entered(state: State): State =
+        state.takeIf { it.isContainer }?.let { InitialStates.enteredBelow(it).lastOrNull() } ?: state
 
     /** Returns [state] and all the states nested in it. */
     fun withInnerStates(state: State): List<State> = listOf(state) + state.innerStates.flatMap { withInnerStates(it) }
@@ -68,9 +66,4 @@ internal class StateTree(machine: StateMachine) {
     /** Returns the states of [states] and their inner states, each state before its inner states. */
     private fun flattened(states: List<State>): List<State> = states.flatMap { listOf(it) + flattened(it.innerStates) }
 
-    /** Returns the innermost initial state among [states], as the runtime finds it. */
-    private fun initialOf(states: List<State>): State? {
-        val initial = states.firstOrNull { it.isInitial } ?: states.firstOrNull() ?: return null
-        return initialOf(initial.innerStates) ?: initial
-    }
 }

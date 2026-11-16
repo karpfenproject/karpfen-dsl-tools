@@ -27,8 +27,9 @@ import io.karpfen.dsl.states.actions.ActionBlock
  * "name" USE "fragment"`, names in [fragment] the fragment whose states run inside it; it has no actions of its own.
  * In the text it has no inner states. After [io.karpfen.dsl.composition.StateMachineFlattener] resolved it, it holds
  * copies of the states of the fragment as its inner states and keeps [fragment], so that a runtime can still tell that
- * entering it goes down to [initialInnerState]. A final state, `FINAL STATE "name"`, ends a fragment: once the active
- * state inside a container is final, the condition `DONE` of a transition that leaves the container holds.
+ * entering it goes down to [initialInnerState] and on along the start path of its fragment, see
+ * [InitialStates.enteredBelow]. A final state, `FINAL STATE "name"`, ends a fragment: once the active state inside a
+ * container is final, the condition `DONE` of a transition that leaves the container holds.
  *
  * @property name The name identifier for this state.
  * @property onEntry Actions executed when entering this state.
@@ -68,13 +69,13 @@ data class State(
         get() = fragment != null
 
     /**
-     * The inner state that is entered first when this state is entered and goes down, as the runtime builds a start
-     * stack: the inner state marked `INITIAL`, otherwise the first inner state; null for a state without inner states.
-     * For a flattened container state this is the copy of the state its fragment starts in, when the fragment marks a
-     * state at its top level as `INITIAL`.
+     * The inner state that a start path takes below this state, see [InitialStates]: the inner state that is marked
+     * `INITIAL` or holds the mark below it without passing through a container state, otherwise the first inner state;
+     * null for a state without inner states. For a flattened container state this is the outermost state of the start
+     * path of its fragment.
      */
     val initialInnerState: State?
-        get() = innerStates.firstOrNull { it.isInitial } ?: innerStates.firstOrNull()
+        get() = InitialStates.initialAmong(innerStates)
     override fun toString(): String =
         "State(name=$name, isInitial=$isInitial, entryBreakpoint=$entryBreakpoint, exitBreakpoint=$exitBreakpoint, " +
             "history=$history, delay=$delay, timeout=$timeout, timeoutTo=$timeoutTo, " +

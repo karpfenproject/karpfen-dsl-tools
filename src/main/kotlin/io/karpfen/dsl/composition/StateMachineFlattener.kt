@@ -33,7 +33,8 @@ import java.util.IdentityHashMap
  * - gives each container state copies of the states of its fragment as inner states, named `<container>/<state>`;
  *   since the name of a container that came out of a fragment is qualified already, names nest, as in
  *   `self test/wiring/lit`. The container keeps its name, history, breakpoints, tick limit and [State.fragment], so a
- *   consumer still tells it is a container and finds the state it goes down to in [State.initialInnerState];
+ *   consumer still tells it is a container and finds the states it goes down to with
+ *   [io.karpfen.dsl.states.InitialStates.enteredBelow];
  * - copies the transitions, splits and joins of each fragment, and the targets of their timeouts, with the names
  *   qualified the same way, after the transitions of the state machine it starts from;
  * - copies a fragment once per container state that uses it, so that two uses share nothing;
