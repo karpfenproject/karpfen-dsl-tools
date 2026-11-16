@@ -214,6 +214,21 @@ class KstatesAttachmentTest {
         }
     }
 
+    /**
+     * `ATTACH` after a rule of another operation that is written with three operands parses, since the grammar allows
+     * the clause after any rule with three operands; the rule is reported for its number of operands and left out.
+     */
+    @Test
+    fun `the clause after another operation with three operands is reported for the operands`() {
+        listOf(
+            "SET(\"self\", \"mode\", \"on\")", "APPEND(\"self\", \"log\", \"x\")", "EXCHANGE(\"self\", \"bulb\", \"steady\")",
+            "EVENT(\"lamp\", \"on\", \"now\")"
+        ).forEach { rule ->
+            val result = KstatesReader().read(machine("ATTACHED TO \"Lamp\"", "$rule ATTACH \"blinking\""))
+            assertEquals(listOf(DiagnosticCode.ACTION_ARITY), result.diagnostics.map { it.code }, rule)
+        }
+    }
+
     /** `EXCHANGE` takes a path and a value in each of the three forms, and other numbers of operands are reported. */
     @Test
     fun `EXCHANGE takes a path and a value`() {
