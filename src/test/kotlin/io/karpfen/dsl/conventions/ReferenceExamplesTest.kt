@@ -22,6 +22,7 @@ import io.karpfen.dsl.reader.kmeta.KmetaReader
 import io.karpfen.dsl.reader.kmodel.KmodelReader
 import io.karpfen.dsl.reader.kstates.KstatesReader
 import io.karpfen.dsl.states.KstatesFeature
+import io.karpfen.dsl.states.StateMachine
 import io.karpfen.dsl.verification.ProjectInput
 import io.karpfen.dsl.verification.ProjectVerifier
 import io.karpfen.dsl.verification.StateMachineInput
@@ -42,7 +43,10 @@ import kotlin.test.assertTrue
  * - A `kstates` block whose first line that is neither blank nor a `//` comment starts with `STATEMACHINE` is a whole
  *   state machine. It is read with [KstatesReader] with every optional feature switched on. If a `kmeta` block stands
  *   before it in the same file, [ProjectVerifier] also checks it against the metamodel of the last such block, without
- *   an event metamodel, a model or the object it runs on. Any other `kstates` block is a fragment and is not read.
+ *   an event metamodel, a model or the object it runs on. The whole state machines that follow the same `kmeta` block
+ *   and read without problems are verified together as one project, so that an example can name the attachable state
+ *   machines of the examples around it; the problems the verification finds in the metamodel count as problems of the
+ *   `kmeta` block. Any other `kstates` block is a fragment and is not read.
  * - A block of any other language, such as `text`, `kotlin` or `bash`, is not read. A text that is meant to show a
  *   problem is therefore written in a `text` block, or in a code span of a table.
  */
@@ -88,40 +92,35 @@ class ReferenceExamplesTest {
      * with its problems.
      */
     private fun checkFile(path: String, text: String): List<CheckedExample> {
-        var metamodel: ParseResult<Metamodel>? = null
         val checked = mutableListOf<CheckedExample>()
+        var project: ExampleProject? = null
         for (block in FencedBlock.allIn(text)) {
             val location = "$path:${block.line} (${block.language})"
             when (block.language) {
                 "kmeta" -> {
+                    project?.let { checked.addAll(it.verify()) }
                     val read = KmetaReader().read(block.text)
-                    metamodel = read
+                    project = ExampleProject(location, read)
                     checked.add(CheckedExample(location, block.language, describe(read.diagnostics)))
                 }
                 "kmodel" -> {
-                    val problems = metamodel?.model?.let { describe(KmodelReader(it).read(block.text).diagnostics) }
+                    val problems = project?.metamodel?.model?.let { describe(KmodelReader(it).read(block.text).diagnostics) }
                         ?: listOf("no kmeta block that yields a metamodel stands before this model")
                     checked.add(CheckedExample(location, block.language, problems))
                 }
                 "kstates" -> if (isWholeStateMachine(block.text)) {
-                    checked.add(CheckedExample(location, block.language, describe(problemsOfStateMachine(block.text, metamodel))))
+                    val read = KstatesReader(KstatesFeature.ALL).read(block.text)
+                    val current = project
+                    if (current == null || read.diagnostics.isNotEmpty()) {
+                        checked.add(CheckedExample(location, block.language, describe(read.diagnostics)))
+                    } else {
+                        current.add(location, read)
+                    }
                 }
             }
         }
+        project?.let { checked.addAll(it.verify()) }
         return checked
-    }
-
-    /**
-     * Returns the problems of the state machine [text]: those of its read, and those of its verification against
-     * [metamodel] if there is one.
-     */
-    private fun problemsOfStateMachine(text: String, metamodel: ParseResult<Metamodel>?): List<Diagnostic> {
-        val read = KstatesReader(KstatesFeature.ALL).read(text)
-        if (metamodel == null || read.diagnostics.isNotEmpty()) {
-            return read.diagnostics
-        }
-        val machine = StateMachineInput(read)
-        return ProjectVerifier().verify(ProjectInput(metamodel, stateMachines = listOf(machine))).of(machine)
     }
 
     /**
@@ -138,6 +137,37 @@ class ReferenceExamplesTest {
      */
     private fun describe(diagnostics: List<Diagnostic>): List<String> = diagnostics.map {
         "${it.code.id} ${it.range.start.line}:${it.range.start.column}: ${it.message}"
+    }
+
+    /**
+     * The state machines of a reference file that follow one `kmeta` block and read without problems, verified together.
+     *
+     * @property location The file and line of the `kmeta` block.
+     * @property metamodel The read of the `kmeta` block.
+     */
+    private inner class ExampleProject(val location: String, val metamodel: ParseResult<Metamodel>) {
+
+        /** The state machines added so far, each with the file and line of its block. */
+        private val machines = mutableListOf<Pair<String, StateMachineInput>>()
+
+        /** Adds the state machine [read] from the block at [location]. */
+        fun add(location: String, read: ParseResult<StateMachine>) {
+            machines.add(location to StateMachineInput(read))
+        }
+
+        /**
+         * Verifies the state machines together against the metamodel and returns each state machine with its problems,
+         * and the metamodel if the verification finds problems in it.
+         */
+        fun verify(): List<CheckedExample> {
+            if (machines.isEmpty()) {
+                return emptyList()
+            }
+            val findings = ProjectVerifier().verify(ProjectInput(metamodel, stateMachines = machines.map { it.second }))
+            val ofMachines = machines.map { (location, machine) -> CheckedExample(location, "kstates", describe(findings.of(machine))) }
+            val ofMetamodel = findings.metamodel.takeIf { it.isNotEmpty() }?.let { CheckedExample(location, "kmeta", describe(it)) }
+            return ofMachines + listOfNotNull(ofMetamodel)
+        }
     }
 
     /**

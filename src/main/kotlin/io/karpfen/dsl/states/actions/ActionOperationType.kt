@@ -47,5 +47,11 @@ enum class ActionOperationType(val operandCount: Int) {
     DROPOBJ(1),
 
     /** Sends an event to an event domain. */
-    EVENT(2)
+    EVENT(2),
+
+    /**
+     * Ends the state machine of the object at a path and attaches an instance of the attachable state machine whose
+     * name the value yields; attaches it if the object has no state machine yet.
+     */
+    EXCHANGE(2)
 }

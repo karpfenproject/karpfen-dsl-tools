@@ -158,10 +158,25 @@ enum class DiagnosticCode(val id: String, val severity: Severity) {
     /** The code of a KStates `EVAL` has no `return`, so it yields no value. */
     EVAL_WITHOUT_RETURN("kstates.eval-without-return", Severity.WARNING),
 
-    /** A state machine is `ATTACHED TO` a class type that the metamodel of the project does not define. */
+    /** A KStates state machine is `ATTACHABLE TO` types but has no name, which `behaves after`, `ATTACH` and `EXCHANGE` need. */
+    MISSING_STATE_MACHINE_NAME("kstates.missing-state-machine-name", Severity.ERROR),
+
+    /**
+     * A KStates state machine `ATTACHED TO` a type has a name or names more than one type; only the attachable form,
+     * `ATTACHABLE TO`, has them.
+     */
+    ATTACHED_HEADER("kstates.attached-header", Severity.ERROR),
+
+    /** A KStates state machine names the same type twice after `ATTACHABLE TO`. */
+    REPEATED_ATTACHABLE_TYPE("kstates.repeated-attachable-type", Severity.ERROR),
+
+    /** A state machine is `ATTACHED TO`, or `ATTACHABLE TO`, a class type that the metamodel of the project does not define. */
     UNKNOWN_ATTACHED_TYPE("project.unknown-attached-type", Severity.ERROR),
 
-    /** The model has no object of the id a state machine is attached to, or it is of another class type than its `ATTACHED TO` names. */
+    /**
+     * The model has no object of the id a state machine is attached to, or it is of another class type than its
+     * `ATTACHED TO` names, or than any of the types its `ATTACHABLE TO` lists.
+     */
     ATTACHED_OBJECT_TYPE("project.attached-object-type", Severity.ERROR),
 
     /** A path of an action or of a `VALUE` condition names a property or relation the class type on its way lacks. */
@@ -205,6 +220,27 @@ enum class DiagnosticCode(val id: String, val severity: Severity) {
 
     /** A state machine reads a property that the model gives no value, on the way from the object it runs on, and that no action writes. */
     UNSET_PROPERTY("project.unset-property", Severity.WARNING),
+
+    /** Two attachable state machines of a project have the same name. */
+    DUPLICATE_STATE_MACHINE_NAME("project.duplicate-state-machine-name", Severity.ERROR),
+
+    /** A `behaves after`, an `ATTACH` or an `EXCHANGE` names a state machine that no attachable state machine of the project is called. */
+    UNKNOWN_STATE_MACHINE("project.unknown-state-machine", Severity.ERROR),
+
+    /**
+     * A `behaves after`, an `ATTACH` or an `EXCHANGE` names an attachable state machine for an object of a type that the
+     * state machine does not list after `ATTACHABLE TO`.
+     */
+    ATTACHABLE_TYPE_MISMATCH("project.attachable-type-mismatch", Severity.ERROR),
+
+    /**
+     * An `ATTACH` clause follows a `SETOBJ` or `APPENDOBJ` on a `knows` relation, which links an object that exists
+     * already instead of creating one; `EXCHANGE` replaces the state machine of such an object.
+     */
+    ATTACH_ON_KNOWS("project.attach-on-knows", Severity.ERROR),
+
+    /** A type of the event metamodel has `behaves after`, but events have no state machines. */
+    BEHAVES_AFTER_IN_EVENTS("project.behaves-after-in-events", Severity.ERROR),
 
     /**
      * The reader failed and could not build a model: on nesting deeper than the parser can recurse, or through a

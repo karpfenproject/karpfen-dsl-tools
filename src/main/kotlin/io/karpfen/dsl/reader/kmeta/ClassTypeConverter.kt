@@ -18,6 +18,7 @@ package io.karpfen.dsl.reader.kmeta
 import io.karpfen.dsl.diagnostics.DiagnosticCode
 import io.karpfen.dsl.grammar.kmeta.KmetaParser
 import io.karpfen.dsl.meta.AssociationType
+import io.karpfen.dsl.meta.BehavesAfter
 import io.karpfen.dsl.meta.ClassType
 import io.karpfen.dsl.meta.ClassTypeProperty
 import io.karpfen.dsl.meta.ClassTypeReference
@@ -32,7 +33,7 @@ import org.antlr.v4.runtime.tree.TerminalNode
 
 /**
  * Converts the type definitions of a KMeta parse tree into [ClassType]s whose relations are not resolved yet,
- * and records where each type, property and relation target is written.
+ * and records where each type, `behaves after` clause, property and relation target is written.
  *
  * @param session The read the conversion belongs to.
  */
@@ -44,7 +45,10 @@ internal class ClassTypeConverter(private val session: ReadingSession) {
     fun convert(definitions: List<KmetaParser.Type_definitionContext>): List<ClassType> =
         definitions.mapNotNull { convertType(it) }
 
-    /** Converts a type definition with its `prop`, `has` and `knows` rules; null for a definition without a name. */
+    /**
+     * Converts a type definition with its `behaves after` clause and its `prop`, `has` and `knows` rules; null for a
+     * definition without a name.
+     */
     private fun convertType(definition: KmetaParser.Type_definitionContext): ClassType? {
         val strings = definition.presentTokens(KmetaParser.STRING)
         val nameToken = strings.firstOrNull() ?: return null
@@ -55,10 +59,20 @@ internal class ClassTypeConverter(private val session: ReadingSession) {
             description,
             rules.mapNotNull { it.prop_rule() }.mapNotNull { convertProperty(it) },
             rules.mapNotNull { it.has_rule() }.mapNotNull { convertRelation(it, AssociationType.EMBEDDED) } +
-                rules.mapNotNull { it.knows_rule() }.mapNotNull { convertRelation(it, AssociationType.LINK) }
+                rules.mapNotNull { it.knows_rule() }.mapNotNull { convertRelation(it, AssociationType.LINK) },
+            definition.behaviour_clause()?.let { convertBehaviour(it) }
         )
         session.record(classType, definition, nameToken)
         return classType
+    }
+
+    /**
+     * Converts `behaves after "name"` and records it at the whole clause, named by the state machine; null for an empty
+     * clause or one without its name.
+     */
+    private fun convertBehaviour(clause: KmetaParser.Behaviour_clauseContext): BehavesAfter? {
+        val nameToken = clause.presentToken(KmetaParser.STRING) ?: return null
+        return BehavesAfter(unquote(nameToken)).also { session.record(it, clause, nameToken) }
     }
 
     /**

@@ -19,22 +19,31 @@ import io.karpfen.dsl.diagnostics.Diagnostic
 import io.karpfen.dsl.diagnostics.Severity
 
 /**
- * The problems [ProjectVerifier] found in a project, each in the text of the state machine it concerns.
+ * The problems [ProjectVerifier] found in a project, each in the text it concerns: most in the text of a state machine,
+ * those of the `behaves after` clauses in the text of the domain metamodel or of the event metamodel.
  *
- * The problems only add to the diagnostics of the reads; they never repeat them. Their ranges lie in the text of their
- * state machine.
+ * The problems only add to the diagnostics of the reads; they never repeat them. Their ranges lie in the text they
+ * belong to.
  *
  * @param stateMachines The state machines of the verified project, in the order of the input.
  * @param findings The problems of each state machine, sorted by their offset, in the same order.
+ * @property metamodel The problems found in the text of the domain metamodel, sorted by their offset.
+ * @property events The problems found in the text of the event metamodel, sorted by their offset; empty for a project
+ * without one.
  */
 class ProjectFindings internal constructor(
     private val stateMachines: List<StateMachineInput>,
-    private val findings: List<List<Diagnostic>>
+    private val findings: List<List<Diagnostic>>,
+    val metamodel: List<Diagnostic> = emptyList(),
+    val events: List<Diagnostic> = emptyList()
 ) {
 
-    /** Every problem found, the problems of the first state machine first. */
+    /**
+     * Every problem found: those of the state machines, the problems of the first state machine first, then those of the
+     * domain metamodel, then those of the event metamodel.
+     */
     val all: List<Diagnostic>
-        get() = findings.flatten()
+        get() = findings.flatten() + metamodel + events
 
     /** The problems of severity error among [all]. */
     val errors: List<Diagnostic>

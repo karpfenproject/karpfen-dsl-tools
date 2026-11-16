@@ -41,11 +41,12 @@ class KmetaParseVisitor : KmetaBaseVisitor<KmetaFile>() {
         return KmetaFile(typeDefinitions)
     }
 
-    /** Reads a type definition with its `prop`, `has` and `knows` rules. */
+    /** Reads a type definition with its `behaves after` clause and its `prop`, `has` and `knows` rules. */
     private fun visitTypeDefinition(ctx: KmetaParser.Type_definitionContext): TypeDefinition {
         val typeName = literals.unquote(ctx.STRING(0).text)
         val typeDescription = literals.unquote(ctx.STRING(1).text)
-        val typeDef = TypeDefinition(typeName, typeDescription)
+        val behavesAfter = ctx.behaviour_clause()?.STRING()?.let { literals.unquote(it.text) }
+        val typeDef = TypeDefinition(typeName, typeDescription, behavesAfter)
 
         val ruleListCtx = ctx.rule_list()
         if (ruleListCtx != null) {

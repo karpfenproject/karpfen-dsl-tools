@@ -112,7 +112,7 @@ internal class MachineSites(
     /** Returns the macro the runtime calls for the name [name], or null. */
     fun macroNamed(name: String): Macro? = macrosByName[name]
 
-    /** Adds the rules of the states to [rules] and the paths they read to [reads]. */
+    /** Adds the rules of the states to [rules] and the paths they and their `ATTACH` clauses read to [reads]. */
     private fun collectStates(rules: MutableList<RuleSite>, reads: MutableList<ReadSite>) {
         for (placed in StateMachineContents(machine).actions) {
             val scope = ReadScope(
@@ -123,10 +123,12 @@ internal class MachineSites(
             when (val item = placed.item) {
                 is ActionRule -> {
                     rules.add(RuleSite(item, scope))
-                    when (val rightSide = item.rightSide) {
-                        is EvalActionRightSide -> reads.addAll(codeReads(rightSide, rightSide.code, scope))
-                        is MacroActionRightSide -> reads.addAll(argumentReads(rightSide, scope))
-                        else -> Unit
+                    for (value in listOfNotNull(item.rightSide, item.attach?.stateMachineName)) {
+                        when (value) {
+                            is EvalActionRightSide -> reads.addAll(codeReads(value, value.code, scope))
+                            is MacroActionRightSide -> reads.addAll(argumentReads(value, scope))
+                            else -> Unit
+                        }
                     }
                 }
                 is WithBlock -> reads.addAll(argumentReads(item.macro, scope))

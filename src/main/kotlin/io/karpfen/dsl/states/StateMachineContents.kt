@@ -17,6 +17,7 @@ package io.karpfen.dsl.states
 
 import io.karpfen.dsl.states.actions.ActionBlock
 import io.karpfen.dsl.states.actions.ActionItem
+import io.karpfen.dsl.states.actions.ActionRightSide
 import io.karpfen.dsl.states.actions.ActionRule
 import io.karpfen.dsl.states.actions.EvalActionRightSide
 import io.karpfen.dsl.states.actions.InScopeBlock
@@ -77,27 +78,32 @@ internal class StateMachineContents(private val machine: StateMachine) {
         states.flatMap { state -> listOf(state.onEntry, state.onDo).flatMap { placed(it, state, ActionSurroundings.NONE) } }
     }
 
-    /** Every macro call of an action rule or of a `WITH` block. */
+    /** Every macro call of an action rule, of its `ATTACH` clause or of a `WITH` block. */
     val macroCalls: List<MacroActionRightSide> by lazy {
-        actions.mapNotNull { placed ->
+        actions.flatMap { placed ->
             when (val item = placed.item) {
-                is ActionRule -> item.rightSide as? MacroActionRightSide
-                is WithBlock -> item.macro
-                is InScopeBlock -> null
+                is ActionRule -> valuesOf(item).filterIsInstance<MacroActionRightSide>()
+                is WithBlock -> listOf(item.macro)
+                is InScopeBlock -> emptyList()
             }
         }
     }
 
     /**
-     * Every `EVAL` body: the [EvalActionRightSide]s of the actions, the [EvalCondition]s of the transitions and the
-     * code blocks of the macros, each with its code.
+     * Every `EVAL` body: the [EvalActionRightSide]s of the actions and their `ATTACH` clauses, the [EvalCondition]s
+     * of the transitions and the code blocks of the macros, each with its code.
      */
     val evalBodies: List<Pair<Any, String>> by lazy {
-        val ofActions = actions.mapNotNull { ((it.item as? ActionRule)?.rightSide as? EvalActionRightSide)?.let { eval -> eval to eval.code } }
+        val ofActions = actions.flatMap { placed ->
+            (placed.item as? ActionRule)?.let { valuesOf(it) }.orEmpty().filterIsInstance<EvalActionRightSide>().map { it to it.code }
+        }
         val ofConditions = machine.transitions.flatMap { clausesOf(it.condition) }.filterIsInstance<EvalCondition>().map { it to it.code }
         val ofMacros = machine.macros.map { it.definition.codeBlock to it.definition.codeBlock.code }
         ofActions + ofConditions + ofMacros
     }
+
+    /** Returns the right side of [rule] and the value of its `ATTACH` clause, those it has, in this order. */
+    private fun valuesOf(rule: ActionRule): List<ActionRightSide> = listOfNotNull(rule.rightSide, rule.attach?.stateMachineName)
 
     /** Returns the simple conditions [condition] is made of, those of nested composite conditions in their place. */
     private fun clausesOf(condition: Condition): List<Condition> =

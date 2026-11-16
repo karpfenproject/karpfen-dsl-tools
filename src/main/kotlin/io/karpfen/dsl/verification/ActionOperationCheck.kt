@@ -30,7 +30,7 @@ import io.karpfen.dsl.states.actions.ValueActionRightSide
  * `SET` needs a property that is not a list; `APPEND`, `SETLIST` and `DROPLIST` need a list property. `SETOBJ` needs a
  * relation to one object, `APPENDOBJ` a relation to a list of objects, and the object a literal path leads to must be
  * of the type of the relation and may only be linked by a `knows` relation, since a `has` relation takes a new object.
- * `DROPOBJ` needs a path to one object. A property operation on a relation is reported with the relation operation to
+ * `DROPOBJ` and `EXCHANGE` need a path to one object. A property operation on a relation is reported with the relation operation to
  * use instead. A path that an `IF IN SCOPE` block around
  * the rule guards is not reported as leading nowhere.
  *
@@ -47,7 +47,7 @@ internal class ActionOperationCheck : MachineCheck {
                 ActionOperationType.SET, ActionOperationType.APPEND,
                 ActionOperationType.SETLIST, ActionOperationType.DROPLIST -> checkPropertyRule(context, site, type)
                 ActionOperationType.SETOBJ, ActionOperationType.APPENDOBJ -> checkRelationRule(context, site, type)
-                ActionOperationType.DROPOBJ -> checkDrop(context, site, type)
+                ActionOperationType.DROPOBJ, ActionOperationType.EXCHANGE -> checkObjectPath(context, site, type)
                 ActionOperationType.EVENT -> Unit
             }
         }
@@ -138,8 +138,8 @@ internal class ActionOperationCheck : MachineCheck {
         }
     }
 
-    /** Checks a `DROPOBJ` rule of [site]. */
-    private fun checkDrop(context: MachineContext, site: RuleSite, contextType: ClassType) {
+    /** Checks the path of a `DROPOBJ` or `EXCHANGE` rule of [site], which must lead to one object. */
+    private fun checkObjectPath(context: MachineContext, site: RuleSite, contextType: ClassType) {
         val rule = site.rule
         val range = context.report.operandRangeOf(rule, 0)
         found(context, site, RuleTargets.objectAt(contextType, rule.leftSide), rule.leftSide, range)

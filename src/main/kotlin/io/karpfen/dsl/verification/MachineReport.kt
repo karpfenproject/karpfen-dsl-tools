@@ -22,8 +22,8 @@ import io.karpfen.dsl.source.SourcePosition
 import io.karpfen.dsl.source.SourceRange
 
 /**
- * Collects the problems found in the text of one state machine and finds where to mark them, from the source map of
- * its read.
+ * Collects the problems found in the text of one state machine, or of one metamodel, and finds where to mark them,
+ * from the source map of its read.
  *
  * @param sourceMap The source map of the read of the state machine.
  */

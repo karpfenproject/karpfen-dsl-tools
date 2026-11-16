@@ -27,7 +27,8 @@ sealed interface Outcome {
     /**
      * The converter returned a model.
      *
-     * @property structure The structure of the model, see [StructureDump].
+     * @property structure The structure of the model, see [StructureDump], without the fields that version 1.0 lacks
+     * while they hold the value of a text without the constructs they stand for, see [FieldsSinceVersion1].
      */
     data class Converted(val structure: String) : Outcome
 
@@ -50,7 +51,7 @@ sealed interface Outcome {
             var outcome: Outcome? = null
             captureConsole {
                 outcome = try {
-                    Converted(StructureDump.of(conversion()))
+                    Converted(StructureDump.of(conversion(), FieldsSinceVersion1::isUnused))
                 } catch (failure: Exception) {
                     failedWith(failure)
                 } catch (failure: StackOverflowError) {

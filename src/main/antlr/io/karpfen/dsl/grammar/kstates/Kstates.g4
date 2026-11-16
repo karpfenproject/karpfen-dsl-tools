@@ -23,8 +23,20 @@ kstates_file
     : statemachine EOF
     ;
 
+// Two forms share one header: `STATEMACHINE ATTACHED TO "T"` and `STATEMACHINE "name" ATTACHABLE TO "A", "B"`.
+// The grammar accepts a name and further types with either keyword; the reader reports a name or a second type of
+// an attached state machine and an attachable one without a name. The optional parts stand in rules of their own,
+// so that a missing keyword or brace of the header is recovered from exactly as in a grammar without them.
 statemachine
-    : STATEMACHINE ATTACHED TO STRING LBRACE states_block transitions_block macros_block? RBRACE
+    : STATEMACHINE statemachine_name (ATTACHED | ATTACHABLE) TO STRING further_types LBRACE states_block transitions_block macros_block? RBRACE
+    ;
+
+statemachine_name
+    : STRING?
+    ;
+
+further_types
+    : (COMMA STRING)*
     ;
 
 states_block
@@ -102,12 +114,17 @@ with_block
 
 // Three arities, distinguished by the hand-written parser:
 //   unary   OP("a")              -> DROPLIST, DROPOBJ
-//   binary  OP("a", rhs)         -> SET, APPEND, SETLIST, EVENT
+//   binary  OP("a", rhs)         -> SET, APPEND, SETLIST, EVENT, EXCHANGE
 //   ternary OP("a", "b", rhs)    -> SETOBJ, APPENDOBJ   (source, relation, target)
+// Only the ternary form takes an ATTACH clause, so ATTACH after any other form is a syntax error.
 action_rule
     : action_operation LPAREN STRING RPAREN
     | action_operation LPAREN STRING COMMA action_right_side RPAREN
-    | action_operation LPAREN STRING COMMA STRING COMMA action_right_side RPAREN
+    | action_operation LPAREN STRING COMMA STRING COMMA action_right_side RPAREN attach_clause?
+    ;
+
+attach_clause
+    : ATTACH action_right_side
     ;
 
 action_operation
@@ -119,6 +136,7 @@ action_operation
     | APPENDOBJ
     | DROPOBJ
     | EVENT
+    | EXCHANGE
     ;
 
 action_right_side
@@ -283,6 +301,9 @@ REFERENCE       : 'reference' ;
 IF              : 'IF' ;
 IN              : 'IN' ;
 SCOPE           : 'SCOPE' ;
+ATTACHABLE      : 'ATTACHABLE' ;
+ATTACH          : 'ATTACH' | 'attach' ;
+EXCHANGE        : 'EXCHANGE' | 'exchange' ;
 
 ARROW           : '->' ;
 LBRACE          : '{' ;
