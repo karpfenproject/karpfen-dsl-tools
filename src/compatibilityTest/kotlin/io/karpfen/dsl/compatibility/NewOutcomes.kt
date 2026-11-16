@@ -31,21 +31,6 @@ object NewOutcomes {
     /** The new outcomes of all examples. */
     val ALL: List<NewOutcome> = listOf(
         NewOutcome(
-            "A KMeta text that starts with a byte order mark is rejected: the lexer does not know the mark, where " +
-                "version 1.0 logged the error and read on after it",
-            TextLayout.BYTE_ORDER_MARK.name, "kmeta", null, listOf("syntax.unrecognized-input")
-        ),
-        NewOutcome(
-            "A KModel text that starts with a byte order mark is rejected: the lexer does not know the mark, where " +
-                "version 1.0 logged the error and read on after it",
-            TextLayout.BYTE_ORDER_MARK.name, "kmodel", null, listOf("syntax.unrecognized-input")
-        ),
-        NewOutcome(
-            "A KStates text that starts with a byte order mark is rejected: the parser does not expect the mark before " +
-                "STATEMACHINE, where version 1.0 logged the error and read on after it",
-            TextLayout.BYTE_ORDER_MARK.name, "kstates", null, listOf("syntax.error")
-        ),
-        NewOutcome(
             "A state machine whose macro names an escaped line break continues is rejected: the names of the macro " +
                 "definitions take up the line break, the calls with @ in EVAL code do not, and version 1.0 did not " +
                 "check the names of these calls",

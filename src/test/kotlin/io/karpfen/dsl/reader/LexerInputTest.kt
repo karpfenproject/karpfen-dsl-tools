@@ -23,8 +23,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Tests that [LexerInput] trims a text exactly as [String.trimIndent] does and maps every char it keeps back to
- * the char it stems from.
+ * Tests that [LexerInput] trims a text exactly as [String.trimIndent] does, after leaving out a byte order mark at its
+ * start, and maps every char it keeps back to the char it stems from.
  */
 class LexerInputTest {
 
@@ -36,9 +36,10 @@ class LexerInputTest {
     fun `the trimmed text is the one trimIndent returns`() {
         val texts = listOf(
             "", " ", "\n", "\n\n", "\r\n", "\r", "a", "  a\n  b\n", "\r\n  a\r\n    b\r\n", "\ta\n\t\tb",
-            "a\rb\r\nc\nd", "  a\n\n  b", "  a\n \n  b", " \n  a\n   \n", " a\n b", "﻿a", "  \"x\\\n    y\"\n", "x\n  "
+            "a\rb\r\nc\nd", "  a\n\n  b", "  a\n \n  b", " \n  a\n   \n", " a\n b", "\uFEFFa", "\uFEFF\n  a\n  b", "a\uFEFF",
+            "  \"x\\\n    y\"\n", "x\n  "
         )
-        texts.forEach { assertEquals(it.trimIndent(), LexerInput.withIndentTrimmed(it).lexed, "<$it>") }
+        texts.forEach { assertEquals(trimmed(it), LexerInput.withIndentTrimmed(it).lexed, "<$it>") }
     }
 
     /**
@@ -50,7 +51,7 @@ class LexerInputTest {
         ReaderUnderTest.all().forEach { subject ->
             val texts = mutator.variantsOf(subject.path, subject.text, VARIANTS_PER_FILE).map { it.text } +
                 TextLayout.entries.map { it.apply(subject.text) }
-            texts.forEach { assertEquals(it.trimIndent(), LexerInput.withIndentTrimmed(it).lexed, "$subject") }
+            texts.forEach { assertEquals(trimmed(it), LexerInput.withIndentTrimmed(it).lexed, "$subject") }
         }
     }
 
@@ -86,6 +87,9 @@ class LexerInputTest {
     }
 
     private companion object {
+
+        /** Returns [text] without a byte order mark at its start, trimmed by [String.trimIndent]. */
+        fun trimmed(text: String): String = text.removePrefix("\uFEFF").trimIndent()
 
         /** The number of mutated variants of every example. */
         const val VARIANTS_PER_FILE = 100

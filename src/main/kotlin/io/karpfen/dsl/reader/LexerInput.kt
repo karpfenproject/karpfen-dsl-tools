@@ -22,8 +22,10 @@ package io.karpfen.dsl.reader
  * The readers of KMeta and KModel lex the text with [String.trimIndent] applied, which drops a blank first and last
  * line, cuts the indentation all other lines share and turns every line break into `\n`, as version 1.0 of the library
  * read these languages; this changes the value of a string literal that an escaped line break continues on the next
- * line, and makes an escaped `\r\n` one token. The KStates reader lexes the text as written. The ranges a reader
- * reports always refer to the text as written.
+ * line, and makes an escaped `\r\n` one token. A byte order mark at the start of the text is left out before
+ * trimming, so that it neither counts as the indentation of the first line nor keeps a blank first line from being
+ * dropped. The KStates reader lexes the text as written, and its grammar skips such a mark, as all three grammars do.
+ * The ranges a reader reports always refer to the text as written, the mark included.
  *
  * @property source The text being read.
  * @property lexed The text the lexer reads.
@@ -62,6 +64,9 @@ internal class LexerInput private constructor(
     /** Makes the lexer input of a text. */
     companion object {
 
+        /** The byte order mark, which a text may start with and which the readers then ignore. */
+        private const val BYTE_ORDER_MARK = '\uFEFF'
+
         /**
          * Returns the input that lexes [text] as written, as the KStates reader reads it.
          */
@@ -76,14 +81,15 @@ internal class LexerInput private constructor(
 
     /**
      * Trims the indentation of one text the way [String.trimIndent] does, recording where each char it keeps
-     * stands in the text. The trimmed text is never longer than the text, which sizes the tables of offsets.
+     * stands in the text. A byte order mark at the start of the text is not part of its first line and is dropped.
+     * The trimmed text is never longer than the text, which sizes the tables of offsets.
      *
      * @param text The text to trim.
      */
     private class IndentTrimming(private val text: String) {
 
         /** The lines of the text. */
-        private val lines = SourceLine.linesOf(text)
+        private val lines = SourceLine.linesOf(text, if (text.startsWith(BYTE_ORDER_MARK)) 1 else 0)
 
         /** The trimmed text built so far. */
         private val lexed = StringBuilder(text.length)
@@ -152,12 +158,12 @@ internal class LexerInput private constructor(
         companion object {
 
             /**
-             * Returns the lines of [text], one more than it has line breaks.
+             * Returns the lines of [text] from the offset [from] on, one more than that part has line breaks.
              */
-            fun linesOf(text: String): List<SourceLine> {
+            fun linesOf(text: String, from: Int): List<SourceLine> {
                 val lines = mutableListOf<SourceLine>()
-                var start = 0
-                var offset = 0
+                var start = from
+                var offset = from
                 while (offset < text.length) {
                     val char = text[offset]
                     if (char == '\r' || char == '\n') {

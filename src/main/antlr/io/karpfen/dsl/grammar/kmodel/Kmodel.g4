@@ -71,3 +71,7 @@ STRING   : '"' (~["\r\n] | '\\' .)* '"'
 WS       : [ \t\r\n]+ -> skip ;
 COMMENT  : '//' ~[\r\n]* -> skip ;
 
+// A byte order mark, which editors on Windows write at the start of a file, is skipped there, so that a text that
+// starts with one reads like the same text without it. Anywhere else the char stays what it is without this rule.
+BYTE_ORDER_MARK : '\uFEFF' {_tokenStartCharIndex == 0}? -> skip ;
+
