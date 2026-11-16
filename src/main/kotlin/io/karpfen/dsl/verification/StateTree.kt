@@ -23,8 +23,10 @@ import io.karpfen.dsl.states.StateMachine
  * runtime builds from it.
  *
  * A stack lists a state and all its outer states, the outermost first. The runtime enters a state by the stack of its
- * outer states and itself, without entering an inner state; only the start enters the initial state of each level: the
- * first state marked `INITIAL`, otherwise the first state, down to a state without inner states.
+ * outer states and itself, without entering an inner state, except for a container state of a flattened composition,
+ * which it enters down to its [State.initialInnerState], and further down while that is a container state again; the
+ * start enters the initial state of each level: the first state marked `INITIAL`, otherwise the first state, down to a
+ * state without inner states.
  *
  * @param machine The state machine.
  */
@@ -50,6 +52,15 @@ internal class StateTree(machine: StateMachine) {
 
     /** Returns the stack of [state]: its outer states, the outermost first, and the state itself. */
     fun stackOf(state: State): List<State> = generateSequence(state) { outerOf(it) }.toList().reversed()
+
+    /**
+     * Returns the innermost state a branch rests on after entering [state]: [state] itself, or for a container state
+     * with inner states its initial inner state, entered the same way.
+     */
+    fun entered(state: State): State {
+        val inner = state.initialInnerState?.takeIf { state.isContainer } ?: return state
+        return entered(inner)
+    }
 
     /** Returns [state] and all the states nested in it. */
     fun withInnerStates(state: State): List<State> = listOf(state) + state.innerStates.flatMap { withInnerStates(it) }
